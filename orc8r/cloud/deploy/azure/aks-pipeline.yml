@@ -1,0 +1,33 @@
+parameters:
+  - name: acrSubscriptionId
+    displayName: Azure Container Registry Subscription Id
+    type: string
+    default: df72d7e7-e980-42e2-8be9-e89f702836b6
+  - name: acrResourceGroup
+    displayName: Azure Container Registry Resource Group
+    type: string
+    default: sonar
+  - name: acrName
+    displayName: Azure Container Registry Name
+    type: string
+    default: alexsonar
+  - name: acrServiceConnection
+    displayName: Azure Container Registry Service Connection
+    type: string
+    default: Alex - Subscription    
+
+trigger:
+- master
+
+stages:
+- stage: Configure
+  jobs:
+    - job: Configure
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - task: Bash@3
+        displayName: Script
+        inputs:
+          targetType: 'inline'
+          script: echo "Hello!"
