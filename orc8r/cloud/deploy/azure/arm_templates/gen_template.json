@@ -2,41 +2,44 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "environment":{
-            "type":"string",
+        "environment": {
+            "type": "string",
             "defaultValue": "DEV",
-            "allowedValues": ["DEV","STG","PRD"]
+            "allowedValues": [
+                "DEV",
+                "STG",
+                "PRD"
+            ]
         },
-        "location":{            
-            "type":"string",
-            "defaultValue": "eastus"
+        "location": {
+            "type": "string",
+            "defaultValue": "eastus2"
         },
-        //MariaDB Parameters 
-        "maria_db_version":{
-            "type":"string",
-            "defaultValue":"10.2"
+        "maria_db_version": {
+            "type": "string",
+            "defaultValue": "10.2"
         },
-        "mariadb_admin_login":{
-            "type":"string"
+        "mariadb_admin_login": {
+            "type": "string"
         },
-        "mariadb_admin_password":{
-            "type":"securestring"
+        "mariadb_admin_password": {
+            "type": "securestring"
         },
         "mariadb_backup_retention_days": {
-            "type":"int",
-            "defaultValue":14
+            "type": "int",
+            "defaultValue": 14
         },
-        "mariadb_size":{
-            "type":"int",
-            "defaultValue":5120
+        "mariadb_size": {
+            "type": "int",
+            "defaultValue": 5120
         },
         "mariadb_geoRedundantBackup": {
-            "type":"string",
+            "type": "string",
             "defaultValue": "Disabled"
         },
         "mariadb_skuCapacity": {
             "type": "int",
-            "defaultValue":2
+            "defaultValue": 2
         },
         "mariadb_skuFamily": {
             "type": "string",
@@ -55,43 +58,42 @@
             "defaultValue": "GeneralPurpose"
         },
         "mariadb_database_name": {
-            "type":"string",
-            "defaultValue":"[if(equals(parameters('environment'),'DEV'),'magma-dev','magma')]"
+            "type": "string",
+            "defaultValue": "[if(equals(parameters('environment'),'DEV'),'magma-dev','magma')]"
         },
         "mariadb_charset": {
-            "type":"string",
-            "defaultValue":"utf8"
+            "type": "string",
+            "defaultValue": "utf8"
         },
-        "mariadb_collation":{
-            "type":"string",
-            "defaultValue":"utf8_general_ci"
+        "mariadb_collation": {
+            "type": "string",
+            "defaultValue": "utf8_general_ci"
         },
-        //PostgreSQL Parameters        
-        "postgresdb_version":{
-            "type":"string",
-            "defaultValue":"10"
+        "postgresdb_version": {
+            "type": "string",
+            "defaultValue": "10"
         },
-        "postgresdb_admin_login":{
-            "type":"string"
+        "postgresdb_admin_login": {
+            "type": "string"
         },
-        "postgresdb_admin_password":{
-            "type":"securestring"
+        "postgresdb_admin_password": {
+            "type": "securestring"
         },
         "postgresdb_backup_retention_days": {
-            "type":"int",
-            "defaultValue":14
+            "type": "int",
+            "defaultValue": 14
         },
-        "postgresdb_size":{
-            "type":"int",
-            "defaultValue":5120
+        "postgresdb_size": {
+            "type": "int",
+            "defaultValue": 5120
         },
         "postgresdb_geoRedundantBackup": {
-            "type":"string",
+            "type": "string",
             "defaultValue": "Disabled"
         },
         "postgresdb_skuCapacity": {
             "type": "int",
-            "defaultValue":2
+            "defaultValue": 2
         },
         "postgresdb_skuFamily": {
             "type": "string",
@@ -110,37 +112,288 @@
             "defaultValue": "GeneralPurpose"
         },
         "postgresdb_database_name": {
-            "type":"string",
-            "defaultValue":"[if(equals(parameters('environment'),'DEV'),'magma-dev','magma')]"
+            "type": "string",
+            "defaultValue": "[if(equals(parameters('environment'),'DEV'),'magma-dev','magma')]"
         },
         "postgresdb_charset": {
-            "type":"string",
-            "defaultValue":"utf8"
+            "type": "string",
+            "defaultValue": "UTF8"
         },
-        "postgresdb_collation":{
-            "type":"string",
-            "defaultValue":"utf8_general_ci"
-        },        
-        "nsg_data_security_rule_1":{
+        "postgresdb_collation": {
+            "type": "string",
+            "defaultValue": "English_United States.1252"
+        },
+        "nsg_data_security_rule_1": {
             "type": "string",
             "defaultValue": "[concat(newGuid(),'-nsg-datapool-sr-01')]"
         },
-        "nsg_data_security_rule_2":{
+        "nsg_data_security_rule_2": {
             "type": "string",
             "defaultValue": "[concat(newGuid(),'-nsg-datapool-sr-02')]"
         },
-        "nsg_aks_security_rule_1":{
+        "nsg_aks_security_rule_1": {
             "type": "string",
             "defaultValue": "[concat(newGuid(),'-nsg-akspool-sr-01')]"
+        },
+        "virtualNetwork_resourceGroup": {
+            "type": "string"
+        },
+        "virtualNetwork_name": {
+            "type": "string"
+        },
+        "virtualNetwork_aksSubnet": {
+            "type": "string"
+        },
+        "aks_clusterName": {
+            "type": "string"
+        },
+        "aks_dnsPrefix": {
+            "type": "string",
+            "defaultValue": "[parameters('aks_clusterName')]"
+        },
+        "aks_servicePrincipalObjectId": {
+            "type": "string"
+        },
+        "aks_servicePrincipalClientId": {
+            "type": "string"
+        },
+        "aks_servicePrincipalClientSecret": {
+            "type": "securestring"
+        },
+        "aks_subnetRoleAssignmentName": {
+            "type": "string",
+            "defaultValue": "[newGuid()]",
+            "metadata": {
+                "description": "Name of the Role Assignment created for the Service Principal in the existing Subnet"
+            }
+        },
+        "aks_kubernetesVersion": {
+            "defaultValue": "1.15.10",
+            "type": "string",
+            "metadata": {
+                "description": "The version of Kubernetes."
+            }
+        },
+        "aks_enableRBAC": {
+            "defaultValue": true,
+            "type": "bool",
+            "metadata": {
+                "description": "boolean flag to turn on and off of RBAC"
+            }
+        },
+        "aks_AAD_ClientAppID": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The Application ID for the Client App Service Principal"
+            }
+        },
+        "aks_AAD_ServerAppID": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The Application ID for the Server App Service Principal"
+            }
+        },
+        "aks_AAD_TenantID": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The Azure AD Tenant where the cluster will reside"
+            }
+        },
+        "aks_AAD_ServerAppSecret": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The Service Principal Secret for the Client App Service Principal"
+            }
+        },
+        "aks_enableHttpApplicationRouting": {
+            "defaultValue": false,
+            "type": "bool",
+            "metadata": {
+                "description": "boolean flag to turn on and off of http application routing"
+            }
+        },
+        "aks_networkPlugin": {
+            "allowedValues": [
+                "azure",
+                "kubenet"
+            ],
+            "defaultValue": "azure",
+            "type": "string",
+            "metadata": {
+                "description": "Network plugin used for building Kubernetes network."
+            }
+        },
+        "aks_controllerNodePoolSku": {
+            "type": "string",
+            "defaultValue": "Standard_B2s"
+        },
+        "aks_metricsNodePoolSku": {
+            "type": "string",
+            "defaultValue": "Standard_B2s"
+        },
+        "aks_controllerNodePoolCount": {
+            "type": "int",
+            "defaultValue": 2
+        },
+        "aks_metricsNodePoolCount": {
+            "type": "int",
+            "defaultValue": 1
+        },
+        "aks_osDiskSizeGB": {
+            "defaultValue": 0,
+            "minValue": 0,
+            "maxValue": 1023,
+            "type": "int",
+            "metadata": {
+                "description": "Disk size (in GB) to provision for each of the agent pool nodes. This value ranges from 0 to 1023. Specifying 0 will apply the default disk size for that agentVMSize."
+            }
+        },
+        "aks_serviceCidr": {
+            "type": "string",
+            "defaultValue": "10.0.0.0/16",
+            "metadata": {
+                "description": "A CIDR notation IP range from which to assign service cluster IPs."
+            }
+        },
+        "aks_dnsServiceIP": {
+            "type": "string",
+            "defaultValue": "10.0.0.10",
+            "metadata": {
+                "description": "Containers DNS server IP address."
+            }
+        },
+        "aks_dockerBridgeCidr": {
+            "type": "string",
+            "defaultValue": "172.17.0.1/16",
+            "metadata": {
+                "description": "A CIDR notation IP for Docker bridge."
+            }
+        },
+        "aks_node_zones": {
+            "type": "array",
+            "defaultValue": [
+                "1",
+                "2",
+                "3"
+            ]
+        },
+        "aks_enablePrivateCluster": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "aks_nodeResourceGroup": {
+            "type": "string",
+            "defaultValue": ""
         }
     },
     "variables": {
         "maria_db_server_name": "[concat('snr-', toLower(parameters('environment')), '-mariadbserver-01')]",
         "postgresql_db_server_name": "[concat('snr-', toLower(parameters('environment')), '-postgresqldb-01')]",
         "nsg_datapool_name": "[concat('SNR-', toUpper(parameters('environment')), '-NSG-DATA-01')]",
-        "nsg_akspool_name": "[concat('SNR-', toUpper(parameters('environment')), '-NSG-AKS-01')]"
+        "nsg_akspool_name": "[concat('SNR-', toUpper(parameters('environment')), '-NSG-AKS-01')]",
+        "vnet_subnet_id": "[resourceId(parameters('virtualNetwork_resourceGroup'),'Microsoft.Network/virtualNetworks/subnets',parameters('virtualNetwork_name'),parameters('virtualNetwork_aksSubnet'))]"
     },
     "resources": [
+        {
+            "type": "Microsoft.Resources/deployments",
+            "name": "ClusterSubnetRoleAssignmentDeployment",
+            "apiVersion": "2018-02-01",
+            "resourceGroup": "[parameters('virtualNetwork_resourceGroup')]",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {},
+                    "variables": {},
+                    "resources": [
+                        {
+                            "type": "Microsoft.Network/virtualNetworks/subnets/providers/roleAssignments",
+                            "apiVersion": "2017-05-01",
+                            "name": "[concat(parameters('virtualNetwork_name'), '/', parameters('virtualNetwork_aksSubnet'), '/Microsoft.Authorization/', parameters('aks_subnetRoleAssignmentName'))]",
+                            "properties": {
+                                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', '4d97b98b-1d4f-4787-a291-c67834d212e7')]",
+                                "principalId": "[parameters('aks_ServicePrincipalObjectId')]",
+                                "scope": "[variables('vnet_subnet_id')]"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Microsoft.ContainerService/managedClusters",
+            "name": "[parameters('aks_clusterName')]",
+            "apiVersion": "2020-02-01",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Resources/deployments/', 'ClusterSubnetRoleAssignmentDeployment')]"
+            ],
+            "properties": {
+                "kubernetesVersion": "[parameters('aks_kubernetesVersion')]",
+                "enableRBAC": "[parameters('aks_enableRBAC')]",
+                "dnsPrefix": "[parameters('aks_dnsPrefix')]",
+                "aadProfile": {
+                    "clientAppID": "[parameters('aks_AAD_ClientAppID')]",
+                    "serverAppID": "[parameters('aks_AAD_ServerAppID')]",
+                    "tenantID": "[parameters('aks_AAD_TenantID')]",
+                    "serverAppSecret": "[parameters('aks_AAD_ServerAppSecret')]"
+                },
+                "addonProfiles": {
+                    "httpApplicationRouting": {
+                        "enabled": "[parameters('aks_enableHttpApplicationRouting')]"
+                    }
+                },
+                "agentPoolProfiles": [
+                    {
+                        "name": "controller",
+                        "osDiskSizeGB": "[parameters('aks_osDiskSizeGB')]",
+                        "count": "[parameters('aks_controllerNodePoolCount')]",
+                        "vmSize": "[parameters('aks_controllerNodePoolSku')]",
+                        "type": "VirtualMachineScaleSets",
+                        "osType": "Linux",
+                        "storageProfile": "ManagedDisks",
+                        "vnetSubnetID": "[variables('vnet_subnet_id')]",
+                        "maxPods": 30,
+                        "availabilityZones": "[parameters('aks_node_zones')]",
+                        "nodeLabels": {
+                            "worker-type": "controller"
+                        }
+                    },
+                    {
+                        "name": "metrics",
+                        "osDiskSizeGB": "[parameters('aks_osDiskSizeGB')]",
+                        "count": "[parameters('aks_metricsNodePoolCount')]",
+                        "vmSize": "[parameters('aks_metricsNodePoolSku')]",
+                        "type": "VirtualMachineScaleSets",
+                        "osType": "Linux",
+                        "storageProfile": "ManagedDisks",
+                        "vnetSubnetID": "[variables('vnet_subnet_id')]",
+                        "maxPods": 30,
+                        "availabilityZones": "[parameters('aks_node_zones')]",
+                        "nodeLabels": {
+                            "worker-type": "metrics"
+                        }
+                    }
+                ],
+                "servicePrincipalProfile": {
+                    "clientId": "[parameters('aks_servicePrincipalClientId')]",
+                    "secret": "[parameters('aks_servicePrincipalClientSecret')]"
+                },
+                "networkProfile": {
+                    "networkPlugin": "[parameters('aks_networkPlugin')]",
+                    "serviceCidr": "[parameters('aks_serviceCidr')]",
+                    "dnsServiceIP": "[parameters('aks_dnsServiceIP')]",
+                    "dockerBridgeCidr": "[parameters('aks_dockerBridgeCidr')]",
+                    "loadBalancerSku": "standard"
+                },
+                "apiServerAccessProfile": {
+                    "authorizedIPRanges": [],
+                    "enablePrivateCluster": "[parameters('aks_enablePrivateCluster')]"
+                },
+                "nodeResourceGroup": "[if(empty(parameters('aks_nodeResourceGroup')), json('null'), parameters('nodeResourceGroup'))]"
+            }
+        },
         {
             "type": "Microsoft.DBforMariaDB/servers",
             "apiVersion": "2018-06-01",
@@ -148,7 +401,7 @@
             "location": "[parameters('location')]",
             "name": "[variables('maria_db_server_name')]",
             "properties": {
-                "createMode":"Default",
+                "createMode": "Default",
                 "version": "[parameters('maria_db_version')]",
                 "administratorLogin": "[parameters('mariadb_admin_login')]",
                 "administratorLoginPassword": "[parameters('mariadb_admin_password')]",
@@ -167,9 +420,9 @@
             },
             "resources": [
                 {
-                    "type": "Microsoft.DBforMariaDB/servers/databases",
+                    "type": "databases",
                     "apiVersion": "2018-06-01",
-                    "name": "[concat(variables('maria_db_server_name'), '/', parameters('mariadb_database_name'))]",
+                    "name": "[concat(parameters('mariadb_database_name'))]",
                     "dependsOn": [
                         "[resourceId('Microsoft.DBforMariaDB/servers', variables('maria_db_server_name'))]"
                     ],
@@ -179,7 +432,7 @@
                     }
                 }
             ]
-        }, 
+        },
         {
             "type": "Microsoft.DBforPostgreSQL/servers",
             "apiVersion": "2017-12-01",
@@ -187,14 +440,14 @@
             "location": "[parameters('location')]",
             "name": "[variables('postgresql_db_server_name')]",
             "properties": {
-                "createMode":"Default",
+                "createMode": "Default",
                 "version": "[parameters('postgresdb_version')]",
                 "administratorLogin": "[parameters('postgresdb_admin_login')]",
                 "administratorLoginPassword": "[parameters('postgresdb_admin_password')]",
                 "storageProfile": {
-                "storageMB": "[parameters('postgresdb_size')]",
-                "backupRetentionDays": "[parameters('postgresdb_backup_retention_days')]",
-                "geoRedundantBackup": "[parameters('postgresdb_geoRedundantBackup')]"
+                    "storageMB": "[parameters('postgresdb_size')]",
+                    "backupRetentionDays": "[parameters('postgresdb_backup_retention_days')]",
+                    "geoRedundantBackup": "[parameters('postgresdb_geoRedundantBackup')]"
                 }
             },
             "sku": {
@@ -205,22 +458,20 @@
                 "family": "[parameters('postgresdb_skuFamily')]"
             },
             "resources": [
-            {
-                "type": "Microsoft.DBforPostgreSQL/servers/databases",
-                "apiversion": "2017-12-01",
-                "name": "[concat(variables('postgresql_db_server_name'), '/', parameters('postgresdb_database_name'))]",
-                "dependsOn": [
-                    "[resourceId('Microsoft.DBforPostgreSQL/servers', variables('postgresql_db_server_name'))]"
-                ],
-                "properties": {
-                    "charset": "[parameters('postgresdb_charset')]",
-                    "collation": "[parameters('postgresdb_collation')]"
+                {
+                    "type": "databases",
+                    "apiversion": "2017-12-01",
+                    "name": "[concat(parameters('postgresdb_database_name'))]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.DBforPostgreSQL/servers', variables('postgresql_db_server_name'))]"
+                    ],
+                    "properties": {
+                        "charset": "[parameters('postgresdb_charset')]",
+                        "collation": "[parameters('postgresdb_collation')]"
+                    }
                 }
-            }]
-        },    
-        //
-        //Here is the Network Security Groups - Data
-        //
+            ]
+        },
         {
             "type": "Microsoft.Network/networkSecurityGroups",
             "apiVersion": "2019-11-01",
@@ -266,53 +517,6 @@
             }
         },
         {
-            "type": "Microsoft.Network/networkSecurityGroups/securityRules",
-            "apiVersion": "2019-11-01",
-            "name": "[parameters('nsg_data_security_rule_1')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg_datapool_name'))]"
-            ],
-            "properties": {
-                "protocol": "Tcp",
-                "sourcePortRange": "*",
-                "destinationPortRange": "3306",
-                "sourceAddressPrefix": "Internet",
-                "destinationAddressPrefix": "10.11.0.0/16",
-                "access": "Allow",
-                "priority": 501,
-                "direction": "Inbound",
-                "sourcePortRanges": [],
-                "destinationPortRanges": [],
-                "sourceAddressPrefixes": [],
-                "destinationAddressPrefixes": []
-            }
-        },
-        {
-            "type": "Microsoft.Network/networkSecurityGroups/securityRules",
-            "apiVersion": "2019-11-01",
-            "name": "[parameters('nsg_data_security_rule_2')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg_datapool_name'))]"
-            ],
-            "properties": {
-                "protocol": "Tcp",
-                "sourcePortRange": "*",
-                "destinationPortRange": "5432",
-                "sourceAddressPrefix": "Internet",
-                "destinationAddressPrefix": "10.11.0.0/16",
-                "access": "Allow",
-                "priority": 502,
-                "direction": "Inbound",
-                "sourcePortRanges": [],
-                "destinationPortRanges": [],
-                "sourceAddressPrefixes": [],
-                "destinationAddressPrefixes": []
-            }
-        },
-        //
-        //Here is the Network Security Groups - AKS
-        //
-        {
             "type": "Microsoft.Network/networkSecurityGroups",
             "apiVersion": "2019-11-01",
             "name": "[variables('nsg_akspool_name')]",
@@ -337,28 +541,6 @@
                         }
                     }
                 ]
-            }
-        },
-        {
-            "type": "Microsoft.Network/networkSecurityGroups/securityRules",
-            "apiVersion": "2019-11-01",
-            "name": "[parameters('nsg_aks_security_rule_1')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg_akspool_name'))]"
-            ],
-            "properties": {
-                "protocol": "Tcp",
-                "sourcePortRange": "*",
-                "destinationPortRange": "443",
-                "sourceAddressPrefix": "Internet",
-                "destinationAddressPrefix": "52.149.246.209",
-                "access": "Allow",
-                "priority": 502,
-                "direction": "Inbound",
-                "sourcePortRanges": [],
-                "destinationPortRanges": [],
-                "sourceAddressPrefixes": [],
-                "destinationAddressPrefixes": []
             }
         }
     ]
