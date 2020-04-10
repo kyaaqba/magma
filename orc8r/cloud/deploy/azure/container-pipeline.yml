@@ -1,4 +1,7 @@
-# INSERT DESCRIPTION
+# This pipeline is written to build container images for the Magma solution from source control and
+# publish those images to the configured Azure Container Registry.
+# In additional, stages have been stubbed out to deploy AKS resources to either a Stage or Production environment.
+# These stages are incomplete, but are intended to be filled with references to the jobs incorporated in the ./aks-pipeline.yml file
 
 parameters:
   - name: acrSubscriptionId

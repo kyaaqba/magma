@@ -1,0 +1,99 @@
+#This template is intended to be linked from another template with the following syntax:
+# steps:
+# - template: aks-pipeline.yml
+#   parameters:
+#     orc8rDbPassword: <password>
+#     orc8rDbHost: <host name>
+#     ...
+#     additionalParameter: <val>
+#
+# To support a model which incorporates the open source repo and a second repo for 
+# company-specific customizations, the calling pipeline requires the following:
+# resources:
+#   repositories:
+#   - repository: Overrides
+#     type: github
+#     endpoint: <DevOps Service Endpoint for GitHub repo>
+#     name: <Name of GitHub repo containing customizations>
+#
+# The structure of the company-specific repo should be the following:
+# /certs
+#   bootstrapper.key
+#   certifier.key
+#   certifier.pem
+#   controller.crt
+#   controller.key
+#   rootCA.pem
+# /configs
+#   metricsd.yml
+# /helm
+#   vals.yml
+
+parameters:
+  - name: orc8rDbPassword
+    type: string
+    displayName: Orchestrator DB Password
+  - name: orc8rDbHost
+    type: string
+    displayName: Orchestrator DB Host
+
+steps:
+- checkout: self
+  path: s
+- checkout: Overrides
+  path: overrides
+- task: Bash@3
+  displayName: Setup secrets for Helm deployment
+  inputs:
+    targetType: 'inline' 
+    script: |
+      mkdir -p ~/secrets
+      cp -r $(Agent.BuildDirectory)/overrides/certs/ ~/secrets/certs/
+      ls ~/secrets/certs
+
+      mkdir -p ~/secrets/envdir
+      echo "STREAMER,SUBSCRIBERDB,METRICSD,CERTIFIER,BOOTSTRAPPER,METERINGD_RECORDS,ACCESSD,OBSIDIAN,DISPATCHER,DIRECTORYD" > ~/secrets/envdir/CONTROLLER_SERVICES
+      echo "dbname=orc8r user=orc8r password=${{ parameters.orc8rDbPassword }} host=${{ parameters.orc8rDbHost }}" > ~/secrets/envdir/DATABASE_SOURCE
+      
+      mkdir -p ~/secrets/configs/orc8r
+      cp $(Agent.BuildDirectory)/overrides/configs/metricsd.yml ~/secrets/configs/orc8r/metricsd.yml
+
+      cp -r ~/secrets $(Agent.BuildDirectory)/s/orc8r/cloud/helm/orc8r/charts/secrets/.secrets
+- task: PythonScript@0
+  displayName: Configure vals.yml file with orc8r db host
+  inputs:
+    scriptSource: 'filePath'
+    scriptPath: 'orc8r/cloud/deploy/azure/scripts/generate-helm-values.py'
+    arguments: '-i $(Agent.BuildDirectory)/overrides/helm/vals.yml -o $(Agent.BuildDirectory)/s/orc8r/cloud/helm/orc8r/vals.yml -p "controller.spec.database.host" -v ${{ parameters.orc8rDbHost }}'
+    workingDirectory: 'orc8r/cloud/deploy/azure/scripts'
+- task: PythonScript@0
+  displayName: Configure vals.yml file with orc8r db host
+  inputs:
+    scriptSource: 'filePath'
+    scriptPath: 'orc8r/cloud/deploy/azure/scripts/generate-helm-values.py'
+    arguments: '-i $(Agent.BuildDirectory)/s/orc8r/cloud/helm/orc8r/vals.yml -o $(Agent.BuildDirectory)/s/orc8r/cloud/helm/orc8r/vals.yml -p "controller.spec.database.pass" -v ${{ parameters.orc8rDbPassword }}'
+    workingDirectory: 'orc8r/cloud/deploy/azure/scripts'
+
+# // TODO: Insert additional vals.yml replacements 
+
+- task: HelmInstaller@1
+  inputs:
+    helmVersionToInstall: '3.1.0'
+# // TODO: Complete the following tasks to enable Helm deploy, including parameterization of AKS connections
+#
+# - task: HelmDeploy@0
+#   inputs:
+#     connectionType: 'Azure Resource Manager'
+#     azureSubscription: 'Alex - Subscription'
+#     azureResourceGroup: 'sonar'
+#     kubernetesCluster: 'alexsonar'
+#     namespace: 'magma-stage'
+#     command: 'upgrade'
+#     chartType: 'FilePath'
+#     chartPath: 'orc8r/cloud/helm/orc8r'
+#     releaseName: 'orc8r'
+#     valueFile: 'orc8r/cloud/helm/orc8r/vals.yml'
+
+# // TODO: Insert steps to retrieve admin_operator certificates from deployed controller containers
+# // TODO: Insert steps to update vals.yml to enable NMS deployment
+# // TODO: Insert steps to Helm deploy chart to enable NMS
