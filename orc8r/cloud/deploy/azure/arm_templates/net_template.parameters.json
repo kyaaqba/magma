@@ -1,0 +1,21 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "location": {
+        "value": "eastus"
+      },
+      "aks_vnet_name":{    
+          "value": "orc8r-vnet-01"
+      },
+      "nsg_akspool_name":{   
+          "value": "orc8r-nsg-aks-01"
+      },
+      "nsg_datapool_name":{      
+          "value": "orc8r-nsg-data-01"
+      },
+      "aks_security_source_ip_range": {
+          "value":"Internet"
+      }
+    }
+  }
