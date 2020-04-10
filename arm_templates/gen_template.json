@@ -1,0 +1,365 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "environment":{
+            "type":"string",
+            "defaultValue": "DEV",
+            "allowedValues": ["DEV","STG","PRD"]
+        },
+        "location":{            
+            "type":"string",
+            "defaultValue": "eastus"
+        },
+        //MariaDB Parameters 
+        "maria_db_version":{
+            "type":"string",
+            "defaultValue":"10.2"
+        },
+        "mariadb_admin_login":{
+            "type":"string"
+        },
+        "mariadb_admin_password":{
+            "type":"securestring"
+        },
+        "mariadb_backup_retention_days": {
+            "type":"int",
+            "defaultValue":14
+        },
+        "mariadb_size":{
+            "type":"int",
+            "defaultValue":5120
+        },
+        "mariadb_geoRedundantBackup": {
+            "type":"string",
+            "defaultValue": "Disabled"
+        },
+        "mariadb_skuCapacity": {
+            "type": "int",
+            "defaultValue":2
+        },
+        "mariadb_skuFamily": {
+            "type": "string",
+            "defaultValue": "Gen5"
+        },
+        "mariadb_skuName": {
+            "type": "string",
+            "defaultValue": "GP_Gen5_2"
+        },
+        "mariadb_skuSizeMB": {
+            "type": "int",
+            "defaultValue": 5120
+        },
+        "mariadb_skuTier": {
+            "type": "string",
+            "defaultValue": "GeneralPurpose"
+        },
+        "mariadb_database_name": {
+            "type":"string",
+            "defaultValue":"[if(equals(parameters('environment'),'DEV'),'magma-dev','magma')]"
+        },
+        "mariadb_charset": {
+            "type":"string",
+            "defaultValue":"utf8"
+        },
+        "mariadb_collation":{
+            "type":"string",
+            "defaultValue":"utf8_general_ci"
+        },
+        //PostgreSQL Parameters        
+        "postgresdb_version":{
+            "type":"string",
+            "defaultValue":"10"
+        },
+        "postgresdb_admin_login":{
+            "type":"string"
+        },
+        "postgresdb_admin_password":{
+            "type":"securestring"
+        },
+        "postgresdb_backup_retention_days": {
+            "type":"int",
+            "defaultValue":14
+        },
+        "postgresdb_size":{
+            "type":"int",
+            "defaultValue":5120
+        },
+        "postgresdb_geoRedundantBackup": {
+            "type":"string",
+            "defaultValue": "Disabled"
+        },
+        "postgresdb_skuCapacity": {
+            "type": "int",
+            "defaultValue":2
+        },
+        "postgresdb_skuFamily": {
+            "type": "string",
+            "defaultValue": "Gen5"
+        },
+        "postgresdb_skuName": {
+            "type": "string",
+            "defaultValue": "GP_Gen5_2"
+        },
+        "postgresdb_skuSizeMB": {
+            "type": "int",
+            "defaultValue": 5120
+        },
+        "postgresdb_skuTier": {
+            "type": "string",
+            "defaultValue": "GeneralPurpose"
+        },
+        "postgresdb_database_name": {
+            "type":"string",
+            "defaultValue":"[if(equals(parameters('environment'),'DEV'),'magma-dev','magma')]"
+        },
+        "postgresdb_charset": {
+            "type":"string",
+            "defaultValue":"utf8"
+        },
+        "postgresdb_collation":{
+            "type":"string",
+            "defaultValue":"utf8_general_ci"
+        },        
+        "nsg_data_security_rule_1":{
+            "type": "string",
+            "defaultValue": "[concat(newGuid(),'-nsg-datapool-sr-01')]"
+        },
+        "nsg_data_security_rule_2":{
+            "type": "string",
+            "defaultValue": "[concat(newGuid(),'-nsg-datapool-sr-02')]"
+        },
+        "nsg_aks_security_rule_1":{
+            "type": "string",
+            "defaultValue": "[concat(newGuid(),'-nsg-akspool-sr-01')]"
+        }
+    },
+    "variables": {
+        "maria_db_server_name": "[concat('snr-', toLower(parameters('environment')), '-mariadbserver-01')]",
+        "postgresql_db_server_name": "[concat('snr-', toLower(parameters('environment')), '-postgresqldb-01')]",
+        "nsg_datapool_name": "[concat('SNR-', toUpper(parameters('environment')), '-NSG-DATA-01')]",
+        "nsg_akspool_name": "[concat('SNR-', toUpper(parameters('environment')), '-NSG-AKS-01')]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.DBforMariaDB/servers",
+            "apiVersion": "2018-06-01",
+            "kind": "",
+            "location": "[parameters('location')]",
+            "name": "[variables('maria_db_server_name')]",
+            "properties": {
+                "createMode":"Default",
+                "version": "[parameters('maria_db_version')]",
+                "administratorLogin": "[parameters('mariadb_admin_login')]",
+                "administratorLoginPassword": "[parameters('mariadb_admin_password')]",
+                "storageProfile": {
+                    "storageMB": "[parameters('mariadb_size')]",
+                    "backupRetentionDays": "[parameters('mariadb_backup_retention_days')]",
+                    "geoRedundantBackup": "[parameters('mariadb_geoRedundantBackup')]"
+                }
+            },
+            "sku": {
+                "name": "[parameters('mariadb_skuName')]",
+                "tier": "[parameters('mariadb_skuTier')]",
+                "capacity": "[parameters('mariadb_skuCapacity')]",
+                "size": "[parameters('mariadb_skuSizeMB')]",
+                "family": "[parameters('mariadb_skuFamily')]"
+            },
+            "resources": [
+                {
+                    "type": "Microsoft.DBforMariaDB/servers/databases",
+                    "apiVersion": "2018-06-01",
+                    "name": "[concat(variables('maria_db_server_name'), '/', parameters('mariadb_database_name'))]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.DBforMariaDB/servers', variables('maria_db_server_name'))]"
+                    ],
+                    "properties": {
+                        "charset": "[parameters('mariadb_charset')]",
+                        "collation": "[parameters('mariadb_collation')]"
+                    }
+                }
+            ]
+        }, 
+        {
+            "type": "Microsoft.DBforPostgreSQL/servers",
+            "apiVersion": "2017-12-01",
+            "kind": "",
+            "location": "[parameters('location')]",
+            "name": "[variables('postgresql_db_server_name')]",
+            "properties": {
+                "createMode":"Default",
+                "version": "[parameters('postgresdb_version')]",
+                "administratorLogin": "[parameters('postgresdb_admin_login')]",
+                "administratorLoginPassword": "[parameters('postgresdb_admin_password')]",
+                "storageProfile": {
+                "storageMB": "[parameters('postgresdb_size')]",
+                "backupRetentionDays": "[parameters('postgresdb_backup_retention_days')]",
+                "geoRedundantBackup": "[parameters('postgresdb_geoRedundantBackup')]"
+                }
+            },
+            "sku": {
+                "name": "[parameters('postgresdb_skuName')]",
+                "tier": "[parameters('postgresdb_skuTier')]",
+                "capacity": "[parameters('postgresdb_skuCapacity')]",
+                "size": "[parameters('postgresdb_skuSizeMB')]",
+                "family": "[parameters('postgresdb_skuFamily')]"
+            },
+            "resources": [
+            {
+                "type": "Microsoft.DBforPostgreSQL/servers/databases",
+                "apiversion": "2017-12-01",
+                "name": "[concat(variables('postgresql_db_server_name'), '/', parameters('postgresdb_database_name'))]",
+                "dependsOn": [
+                    "[resourceId('Microsoft.DBforPostgreSQL/servers', variables('postgresql_db_server_name'))]"
+                ],
+                "properties": {
+                    "charset": "[parameters('postgresdb_charset')]",
+                    "collation": "[parameters('postgresdb_collation')]"
+                }
+            }]
+        },    
+        //
+        //Here is the Network Security Groups - Data
+        //
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2019-11-01",
+            "name": "[variables('nsg_datapool_name')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "[parameters('nsg_data_security_rule_1')]",
+                        "properties": {
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "3306",
+                            "sourceAddressPrefix": "Internet",
+                            "destinationAddressPrefix": "10.11.0.0/16",
+                            "access": "Allow",
+                            "priority": 501,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "[parameters('nsg_data_security_rule_2')]",
+                        "properties": {
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "5432",
+                            "sourceAddressPrefix": "Internet",
+                            "destinationAddressPrefix": "10.11.0.0/16",
+                            "access": "Allow",
+                            "priority": 502,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+            "apiVersion": "2019-11-01",
+            "name": "[parameters('nsg_data_security_rule_1')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg_datapool_name'))]"
+            ],
+            "properties": {
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "3306",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "10.11.0.0/16",
+                "access": "Allow",
+                "priority": 501,
+                "direction": "Inbound",
+                "sourcePortRanges": [],
+                "destinationPortRanges": [],
+                "sourceAddressPrefixes": [],
+                "destinationAddressPrefixes": []
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+            "apiVersion": "2019-11-01",
+            "name": "[parameters('nsg_data_security_rule_2')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg_datapool_name'))]"
+            ],
+            "properties": {
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "5432",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "10.11.0.0/16",
+                "access": "Allow",
+                "priority": 502,
+                "direction": "Inbound",
+                "sourcePortRanges": [],
+                "destinationPortRanges": [],
+                "sourceAddressPrefixes": [],
+                "destinationAddressPrefixes": []
+            }
+        },
+        //
+        //Here is the Network Security Groups - AKS
+        //
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2019-11-01",
+            "name": "[variables('nsg_akspool_name')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "[parameters('nsg_aks_security_rule_1')]",
+                        "properties": {
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "80",
+                            "sourceAddressPrefix": "Internet",
+                            "destinationAddressPrefix": "52.149.246.209",
+                            "access": "Allow",
+                            "priority": 501,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+            "apiVersion": "2019-11-01",
+            "name": "[parameters('nsg_aks_security_rule_1')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg_akspool_name'))]"
+            ],
+            "properties": {
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "443",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "52.149.246.209",
+                "access": "Allow",
+                "priority": 502,
+                "direction": "Inbound",
+                "sourcePortRanges": [],
+                "destinationPortRanges": [],
+                "sourceAddressPrefixes": [],
+                "destinationAddressPrefixes": []
+            }
+        }
+    ]
+}

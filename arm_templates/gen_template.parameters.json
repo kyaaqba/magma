@@ -1,0 +1,24 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "environment": {
+        "value": "DEV"
+      },
+      "location": {
+        "value": "eastus"
+      },
+      "postgresdb_admin_login":{
+          "value":"magma_dev"
+      },
+      "postgresdb_admin_password":{
+          "value":"Sonar_SFT_654321!!"
+      },
+      "mariadb_admin_login":{
+          "value":"magma_dev"
+      },
+      "mariadb_admin_password":{
+          "value":"Sonar_SFT_654321!!"
+      }
+    }
+  }
