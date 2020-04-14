@@ -2,15 +2,6 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "environment": {
-            "type": "string",
-            "defaultValue": "DEV",
-            "allowedValues": [
-                "DEV",
-                "STG",
-                "PRD"
-            ]
-        },
         "location": {
             "type": "string",
             "defaultValue": "eastus2"
@@ -19,59 +10,27 @@
             "type": "string",
             "defaultValue": "10.2"
         },
+        "maria_db_server_name": {
+            "type": "string",
+            "defaultValue": "orc8r-mariadbserver-01"
+        },
         "mariadb_admin_login": {
             "type": "string"
         },
         "mariadb_admin_password": {
             "type": "securestring"
         },
-        "mariadb_backup_retention_days": {
-            "type": "int",
-            "defaultValue": 14
-        },
-        "mariadb_size": {
-            "type": "int",
-            "defaultValue": 5120
-        },
-        "mariadb_geoRedundantBackup": {
-            "type": "string",
-            "defaultValue": "Disabled"
-        },
-        "mariadb_skuCapacity": {
-            "type": "int",
-            "defaultValue": 2
-        },
-        "mariadb_skuFamily": {
-            "type": "string",
-            "defaultValue": "Gen5"
-        },
-        "mariadb_skuName": {
-            "type": "string",
-            "defaultValue": "GP_Gen5_2"
-        },
-        "mariadb_skuSizeMB": {
-            "type": "int",
-            "defaultValue": 5120
-        },
-        "mariadb_skuTier": {
-            "type": "string",
-            "defaultValue": "GeneralPurpose"
-        },
         "mariadb_database_name": {
             "type": "string",
-            "defaultValue": "[if(equals(parameters('environment'),'DEV'),'magma-dev','magma')]"
-        },
-        "mariadb_charset": {
-            "type": "string",
-            "defaultValue": "utf8"
-        },
-        "mariadb_collation": {
-            "type": "string",
-            "defaultValue": "utf8_general_ci"
+            "defaultValue": "magma"
         },
         "postgresdb_version": {
             "type": "string",
             "defaultValue": "10"
+        },
+        "postgresql_db_server_name": {
+            "type": "string",
+            "defaultValue":"orc8r-postgresqldb-01"
         },
         "postgresdb_admin_login": {
             "type": "string"
@@ -79,61 +38,9 @@
         "postgresdb_admin_password": {
             "type": "securestring"
         },
-        "postgresdb_backup_retention_days": {
-            "type": "int",
-            "defaultValue": 14
-        },
-        "postgresdb_size": {
-            "type": "int",
-            "defaultValue": 5120
-        },
-        "postgresdb_geoRedundantBackup": {
-            "type": "string",
-            "defaultValue": "Disabled"
-        },
-        "postgresdb_skuCapacity": {
-            "type": "int",
-            "defaultValue": 2
-        },
-        "postgresdb_skuFamily": {
-            "type": "string",
-            "defaultValue": "Gen5"
-        },
-        "postgresdb_skuName": {
-            "type": "string",
-            "defaultValue": "GP_Gen5_2"
-        },
-        "postgresdb_skuSizeMB": {
-            "type": "int",
-            "defaultValue": 5120
-        },
-        "postgresdb_skuTier": {
-            "type": "string",
-            "defaultValue": "GeneralPurpose"
-        },
         "postgresdb_database_name": {
             "type": "string",
-            "defaultValue": "[if(equals(parameters('environment'),'DEV'),'magma-dev','magma')]"
-        },
-        "postgresdb_charset": {
-            "type": "string",
-            "defaultValue": "UTF8"
-        },
-        "postgresdb_collation": {
-            "type": "string",
-            "defaultValue": "English_United States.1252"
-        },
-        "nsg_data_security_rule_1": {
-            "type": "string",
-            "defaultValue": "[concat(newGuid(),'-nsg-datapool-sr-01')]"
-        },
-        "nsg_data_security_rule_2": {
-            "type": "string",
-            "defaultValue": "[concat(newGuid(),'-nsg-datapool-sr-02')]"
-        },
-        "nsg_aks_security_rule_1": {
-            "type": "string",
-            "defaultValue": "[concat(newGuid(),'-nsg-akspool-sr-01')]"
+            "defaultValue": "magma"
         },
         "virtualNetwork_resourceGroup": {
             "type": "string"
@@ -143,6 +50,9 @@
         },
         "virtualNetwork_aksSubnet": {
             "type": "string"
+        },
+        "virtualNetwork_dataSubnet":{
+            "type":"string"
         },
         "aks_clusterName": {
             "type": "string"
@@ -287,10 +197,6 @@
         }
     },
     "variables": {
-        "maria_db_server_name": "[concat('snr-', toLower(parameters('environment')), '-mariadbserver-01')]",
-        "postgresql_db_server_name": "[concat('snr-', toLower(parameters('environment')), '-postgresqldb-01')]",
-        "nsg_datapool_name": "[concat('SNR-', toUpper(parameters('environment')), '-NSG-DATA-01')]",
-        "nsg_akspool_name": "[concat('SNR-', toUpper(parameters('environment')), '-NSG-AKS-01')]",
         "vnet_subnet_id": "[resourceId(parameters('virtualNetwork_resourceGroup'),'Microsoft.Network/virtualNetworks/subnets',parameters('virtualNetwork_name'),parameters('virtualNetwork_aksSubnet'))]"
     },
     "resources": [
@@ -399,36 +305,35 @@
             "apiVersion": "2018-06-01",
             "kind": "",
             "location": "[parameters('location')]",
-            "name": "[variables('maria_db_server_name')]",
+            "name": "[parameters('maria_db_server_name')]",
             "properties": {
                 "createMode": "Default",
                 "version": "[parameters('maria_db_version')]",
                 "administratorLogin": "[parameters('mariadb_admin_login')]",
                 "administratorLoginPassword": "[parameters('mariadb_admin_password')]",
                 "storageProfile": {
-                    "storageMB": "[parameters('mariadb_size')]",
-                    "backupRetentionDays": "[parameters('mariadb_backup_retention_days')]",
-                    "geoRedundantBackup": "[parameters('mariadb_geoRedundantBackup')]"
+                    "storageMB": 5120,
+                    "backupRetentionDays": 14,
+                    "geoRedundantBackup": "Disabled"
                 }
             },
             "sku": {
-                "name": "[parameters('mariadb_skuName')]",
-                "tier": "[parameters('mariadb_skuTier')]",
-                "capacity": "[parameters('mariadb_skuCapacity')]",
-                "size": "[parameters('mariadb_skuSizeMB')]",
-                "family": "[parameters('mariadb_skuFamily')]"
+                "name": "GP_Gen5_2",
+                "tier": "GeneralPurpose",
+                "capacity": 2,
+                "family": "Gen5"
             },
             "resources": [
                 {
                     "type": "databases",
                     "apiVersion": "2018-06-01",
-                    "name": "[concat(parameters('mariadb_database_name'))]",
+                    "name": "[parameters('mariadb_database_name')]",
                     "dependsOn": [
-                        "[resourceId('Microsoft.DBforMariaDB/servers', variables('maria_db_server_name'))]"
+                        "[resourceId('Microsoft.DBforMariaDB/servers', parameters('maria_db_server_name'))]"
                     ],
                     "properties": {
-                        "charset": "[parameters('mariadb_charset')]",
-                        "collation": "[parameters('mariadb_collation')]"
+                        "charset": "utf8",
+                        "collation": "utf8_general_ci"
                     }
                 }
             ]
@@ -438,24 +343,23 @@
             "apiVersion": "2017-12-01",
             "kind": "",
             "location": "[parameters('location')]",
-            "name": "[variables('postgresql_db_server_name')]",
+            "name": "[parameters('postgresql_db_server_name')]",
             "properties": {
                 "createMode": "Default",
                 "version": "[parameters('postgresdb_version')]",
                 "administratorLogin": "[parameters('postgresdb_admin_login')]",
                 "administratorLoginPassword": "[parameters('postgresdb_admin_password')]",
                 "storageProfile": {
-                    "storageMB": "[parameters('postgresdb_size')]",
-                    "backupRetentionDays": "[parameters('postgresdb_backup_retention_days')]",
-                    "geoRedundantBackup": "[parameters('postgresdb_geoRedundantBackup')]"
+                    "storageMB": 5120,
+                    "backupRetentionDays": 14,
+                    "geoRedundantBackup": "Disabled"
                 }
             },
             "sku": {
-                "name": "[parameters('postgresdb_skuName')]",
-                "tier": "[parameters('postgresdb_skuTier')]",
-                "capacity": "[parameters('postgresdb_skuCapacity')]",
-                "size": "[parameters('postgresdb_skuSizeMB')]",
-                "family": "[parameters('postgresdb_skuFamily')]"
+                "name": "GP_Gen5_2",
+                "tier": "GeneralPurpose",
+                "capacity": 2,
+                "family": "Gen5"
             },
             "resources": [
                 {
@@ -463,84 +367,37 @@
                     "apiversion": "2017-12-01",
                     "name": "[concat(parameters('postgresdb_database_name'))]",
                     "dependsOn": [
-                        "[resourceId('Microsoft.DBforPostgreSQL/servers', variables('postgresql_db_server_name'))]"
+                        "[resourceId('Microsoft.DBforPostgreSQL/servers', parameters('postgresql_db_server_name'))]"
                     ],
                     "properties": {
-                        "charset": "[parameters('postgresdb_charset')]",
-                        "collation": "[parameters('postgresdb_collation')]"
+                        "charset": "UTF8",
+                        "collation": "English_United States.1252"
                     }
                 }
             ]
         },
         {
-            "type": "Microsoft.Network/networkSecurityGroups",
-            "apiVersion": "2019-11-01",
-            "name": "[variables('nsg_datapool_name')]",
-            "location": "[parameters('location')]",
+            "type": "Microsoft.DBforPostgreSQL/servers/virtualNetworkRules",
+            "apiVersion": "2017-12-01",
+            "name": "[concat(parameters('postgresql_db_server_name'), '/postgresql-vnet-rule')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/servers', parameters('postgresql_db_server_name'))]"
+            ],
             "properties": {
-                "securityRules": [
-                    {
-                        "name": "[parameters('nsg_data_security_rule_1')]",
-                        "properties": {
-                            "protocol": "Tcp",
-                            "sourcePortRange": "*",
-                            "destinationPortRange": "3306",
-                            "sourceAddressPrefix": "Internet",
-                            "destinationAddressPrefix": "10.11.0.0/16",
-                            "access": "Allow",
-                            "priority": 501,
-                            "direction": "Inbound",
-                            "sourcePortRanges": [],
-                            "destinationPortRanges": [],
-                            "sourceAddressPrefixes": [],
-                            "destinationAddressPrefixes": []
-                        }
-                    },
-                    {
-                        "name": "[parameters('nsg_data_security_rule_2')]",
-                        "properties": {
-                            "protocol": "Tcp",
-                            "sourcePortRange": "*",
-                            "destinationPortRange": "5432",
-                            "sourceAddressPrefix": "Internet",
-                            "destinationAddressPrefix": "10.11.0.0/16",
-                            "access": "Allow",
-                            "priority": 502,
-                            "direction": "Inbound",
-                            "sourcePortRanges": [],
-                            "destinationPortRanges": [],
-                            "sourceAddressPrefixes": [],
-                            "destinationAddressPrefixes": []
-                        }
-                    }
-                ]
+                "virtualNetworkSubnetId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/virtualNetworks/', parameters('virtualNetwork_name'), '/subnets/',parameters('virtualNetwork_dataSubnet'))]",
+                "ignoreMissingVnetServiceEndpoint": false
             }
         },
         {
-            "type": "Microsoft.Network/networkSecurityGroups",
-            "apiVersion": "2019-11-01",
-            "name": "[variables('nsg_akspool_name')]",
-            "location": "[parameters('location')]",
+            "type": "Microsoft.DBforMariaDB/servers/virtualNetworkRules",
+            "apiVersion": "2018-06-01",
+            "name": "[concat(parameters('maria_db_server_name'), '/mariadb-vnet-rule')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DBforMariaDB/servers', parameters('maria_db_server_name'))]"
+            ],
             "properties": {
-                "securityRules": [
-                    {
-                        "name": "[parameters('nsg_aks_security_rule_1')]",
-                        "properties": {
-                            "protocol": "Tcp",
-                            "sourcePortRange": "*",
-                            "destinationPortRange": "80",
-                            "sourceAddressPrefix": "Internet",
-                            "destinationAddressPrefix": "52.149.246.209",
-                            "access": "Allow",
-                            "priority": 501,
-                            "direction": "Inbound",
-                            "sourcePortRanges": [],
-                            "destinationPortRanges": [],
-                            "sourceAddressPrefixes": [],
-                            "destinationAddressPrefixes": []
-                        }
-                    }
-                ]
+                "virtualNetworkSubnetId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/virtualNetworks/', parameters('virtualNetwork_name'), '/subnets/',parameters('virtualNetwork_dataSubnet'))]",
+                "ignoreMissingVnetServiceEndpoint": false
             }
         }
     ]
