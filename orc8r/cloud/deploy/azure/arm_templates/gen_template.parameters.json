@@ -24,7 +24,7 @@
         "value": "orc8r-mariadbserver-01"
     },
     "virtualNetwork_resourceGroup": {
-      "value": "MJS-TRY-IT"
+      "value": "<INSERT NETWORK RESOURCE GROUP NAME>"
     },
     "virtualNetwork_name": {
       "value": "orc8r-vnet-01"
