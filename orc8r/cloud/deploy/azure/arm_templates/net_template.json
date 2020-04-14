@@ -6,9 +6,14 @@
             "type":"string",
             "defaultValue": "eastus"
         },
-        "aks_vnet_name":{            
-            "type":"string",
-            "defaultValue": "orc8r-vnet-01"
+        "virtualNetwork_name":{            
+            "type":"string"
+        },
+        "virtualNetwork_aksSubnet":{
+            "type":"string"
+        },
+        "virtualNetwork_dataSubnet":{
+            "type":"string"
         },
         "nsg_akspool_name":{            
             "type":"string",
@@ -27,88 +32,15 @@
         }
     },
     "variables":{
-        "nsg-data-sr-1-name":"[concat(uniqueString(resourceGroup().id),'-nsg-datapool-sr-01')]",
-        "nsg-data-sr-2-name":"[concat(uniqueString(resourceGroup().id),'-nsg-datapool-sr-02')]",        
-        "nsg-aks-sr-1-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-01')]",
-        "nsg-aks-sr-2-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-02')]",
-        "nsg-aks-sr-3-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-03')]",
-        "nsg-aks-sr-4-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-04')]",
-        "nsg-aks-sr-5-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-05')]"
+        "nsg-data-sr-mariadb-1-name":"[concat(uniqueString(resourceGroup().id),'-nsg-datapool-sr-mariadb-01')]",
+        "nsg-data-sr-postgresql-1-name":"[concat(uniqueString(resourceGroup().id),'-nsg-datapool-sr-postgresql-01')]",        
+        "nsg-aks-sr-proxy-1-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-proxy-01')]",
+        "nsg-aks-sr-elastic-1-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-elastic-01')]",
+        "nsg-aks-sr-elastic-2-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-elastic-02')]",
+        "nsg-aks-sr-kibana-1-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-kibana-01')]",
+        "nsg-aks-sr-fluentd-1-name":"[concat(uniqueString(resourceGroup().id),'-nsg-akspool-sr-fluentd-01')]"
     },
     "resources": [
-        {
-            "type": "Microsoft.Network/virtualNetworks",
-            "apiVersion": "2019-11-01",
-            "name": "[parameters('aks_vnet_name')]",
-            "location": "[parameters('location')]",
-            "properties": {
-                "addressSpace": {
-                    "addressPrefixes": [
-                        "10.0.0.0/12"
-                    ]
-                },
-                "dhcpOptions": {
-                    "dnsServers": []
-                },
-                "subnets": [
-                    {
-                        "name": "orc8r-subnet-aks-01",
-                        "properties": {
-                            "addressPrefix": "10.10.0.0/16",
-                            "delegations": [],
-                            "privateEndpointNetworkPolicies": "Enabled",
-                            "privateLinkServiceNetworkPolicies": "Enabled"
-                        }
-                    },
-                    {
-                        "name": "orc8r-subnet-data-01",
-                        "properties": {
-                            "addressPrefix": "10.11.0.0/16",
-                            "delegations": [],
-                            "privateEndpointNetworkPolicies": "Enabled",
-                            "privateLinkServiceNetworkPolicies": "Enabled"
-                        }
-                    }
-                ],
-                "virtualNetworkPeerings": [],
-                "enableDdosProtection": false,
-                "enableVmProtection": false
-            }
-        },
-        //
-        //Here are the SUBNETs
-        //
-        {
-            "type": "Microsoft.Network/virtualNetworks/subnets",
-            "apiVersion": "2019-11-01",
-            "name": "[concat(parameters('aks_vnet_name'), '/', 'orc8r-subnet-aks-01')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualNetworks', parameters('aks_vnet_name'))]"
-            ],
-            "properties": {
-                "addressPrefix": "10.10.0.0/16",
-                "delegations": [],
-                "privateEndpointNetworkPolicies": "Enabled",
-                "privateLinkServiceNetworkPolicies": "Enabled"
-            }
-        },
-        {
-            "type": "Microsoft.Network/virtualNetworks/subnets",
-            "apiVersion": "2019-11-01",
-            "name": "[concat(parameters('aks_vnet_name'), '/', 'orc8r-subnet-data-01')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualNetworks', parameters('aks_vnet_name'))]"
-            ],
-            "properties": {
-                "addressPrefix": "10.11.0.0/16",
-                "delegations": [],
-                "privateEndpointNetworkPolicies": "Enabled",
-                "privateLinkServiceNetworkPolicies": "Enabled"
-            }
-        },
-        //
-        //Here is the Network Security Groups - AKS
-        //
         {
             "type": "Microsoft.Network/networkSecurityGroups",
             "apiVersion": "2019-11-01",
@@ -117,11 +49,11 @@
             "properties": {
                 "securityRules": [
                     {
-                        "name": "[variables('nsg-aks-sr-1-name')]",
+                        "name": "[variables('nsg-aks-sr-proxy-1-name')]",
                         "properties": {
                             "protocol": "Tcp",
                             "sourcePortRange": "*",
-                            "destinationPortRange": "9443-9444",//proxy
+                            "destinationPortRange": "9443-9444",
                             "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                             "destinationAddressPrefix": "10.10.0.0/16",
                             "access": "Allow",
@@ -130,11 +62,11 @@
                         }
                     },
                     {
-                        "name": "[variables('nsg-aks-sr-2-name')]",
+                        "name": "[variables('nsg-aks-sr-elastic-1-name')]",
                         "properties": {
                             "protocol": "Tcp",
                             "sourcePortRange": "*",
-                            "destinationPortRange": "9200",//elastic search
+                            "destinationPortRange": "9200",
                             "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                             "destinationAddressPrefix": "10.10.0.0/16",
                             "access": "Allow",
@@ -143,11 +75,11 @@
                         }
                     },
                     {
-                        "name": "[variables('nsg-aks-sr-3-name')]",
+                        "name": "[variables('nsg-aks-sr-elastic-2-name')]",
                         "properties": {
                             "protocol": "Tcp",
                             "sourcePortRange": "*",
-                            "destinationPortRange": "9300",//elastic search
+                            "destinationPortRange": "9300",
                             "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                             "destinationAddressPrefix": "10.10.0.0/16",
                             "access": "Allow",
@@ -156,11 +88,11 @@
                         }
                     },
                     {
-                        "name": "[variables('nsg-aks-sr-4-name')]",
+                        "name": "[variables('nsg-aks-sr-kibana-1-name')]",
                         "properties": {
                             "protocol": "Tcp",
                             "sourcePortRange": "*",
-                            "destinationPortRange": "5601",//kibana
+                            "destinationPortRange": "5601",
                             "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                             "destinationAddressPrefix": "10.10.0.0/16",
                             "access": "Allow",
@@ -169,11 +101,11 @@
                         }
                     },
                     {
-                        "name": "[variables('nsg-aks-sr-5-name')]",
+                        "name": "[variables('nsg-aks-sr-fluentd-1-name')]",
                         "properties": {
                             "protocol": "Tcp",
                             "sourcePortRange": "*",
-                            "destinationPortRange": "24224",//fluentd
+                            "destinationPortRange": "24224",
                             "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                             "destinationAddressPrefix": "10.10.0.0/16",
                             "access": "Allow",
@@ -187,14 +119,14 @@
         {
             "type": "Microsoft.Network/networkSecurityGroups/securityRules",
             "apiVersion": "2019-11-01",
-            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-1-name'))]",
+            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-proxy-1-name'))]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_akspool_name'))]"
             ],
             "properties": {
                 "protocol": "Tcp",
                 "sourcePortRange": "*",
-                "destinationPortRange": "9443-9444",//proxy
+                "destinationPortRange": "9443-9444",
                 "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                 "destinationAddressPrefix": "10.10.0.0/16",
                 "access": "Allow",
@@ -205,14 +137,14 @@
         {
             "type": "Microsoft.Network/networkSecurityGroups/securityRules",
             "apiVersion": "2019-11-01",
-            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-2-name'))]",
+            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-elastic-1-name'))]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_akspool_name'))]"
             ],
             "properties": {
                 "protocol": "Tcp",
                 "sourcePortRange": "*",
-                "destinationPortRange": "9200",//elastic search
+                "destinationPortRange": "9200",
                 "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                 "destinationAddressPrefix": "10.10.0.0/16",
                 "access": "Allow",
@@ -223,14 +155,14 @@
         {
             "type": "Microsoft.Network/networkSecurityGroups/securityRules",
             "apiVersion": "2019-11-01",
-            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-3-name'))]",
+            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-elastic-2-name'))]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_akspool_name'))]"
             ],
             "properties": {
                 "protocol": "Tcp",
                 "sourcePortRange": "*",
-                "destinationPortRange": "9300",//elastic search
+                "destinationPortRange": "9300",
                 "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                 "destinationAddressPrefix": "10.10.0.0/16",
                 "access": "Allow",
@@ -241,14 +173,14 @@
         {
             "type": "Microsoft.Network/networkSecurityGroups/securityRules",
             "apiVersion": "2019-11-01",
-            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-4-name'))]",
+            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-kibana-1-name'))]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_akspool_name'))]"
             ],
             "properties": {
                 "protocol": "Tcp",
                 "sourcePortRange": "*",
-                "destinationPortRange": "5601",//kibana
+                "destinationPortRange": "5601",
                 "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                 "destinationAddressPrefix": "10.10.0.0/16",
                 "access": "Allow",
@@ -259,14 +191,14 @@
         {
             "type": "Microsoft.Network/networkSecurityGroups/securityRules",
             "apiVersion": "2019-11-01",
-            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-5-name'))]",
+            "name": "[concat(parameters('nsg_akspool_name'),'/',variables('nsg-aks-sr-fluentd-1-name'))]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_akspool_name'))]"
             ],
             "properties": {
                 "protocol": "Tcp",
                 "sourcePortRange": "*",
-                "destinationPortRange": "24224",//fluentd
+                "destinationPortRange": "24224",
                 "sourceAddressPrefix": "[parameters('aks_security_source_ip_range')]",
                 "destinationAddressPrefix": "10.10.0.0/16",
                 "access": "Allow",
@@ -274,9 +206,6 @@
                 "direction": "Inbound"
             }
         },
-        //
-        //Here is the Network Security Groups - Data
-        //
         {
             "type": "Microsoft.Network/networkSecurityGroups",
             "apiVersion": "2019-11-01",
@@ -285,7 +214,7 @@
             "properties": {
                 "securityRules": [
                     {
-                        "name": "[variables('nsg-data-sr-1-name')]",
+                        "name": "[variables('nsg-data-sr-mariadb-1-name')]",
                         "properties": {
                             "protocol": "Tcp",
                             "sourcePortRange": "*",
@@ -298,7 +227,7 @@
                         }
                     },
                     {
-                        "name": "[variables('nsg-data-sr-2-name')]",
+                        "name": "[variables('nsg-data-sr-postgresql-1-name')]",
                         "properties": {
                             "protocol": "Tcp",
                             "sourcePortRange": "*",
@@ -306,7 +235,7 @@
                             "sourceAddressPrefix": "10.10.0.0/16",
                             "destinationAddressPrefix": "10.11.0.0/16",
                             "access": "Allow",
-                            "priority": 501,
+                            "priority": 502,
                             "direction": "Inbound"
                         }
                     }
@@ -316,7 +245,7 @@
         {
             "type": "Microsoft.Network/networkSecurityGroups/securityRules",
             "apiVersion": "2019-11-01",
-            "name": "[concat(parameters('nsg_datapool_name'),'/',variables('nsg-data-sr-1-name'))]",
+            "name": "[concat(parameters('nsg_datapool_name'),'/',variables('nsg-data-sr-mariadb-1-name'))]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_datapool_name'))]"
             ],
@@ -334,7 +263,7 @@
         {
             "type": "Microsoft.Network/networkSecurityGroups/securityRules",
             "apiVersion": "2019-11-01",
-            "name": "[concat(parameters('nsg_datapool_name'),'/',variables('nsg-data-sr-2-name'))]",
+            "name": "[concat(parameters('nsg_datapool_name'),'/',variables('nsg-data-sr-postgresql-1-name'))]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_datapool_name'))]"
             ],
@@ -345,8 +274,111 @@
                 "sourceAddressPrefix": "10.10.0.0/16",
                 "destinationAddressPrefix": "10.11.0.0/16",
                 "access": "Allow",
-                "priority": 501,
+                "priority": 502,
                 "direction": "Inbound"
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2019-11-01",
+            "name": "[parameters('virtualNetwork_name')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_datapool_name'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_akspool_name'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.0.0.0/12"
+                    ]
+                },
+                "dhcpOptions": {
+                    "dnsServers": []
+                },
+                "subnets": [
+                    {
+                        "name": "[parameters('virtualNetwork_aksSubnet')]",
+                        "properties": {
+                            "addressPrefix": "10.10.0.0/16",
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Enabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_akspool_name'))]"
+                            },
+                            "serviceEndpoints": [
+                                {
+                                    "service": "Microsoft.Sql",
+                                    "locations": ["[parameters('location')]"]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "[parameters('virtualNetwork_dataSubnet')]",
+                        "properties": {
+                            "addressPrefix": "10.11.0.0/16",
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Enabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_datapool_name'))]"
+                            },
+                            "serviceEndpoints": [
+                                {
+                                    "service": "Microsoft.Sql",
+                                    "locations": ["[parameters('location')]"]
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false,
+                "enableVmProtection": false
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2019-11-01",
+            "name": "[concat(parameters('virtualNetwork_name'), '/', parameters('virtualNetwork_aksSubnet'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetwork_name'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_akspool_name'))]"
+            ],
+            "properties": {
+                "addressPrefix": "10.10.0.0/16",
+                "delegations": [],
+                "privateEndpointNetworkPolicies": "Enabled",
+                "privateLinkServiceNetworkPolicies": "Enabled",
+                "networkSecurityGroup": {
+                    "id":"[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_akspool_name'))]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2019-11-01",
+            "name": "[concat(parameters('virtualNetwork_name'), '/', parameters('virtualNetwork_dataSubnet'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetwork_name'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_datapool_name'))]"
+            ],
+            "properties": {
+                "addressPrefix": "10.11.0.0/16",
+                "delegations": [],
+                "privateEndpointNetworkPolicies": "Enabled",
+                "privateLinkServiceNetworkPolicies": "Enabled",
+                "networkSecurityGroup": {
+                    "id":"[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_datapool_name'))]"
+                },
+                "serviceEndpoints": [
+                    {
+                        "service": "Microsoft.Sql",
+                        "locations": ["[parameters('location')]"]
+                    }
+                ]            
             }
         }
     ]

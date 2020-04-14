@@ -2,11 +2,8 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "environment": {
-      "value": "DEV"
-    },
     "location": {
-      "value": "eastus2"
+      "value": "eastus"
     },
     "postgresdb_admin_login": {
       "value": "magma_dev"
@@ -14,20 +11,29 @@
     "postgresdb_admin_password": {
       "value": "Sonar_SFT_654321!!"
     },
+    "postgresql_db_server_name": {
+        "value":"orc8r-postgresqldb-01"
+    },
     "mariadb_admin_login": {
       "value": "magma_dev"
     },
     "mariadb_admin_password": {
       "value": "Sonar_SFT_654321!!"
     },
+    "maria_db_server_name": {
+        "value": "orc8r-mariadbserver-01"
+    },
     "virtualNetwork_resourceGroup": {
-      "value": "magma"
+      "value": "MJS-TRY-IT"
     },
     "virtualNetwork_name": {
-      "value": "magma"
+      "value": "orc8r-vnet-01"
     },
     "virtualNetwork_aksSubnet": {
-      "value": "aks-azure-cni"
+      "value": "orc8r-subnet-aks-01"
+    },
+    "virtualNetwork_dataSubnet": {
+      "value": "orc8r-subnet-data-01"
     },
     "aks_clusterName": {
       "value": "magma-aks"

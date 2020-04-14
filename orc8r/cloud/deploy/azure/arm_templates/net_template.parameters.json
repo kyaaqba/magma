@@ -5,8 +5,14 @@
       "location": {
         "value": "eastus"
       },
-      "aks_vnet_name":{    
+      "virtualNetwork_name":{    
           "value": "orc8r-vnet-01"
+      },
+      "virtualNetwork_aksSubnet":{
+        "value": "orc8r-subnet-aks-01"
+      },
+      "virtualNetwork_dataSubnet":{
+        "value": "orc8r-subnet-data-01"
       },
       "nsg_akspool_name":{   
           "value": "orc8r-nsg-aks-01"
