@@ -30,7 +30,7 @@
         },
         "postgresql_db_server_name": {
             "type": "string",
-            "defaultValue":"orc8r-postgresqldb-01"
+            "defaultValue": "orc8r-postgresqldb-01"
         },
         "postgresdb_admin_login": {
             "type": "string"
@@ -51,8 +51,8 @@
         "virtualNetwork_aksSubnet": {
             "type": "string"
         },
-        "virtualNetwork_dataSubnet":{
-            "type":"string"
+        "virtualNetwork_dataSubnet": {
+            "type": "string"
         },
         "aks_clusterName": {
             "type": "string"
@@ -384,7 +384,7 @@
                 "[resourceId('Microsoft.DBforPostgreSQL/servers', parameters('postgresql_db_server_name'))]"
             ],
             "properties": {
-                "virtualNetworkSubnetId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/virtualNetworks/', parameters('virtualNetwork_name'), '/subnets/',parameters('virtualNetwork_dataSubnet'))]",
+                "virtualNetworkSubnetId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('virtualNetwork_resourceGroup'), '/providers/Microsoft.Network/virtualNetworks/', parameters('virtualNetwork_name'), '/subnets/',parameters('virtualNetwork_dataSubnet'))]",
                 "ignoreMissingVnetServiceEndpoint": false
             }
         },
@@ -396,7 +396,7 @@
                 "[resourceId('Microsoft.DBforMariaDB/servers', parameters('maria_db_server_name'))]"
             ],
             "properties": {
-                "virtualNetworkSubnetId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/virtualNetworks/', parameters('virtualNetwork_name'), '/subnets/',parameters('virtualNetwork_dataSubnet'))]",
+                "virtualNetworkSubnetId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('virtualNetwork_resourceGroup'), '/providers/Microsoft.Network/virtualNetworks/', parameters('virtualNetwork_name'), '/subnets/',parameters('virtualNetwork_dataSubnet'))]",
                 "ignoreMissingVnetServiceEndpoint": false
             }
         }
