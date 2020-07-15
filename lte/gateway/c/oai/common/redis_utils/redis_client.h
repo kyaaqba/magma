@@ -26,9 +26,7 @@
 #include <cpp_redis/cpp_redis>
 #include <google/protobuf/message.h>
 
-namespace {
-constexpr char LOCALHOST[] = "127.0.0.1";
-}
+#include "orc8r/protos/redis.pb.h"
 
 namespace magma {
 namespace lte {
@@ -39,29 +37,10 @@ class RedisClient {
   ~RedisClient() = default;
 
   /**
-   * Initializes a connection to redis datastore.
-   * @param addr IP address on which redis db is running
+   * Initializes a connection to the redis datastore configured in redis.yml
    * @return response code of success / error with db connection
    */
-  void init_db_connection(const std::string& addr);
-
-  /**
-   * Converts protobuf Message and parses it to string
-   * @param proto_msg
-   * @param str_to_serialize
-   */
-  int serialize(
-    const google::protobuf::Message& proto_msg,
-    std::string& str_to_serialize);
-
-  /**
-   * Takes a string and parses it to protobuf Message
-   * @param proto_msg
-   * @param str_to_deserialize
-   */
-  int deserialize(
-    google::protobuf::Message& proto_msg,
-    const std::string& str_to_deserialize);
+  void init_db_connection();
 
   /**
    * Returns the value on redis db mapped to a key
@@ -106,6 +85,39 @@ class RedisClient {
  private:
   std::unique_ptr<cpp_redis::client> db_client_;
   bool is_connected_;
+
+  /**
+   * Read the wrapper RedisState value from Redis for a key
+   * @param key
+   * @param state_out
+   * @return
+   */
+  int read_redis_state(const std::string& key, orc8r::RedisState& state_out);
+
+  /**
+   * Check for existence of a key in Redis.
+   * @param key
+   * @throws std::runtime_error if the Redis call fails
+   * @return
+   */
+  bool key_exists(const std::string& key);
+
+  /**
+   * Converts protobuf Message and parses it to string
+   * @param proto_msg
+   * @param str_to_serialize
+   */
+  int serialize(
+      const google::protobuf::Message& proto_msg,
+      std::string& str_to_serialize);
+  /**
+   * Takes a string and parses it to protobuf Message
+   * @param proto_msg
+   * @param str_to_deserialize
+   */
+  int deserialize(
+      google::protobuf::Message& proto_msg,
+      const std::string& str_to_deserialize);
 };
 
 } // namespace lte

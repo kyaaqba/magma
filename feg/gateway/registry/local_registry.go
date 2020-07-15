@@ -13,8 +13,8 @@ import (
 
 	"google.golang.org/grpc"
 
+	"magma/orc8r/lib/go/registry"
 	platform_registry "magma/orc8r/lib/go/registry"
-	"magma/orc8r/lib/go/service/serviceregistry"
 )
 
 const (
@@ -34,9 +34,12 @@ const (
 	RADIUSD       = "RADIUSD"
 	RADIUS        = "RADIUS"
 	REDIS         = "REDIS"
+	PIPELINED     = "PIPELINED"
 	MOCK_VLR      = "MOCK_VLR"
 	MOCK_OCS      = "MOCK_OCS"
+	MOCK_OCS2     = "MOCK_OCS2"
 	MOCK_PCRF     = "MOCK_PCRF"
+	MOCK_PCRF2    = "MOCK_PCRF2"
 	MOCK_HSS      = "HSS"
 
 	SESSION_MANAGER = "SESSIOND"
@@ -83,15 +86,18 @@ func init() {
 	addLocalService(SWX_PROXY, 9110)
 	addLocalService(RADIUSD, 9115)
 	addLocalService(HLR_PROXY, 9116)
+	addLocalService(PIPELINED, 9117)
 
 	addLocalService(MOCK_OCS, 9201)
 	addLocalService(MOCK_PCRF, 9202)
+	addLocalService(MOCK_OCS2, 9205)
+	addLocalService(MOCK_PCRF2, 9206)
 	addLocalService(MOCK_VLR, 9203)
 	addLocalService(MOCK_HSS, 9204)
 
 	// Overwrite/Add from /etc/magma/service_registry.yml if it exists
 	// moduleName is "" since all feg configs lie in /etc/magma without a module name
-	locations, err := serviceregistry.LoadServiceRegistryConfig("")
+	locations, err := registry.LoadServiceRegistryConfig("")
 	if err != nil {
 		log.Printf("Error loading FeG service_registry.yml: %v", err)
 	} else if len(locations) > 0 {

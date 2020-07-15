@@ -7,9 +7,9 @@ LICENSE file in the root directory of this source tree. An additional grant
 of patent rights can be found in the PATENTS file in the same directory.
 """
 
-import sys
 from distutils.util import strtobool
 
+import sys
 from fabric.api import cd, env, execute, local, run, settings
 from fabric.operations import get
 
@@ -64,13 +64,15 @@ def test():
 
 
 def package(vcs='hg', all_deps="False",
-            cert_file=DEFAULT_CERT, proxy_config=DEFAULT_PROXY):
+            cert_file=DEFAULT_CERT, proxy_config=DEFAULT_PROXY,
+            destroy_vm='False'):
     """ Builds the magma package """
     all_deps = False if all_deps == "False" else True
+    destroy_vm = bool(strtobool(destroy_vm))
 
     # If a host list isn't specified, default to the magma vagrant vm
     if not env.hosts:
-        setup_env_vagrant()
+        vagrant_setup('magma', destroy_vm=destroy_vm)
 
     if not hasattr(env, 'debug_mode'):
         print("Error: The Deploy target isn't specified. Specify one with\n\n"
@@ -89,10 +91,12 @@ def package(vcs='hg', all_deps="False",
         # Generate magma dependency packages
         run('mkdir -p ~/magma-deps')
         print("Generating lte/setup.py magma dependency packages")
-        run('./release/pydep finddep -b --build-output ~/magma-deps python/setup.py')
+        run(
+            './release/pydep finddep -b --build-output ~/magma-deps python/setup.py')
 
         print("Generating orc8r/setup.py magma dependency packages")
-        run('./release/pydep finddep -b --build-output ~/magma-deps %s/setup.py' % ORC8R_AGW_PYTHON_ROOT)
+        run(
+            './release/pydep finddep -b --build-output ~/magma-deps %s/setup.py' % ORC8R_AGW_PYTHON_ROOT)
 
         run('rm -rf ~/magma-packages')
         run('mkdir -p ~/magma-packages')
@@ -361,14 +365,16 @@ def _set_service_config_var(service, var_name, value):
 def _start_trfserver():
     """ Starts the traffic gen server"""
     # disable-tcp-checksumming
-    # trfgen-server daemon
+    # trfgen-server non daemon
     host = env.hosts[0].split(':')[0]
     port = env.hosts[0].split(':')[1]
     key = env.key_filename
-    local('ssh -i %s -o UserKnownHostsFile=/dev/null'
+    # set tty on cbreak mode as background ssh process breaks indentation
+    local('ssh -f -i %s -o UserKnownHostsFile=/dev/null'
           ' -o StrictHostKeyChecking=no -tt %s -p %s'
-          ' \'sudo ethtool --offload eth1 rx off tx off; sudo ethtool --offload eth2 rx off tx off;'
-          ' nohup sudo /usr/local/bin/traffic_server.py -d 192.168.60.144 62462\''
+          ' sh -c "sudo ethtool --offload eth1 rx off tx off; sudo ethtool --offload eth2 rx off tx off; '
+          'nohup sudo /usr/local/bin/traffic_server.py 192.168.60.144 62462 > /dev/null 2>&1";'
+          'stty cbreak'
           % (key, host, port))
 
 

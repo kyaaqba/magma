@@ -8,18 +8,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/project"
-	"github.com/facebookincubator/symphony/graph/ent/projecttype"
-	"github.com/facebookincubator/symphony/graph/ent/property"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
-	"github.com/facebookincubator/symphony/graph/ent/workorderdefinition"
+	"github.com/facebookincubator/symphony/pkg/ent/checklistitem"
+
 	"github.com/facebookincubator/symphony/graph/graphql/models"
 	"github.com/facebookincubator/symphony/graph/resolverutil"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/project"
+	"github.com/facebookincubator/symphony/pkg/ent/projecttype"
+	"github.com/facebookincubator/symphony/pkg/ent/property"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/ent/workorderdefinition"
 
 	"github.com/AlekSi/pointer"
 	"github.com/pkg/errors"
-	"github.com/vektah/gqlparser/gqlerror"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type (
@@ -31,15 +33,6 @@ var (
 	errNoProjectType = gqlerror.Errorf("project type doesn't exist")
 	errNoProject     = gqlerror.Errorf("project doesn't exist")
 )
-
-func (r queryResolver) ProjectType(ctx context.Context, id int) (*ent.ProjectType, error) {
-	noder, err := r.Node(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	typ, _ := noder.(*ent.ProjectType)
-	return typ, nil
-}
 
 func (projectTypeResolver) NumberOfProjects(ctx context.Context, obj *ent.ProjectType) (int, error) {
 	return obj.QueryProjects().Count(ctx)
@@ -70,23 +63,23 @@ func (projectTypeResolver) WorkOrders(ctx context.Context, obj *ent.ProjectType)
 }
 
 func (r mutationResolver) CreateProjectType(ctx context.Context, input models.AddProjectTypeInput) (*ent.ProjectType, error) {
-	properties, err := r.AddPropertyTypes(ctx, input.Properties...)
-	if err != nil {
-		return nil, fmt.Errorf("creating properties: %w", err)
-	}
 	client := r.ClientFrom(ctx)
 	typ, err := client.
 		ProjectType.
 		Create().
 		SetName(input.Name).
 		SetNillableDescription(input.Description).
-		AddProperties(properties...).
 		Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {
 			return nil, gqlerror.Errorf("Project type %q already exists", input.Name)
 		}
 		return nil, fmt.Errorf("creating project type: %w", err)
+	}
+	if err := r.AddPropertyTypes(ctx, func(ptc *ent.PropertyTypeCreate) {
+		ptc.SetProjectTypeID(typ.ID)
+	}, input.Properties...); err != nil {
+		return nil, fmt.Errorf("creating properties: %w", err)
 	}
 	for _, wo := range input.WorkOrders {
 		if _, err = client.WorkOrderDefinition.Create().
@@ -120,11 +113,13 @@ func (r mutationResolver) EditProjectType(
 	}
 	for _, p := range input.Properties {
 		if p.ID == nil {
-			err = r.validateAndAddNewPropertyType(ctx, p, func(b *ent.PropertyTypeUpdateOne) { b.SetProjectTypeID(pt.ID) })
-		} else {
-			err = r.updatePropType(ctx, p)
-		}
-		if err != nil {
+			if err := r.validateAddedNewPropertyType(p); err != nil {
+				return nil, err
+			}
+			if err := r.AddPropertyTypes(ctx, func(b *ent.PropertyTypeCreate) { b.SetProjectTypeID(pt.ID) }, p); err != nil {
+				return nil, err
+			}
+		} else if err := r.updatePropType(ctx, p); err != nil {
 			return nil, err
 		}
 	}
@@ -156,9 +151,10 @@ func (r mutationResolver) EditProjectType(
 	if err != nil {
 		return nil, fmt.Errorf("fetching work orders: %w", err)
 	}
-	_, err = client.WorkOrderDefinition.Delete().Where(workorderdefinition.IDIn(ids...)).Exec(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("removing work orders: %w", err)
+	for _, id := range ids {
+		if err := client.WorkOrderDefinition.DeleteOneID(id).Exec(ctx); err != nil {
+			return nil, fmt.Errorf("removing work orders: %w", err)
+		}
 	}
 	return pt, nil
 }
@@ -171,8 +167,14 @@ func (r mutationResolver) DeleteProjectType(ctx context.Context, id int) (bool, 
 	case count > 0:
 		return false, gqlerror.Errorf("project type contains %d associated project", count)
 	}
-	if _, err := client.PropertyType.Delete().Where(propertytype.HasProjectTypeWith(projecttype.ID(id))).Exec(ctx); err != nil {
-		return false, fmt.Errorf("deleting project type properties: %w", err)
+	pTypes, err := client.PropertyType.Query().Where(propertytype.HasProjectTypeWith(projecttype.ID(id))).All(ctx)
+	if err != nil {
+		return false, fmt.Errorf("querying project type properties: %w", err)
+	}
+	for _, pType := range pTypes {
+		if err := client.PropertyType.DeleteOne(pType).Exec(ctx); err != nil {
+			return false, fmt.Errorf("deleting project type property: %w", err)
+		}
 	}
 	if err := client.ProjectType.DeleteOneID(id).Exec(ctx); err != nil {
 		if ent.IsNotFound(err) {
@@ -192,14 +194,6 @@ func (r queryResolver) ProjectTypes(
 		Paginate(ctx, after, first, before, last)
 }
 
-func (projectResolver) Creator(ctx context.Context, obj *ent.Project) (*string, error) {
-	assignee, err := obj.QueryCreator().Only(ctx)
-	if err != nil {
-		return nil, ent.MaskNotFound(err)
-	}
-	return &assignee.Email, nil
-}
-
 func (projectResolver) CreatedBy(ctx context.Context, obj *ent.Project) (*ent.User, error) {
 	c, err := obj.QueryCreator().Only(ctx)
 	if err != nil && !ent.IsNotFound(err) {
@@ -209,11 +203,11 @@ func (projectResolver) CreatedBy(ctx context.Context, obj *ent.Project) (*ent.Us
 }
 
 func (projectResolver) Type(ctx context.Context, obj *ent.Project) (*ent.ProjectType, error) {
-	typ, err := obj.QueryType().Only(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("querying project type: %w", err)
+	typ, err := obj.Edges.TypeOrErr()
+	if ent.IsNotLoaded(err) {
+		return obj.QueryType().Only(ctx)
 	}
-	return typ, nil
+	return typ, err
 }
 
 func (projectResolver) Location(ctx context.Context, obj *ent.Project) (*ent.Location, error) {
@@ -249,53 +243,87 @@ func (projectResolver) NumberOfWorkOrders(ctx context.Context, obj *ent.Project)
 }
 
 func (r mutationResolver) CreateProject(ctx context.Context, input models.AddProjectInput) (*ent.Project, error) {
-	propInput, err := r.validatedPropertyInputsFromTemplate(ctx, input.Properties, input.Type, models.PropertyEntityProject, false)
-	if err != nil {
-		return nil, fmt.Errorf("validating property for template : %w", err)
-	}
-	properties, err := r.AddProperties(propInput, resolverutil.AddPropertyArgs{Context: ctx, IsTemplate: pointer.ToBool(true)})
-	if err != nil {
-		return nil, fmt.Errorf("creating properties: %w", err)
-	}
 	client := r.ClientFrom(ctx)
-	pt, err := client.ProjectType.Get(ctx, input.Type)
-	if err != nil {
-		return nil, fmt.Errorf("fetching template: %w", err)
-	}
-	creatorID, err := resolverutil.GetUserID(ctx, input.CreatorID, input.Creator)
-	if err != nil {
-		return nil, err
-	}
-	query := client.
+	proj, err := client.
 		Project.Create().
 		SetName(input.Name).
 		SetNillableDescription(input.Description).
 		SetTypeID(input.Type).
 		SetNillableLocationID(input.Location).
-		AddProperties(properties...).
-		SetNillableCreatorID(creatorID)
-
-	proj, err := query.Save(ctx)
-
+		SetNillableCreatorID(input.CreatorID).
+		Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {
 			return nil, gqlerror.Errorf("Project %q already exists", input.Name)
 		}
 		return nil, fmt.Errorf("creating project: %w", err)
 	}
+	propInput, err := r.validatedPropertyInputsFromTemplate(ctx, input.Properties, input.Type, models.PropertyEntityProject, false)
+	if err != nil {
+		return nil, fmt.Errorf("validating property for template : %w", err)
+	}
+	if _, err := r.AddProperties(propInput, resolverutil.AddPropertyArgs{
+		Context:    ctx,
+		IsTemplate: pointer.ToBool(true),
+		EntSetter: func(create *ent.PropertyCreate) {
+			create.SetProject(proj)
+		}}); err != nil {
+		return nil, fmt.Errorf("creating properties: %w", err)
+	}
+	pt, err := client.ProjectType.Get(ctx, input.Type)
+	if err != nil {
+		return nil, fmt.Errorf("fetching template: %w", err)
+	}
 	wos, err := pt.QueryWorkOrders().All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("fetching work orders templates: %w", err)
 	}
 	for _, wo := range wos {
-		wot := wo.QueryType().FirstX(ctx)
-		_, err := r.internalAddWorkOrder(ctx, models.AddWorkOrderInput{
-			Name:            wot.Name,
-			Description:     &wot.Description,
-			WorkOrderTypeID: wot.ID,
-			ProjectID:       &proj.ID,
-			LocationID:      input.Location,
-			Index:           &wo.Index,
+		wot, err := wo.QueryType().Only(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("query work order definition type: %w", err)
+		}
+
+		clCategoryDefs, err := wot.QueryCheckListCategoryDefinitions().WithCheckListItemDefinitions().All(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("query work order checklist definitions: %w", err)
+		}
+
+		var categoryInputs []*models.CheckListCategoryInput
+		for _, categoryDef := range clCategoryDefs {
+			var clInputs []*models.CheckListItemInput
+			for _, cliDef := range categoryDef.Edges.CheckListItemDefinitions {
+				var enumSelectionMode *checklistitem.EnumSelectionModeValue
+				if cliDef.EnumSelectionModeValue != "" {
+					mode := checklistitem.EnumSelectionModeValue(cliDef.EnumSelectionModeValue.String())
+					enumSelectionMode = &mode
+				}
+
+				clInputs = append(clInputs, &models.CheckListItemInput{
+					Title:             cliDef.Title,
+					Type:              models.CheckListItemType(cliDef.Type),
+					Index:             pointer.ToInt(cliDef.Index),
+					HelpText:          cliDef.HelpText,
+					EnumValues:        cliDef.EnumValues,
+					EnumSelectionMode: enumSelectionMode,
+				})
+			}
+
+			categoryInputs = append(categoryInputs, &models.CheckListCategoryInput{
+				Title:       categoryDef.Title,
+				Description: pointer.ToString(categoryDef.Description),
+				CheckList:   clInputs,
+			})
+		}
+
+		_, err = r.internalAddWorkOrder(ctx, models.AddWorkOrderInput{
+			Name:                wot.Name,
+			Description:         &wot.Description,
+			WorkOrderTypeID:     wot.ID,
+			ProjectID:           &proj.ID,
+			LocationID:          input.Location,
+			Index:               &wo.Index,
+			CheckListCategories: categoryInputs,
 		}, true)
 		if err != nil {
 			return nil, fmt.Errorf("creating work order: %w", err)
@@ -306,8 +334,14 @@ func (r mutationResolver) CreateProject(ctx context.Context, input models.AddPro
 
 func (r mutationResolver) DeleteProject(ctx context.Context, id int) (bool, error) {
 	client := r.ClientFrom(ctx)
-	if _, err := client.Property.Delete().Where(property.HasProjectWith(project.ID(id))).Exec(ctx); err != nil {
-		return false, fmt.Errorf("deleting project properties: %w", err)
+	props, err := client.Property.Query().Where(property.HasProjectWith(project.ID(id))).All(ctx)
+	if err != nil {
+		return false, fmt.Errorf("querying project properties: %w", err)
+	}
+	for _, prop := range props {
+		if err := client.Property.DeleteOne(prop).Exec(ctx); err != nil {
+			return false, fmt.Errorf("deleting project properties: %w", err)
+		}
 	}
 	if err := client.Project.DeleteOneID(id).Exec(ctx); err != nil {
 		if ent.IsNotFound(err) {
@@ -330,12 +364,8 @@ func (r mutationResolver) EditProject(ctx context.Context, input models.EditProj
 		SetName(input.Name).
 		SetNillableDescription(input.Description)
 
-	creatorID, err := resolverutil.GetUserID(ctx, input.CreatorID, input.Creator)
-	if err != nil {
-		return nil, err
-	}
-	if creatorID != nil {
-		mutation.SetCreatorID(*creatorID)
+	if input.CreatorID != nil {
+		mutation.SetCreatorID(*input.CreatorID)
 	} else {
 		mutation.ClearCreator()
 	}
@@ -363,10 +393,8 @@ func (r mutationResolver) EditProject(ctx context.Context, input models.EditProj
 			return nil, errors.Wrapf(err, "querying property type %q", pInput.PropertyTypeID)
 		}
 		if typ.Editable && typ.IsInstanceProperty {
-			query := client.Property.
-				Update().
-				Where(property.ID(existingProperty.ID))
-			if _, err := updatePropValues(pInput, query).Save(ctx); err != nil {
+			updater := client.Property.UpdateOneID(existingProperty.ID)
+			if r.updatePropValues(ctx, pInput, updater) != nil {
 				return nil, errors.Wrap(err, "updating property values")
 			}
 		}

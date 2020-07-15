@@ -20,10 +20,10 @@ import SettingsIcon from '@material-ui/icons/Settings';
 import SimpleTable from '../../table/SimpleTable';
 import TableActionDialog from '../../table/TableActionDialog';
 import TableAddButton from '../../table/TableAddButton';
+import useRouter from '../../../hooks/useRouter';
 import {makeStyles} from '@material-ui/styles';
 import {useAlarmContext} from '../../AlarmContext';
-import {useEnqueueSnackbar} from '@fbcnms/ui/hooks/useSnackbar';
-import {useRouter} from '@fbcnms/ui/hooks';
+import {useEnqueueSnackbar} from '../../../hooks/useSnackbar';
 import type {AlertReceiver} from '../../AlarmAPIType';
 
 const useStyles = makeStyles(theme => ({
@@ -226,15 +226,26 @@ function newReceiver(): AlertReceiver {
 
 function getNotificationsSummary(receiver: AlertReceiver) {
   const summary = {};
-  const {slack_configs, email_configs, webhook_configs} = receiver;
+  const {
+    slack_configs,
+    email_configs,
+    webhook_configs,
+    pagerduty_configs,
+    pushover_configs,
+  } = receiver;
   if (slack_configs) {
-    const channelNames = slack_configs.map(({channel}) => {
-      if (channel == null) {
-        return '';
+    const channelNames = slack_configs.reduce((list, {channel}) => {
+      if (channel != null && channel.trim() !== '') {
+        list.push(channel.replace(/#/, ''));
       }
-      return channel.replace(/#/, '');
-    });
-    summary['Slack Channels'] = channelNames.join(', ');
+      return list;
+    }, []);
+    if (channelNames.length > 0) {
+      summary['Slack Channels'] = channelNames.join(', ');
+    } else {
+      const configCount = slack_configs.length;
+      summary['Slack'] = `${configCount} channel${configCount > 1 ? 's' : ''}`;
+    }
   }
   if (email_configs) {
     const emailAddresses = email_configs.map(({to}) => to);
@@ -255,6 +266,20 @@ function getNotificationsSummary(receiver: AlertReceiver) {
       }
     });
     summary['Webhook'] = webhookUrls.join(', ');
+  }
+
+  if (pagerduty_configs) {
+    summary['PagerDuty'] = pagerduty_configs
+      .map(conf => conf.severity)
+      .join(',')
+      .slice(0, 12);
+  }
+
+  if (pushover_configs) {
+    summary['Pushover'] = pushover_configs
+      .map(conf => conf.title || '')
+      .join(', ')
+      .slice(0, 12);
   }
 
   return summary;

@@ -7,10 +7,10 @@ package importer
 import (
 	"net/http"
 
-	"github.com/facebookincubator/symphony/graph/event"
 	"github.com/facebookincubator/symphony/graph/graphql/generated"
 	"github.com/facebookincubator/symphony/graph/graphql/resolver"
 	"github.com/facebookincubator/symphony/pkg/log"
+	"github.com/facebookincubator/symphony/pkg/pubsub"
 
 	"github.com/gorilla/mux"
 	"go.opencensus.io/plugin/ochttp"
@@ -20,8 +20,7 @@ type (
 	// Config configures import handler.
 	Config struct {
 		Logger     log.Logger
-		Emitter    event.Emitter
-		Subscriber event.Subscriber
+		Subscriber pubsub.Subscriber
 	}
 
 	importer struct {
@@ -35,7 +34,6 @@ func NewHandler(cfg Config) (http.Handler, error) {
 	r := resolver.New(
 		resolver.Config{
 			Logger:     cfg.Logger,
-			Emitter:    cfg.Emitter,
 			Subscriber: cfg.Subscriber,
 		},
 		resolver.WithTransaction(false),

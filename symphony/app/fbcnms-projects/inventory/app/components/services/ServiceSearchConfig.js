@@ -10,7 +10,9 @@
 
 import type {EntityConfig} from '../comparison_view/ComparisonViewTypes';
 
+import PowerSearchExternalIDFilter from '../comparison_view/PowerSearchExternalIDFilter';
 import PowerSearchServiceCustomerNameFilter from './PowerSearchServiceCustomerNameFilter';
+import PowerSearchServiceDiscoveryMethodFilter from './PowerSearchServiceDiscoveryMethodFilter';
 import PowerSearchServiceEquipmentInServiceFilter from './PowerSearchServiceEquipmentInServiceFilter';
 import PowerSearchServiceExternalIDFilter from './PowerSearchServiceExternalIDFilter';
 import PowerSearchServiceNameFilter from './PowerSearchServiceNameFilter';
@@ -36,6 +38,14 @@ const ServiceSearchConfig: Array<EntityConfig> = [
         entityType: 'service',
         label: 'Type',
         component: PowerSearchServiceTypeFilter,
+        defaultOperator: 'is_one_of',
+      },
+      {
+        key: 'service_discovery_method',
+        name: 'service_discovery_method',
+        entityType: 'service',
+        label: 'Discovery Method',
+        component: PowerSearchServiceDiscoveryMethodFilter,
         defaultOperator: 'is_one_of',
       },
       {
@@ -73,9 +83,18 @@ const ServiceSearchConfig: Array<EntityConfig> = [
     ],
   },
   {
-    type: 'location_by_types',
-    label: 'Location (By consumer endpoints)',
-    filters: [],
+    type: 'locations',
+    label: 'Location',
+    filters: [
+      {
+        key: 'location_inst_external_id',
+        name: 'location_inst_external_id',
+        entityType: 'locations',
+        label: 'Location External ID',
+        component: PowerSearchExternalIDFilter,
+        defaultOperator: 'contains',
+      },
+    ],
   },
   {
     type: 'properties',

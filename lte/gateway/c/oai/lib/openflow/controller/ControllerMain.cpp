@@ -29,6 +29,9 @@ extern "C" {
 #include "spgw_config.h"
 }
 
+static const int OFP_LOCAL = 65534;
+static const int OF13P_LOCAL = 0xfffffffe;
+
 namespace {
 openflow::OpenflowController
   ctrl(CONTROLLER_ADDR, CONTROLLER_PORT, NUM_WORKERS, false);
@@ -38,15 +41,28 @@ int start_of_controller(bool persist_state)
 {
   static openflow::PagingApplication paging_app;
   static openflow::BaseApplication base_app(persist_state);
+  int uplink_port_num_ = OF13P_LOCAL; // default is LOCAL port.
+
+  if (spgw_config.pgw_config.enable_nat == false) {
+    // For Non NAT config we need to know uplink bridge port.
+    uplink_port_num_ = spgw_config.sgw_config.ovs_config.uplink_port_num;
+  }
+  if (uplink_port_num_ == OFP_LOCAL) { // convert it to OF 1.3 LOCAL port no.
+    uplink_port_num_ = OF13P_LOCAL;
+  }
+
   static openflow::GTPApplication gtp_app(
     std::string(bdata(spgw_config.sgw_config.ovs_config.uplink_mac)),
     spgw_config.sgw_config.ovs_config.gtp_port_num,
-    spgw_config.sgw_config.ovs_config.mtr_port_num);
+    spgw_config.sgw_config.ovs_config.mtr_port_num,
+    uplink_port_num_);
   // Base app registers first, because it deletes/creates default flow
   ctrl.register_for_event(&base_app, openflow::EVENT_SWITCH_UP);
   ctrl.register_for_event(&base_app, openflow::EVENT_ERROR);
   ctrl.register_for_event(&paging_app, openflow::EVENT_PACKET_IN);
   ctrl.register_for_event(&paging_app, openflow::EVENT_SWITCH_UP);
+  ctrl.register_for_event(&paging_app, openflow::EVENT_ADD_PAGING_RULE);
+  ctrl.register_for_event(&paging_app, openflow::EVENT_DELETE_PAGING_RULE);
   ctrl.register_for_event(&gtp_app, openflow::EVENT_ADD_GTP_TUNNEL);
   ctrl.register_for_event(&gtp_app, openflow::EVENT_DELETE_GTP_TUNNEL);
   ctrl.register_for_event(&gtp_app, openflow::EVENT_DISCARD_DATA_ON_GTP_TUNNEL);
@@ -145,5 +161,17 @@ int openflow_controller_forward_data_on_tunnel(
       ue, i_tei, openflow::EVENT_FORWARD_DATA_ON_GTP_TUNNEL);
     ctrl.inject_external_event(gtp_tunnel, external_event_callback);
   }
+  return 0;
+}
+
+int openflow_controller_add_paging_rule(struct in_addr ue_ip) {
+  auto paging_event = std::make_shared<openflow::AddPagingRuleEvent>(ue_ip);
+  ctrl.inject_external_event(paging_event, external_event_callback);
+  return 0;
+}
+
+int openflow_controller_delete_paging_rule(struct in_addr ue_ip) {
+  auto paging_event = std::make_shared<openflow::DeletePagingRuleEvent>(ue_ip);
+  ctrl.inject_external_event(paging_event, external_event_callback);
   return 0;
 }

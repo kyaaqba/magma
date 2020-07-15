@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/facebookincubator/symphony/graph/graphql/models"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -132,6 +133,7 @@ func importLocations(t *testing.T, organization, user, filename string) {
 
 	req.Header.Set("x-auth-organization", organization)
 	req.Header.Set("x-auth-user-email", user)
+	req.Header.Set("x-auth-user-role", "OWNER")
 	req.Header.Set("Content-Type", contentType)
 
 	rsp, err := http.DefaultClient.Do(req)
@@ -157,7 +159,7 @@ func addLocationTypes(t *testing.T, c *client) {
 		} else {
 			_, err := c.addLocationType(typ.name, &models.PropertyTypeInput{
 				Name: typ.property,
-				Type: models.PropertyKindString,
+				Type: propertytype.TypeString,
 			})
 			assert.NoError(t, err)
 		}

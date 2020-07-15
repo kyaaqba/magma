@@ -45,9 +45,9 @@ services:
   radiusd:
     ip_address: 127.0.0.1
     port: 9115
-  redis:
+  eventd:
     ip_address: 127.0.0.1
-    port: 6380
+    port: 50075
 
   # Development/Test Services
   mock_ocs:

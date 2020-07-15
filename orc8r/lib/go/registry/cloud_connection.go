@@ -14,11 +14,11 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
@@ -45,7 +45,7 @@ var controlProxyConfig atomic.Value
 //
 // Output: *grpc.ClientConn with connection to cloud service
 //         error if it exists
-func (reg *ServiceRegistry) GetCloudConnection(service string) (*grpc.ClientConn, error) {
+func (r *ServiceRegistry) GetCloudConnection(service string) (*grpc.ClientConn, error) {
 	cpc, ok := controlProxyConfig.Load().(*config.ConfigMap)
 	if (!ok) || cpc == nil {
 		var err error
@@ -56,7 +56,7 @@ func (reg *ServiceRegistry) GetCloudConnection(service string) (*grpc.ClientConn
 		}
 		controlProxyConfig.Store(cpc)
 	}
-	return reg.GetCloudConnectionFromServiceConfig(cpc, service)
+	return r.GetCloudConnectionFromServiceConfig(cpc, service)
 }
 
 // GetCloudConnectionFromServiceConfig returns a connection to the cloud
@@ -69,7 +69,7 @@ func (reg *ServiceRegistry) GetCloudConnection(service string) (*grpc.ClientConn
 //
 // Output: *grpc.ClientConn with connection to cloud service
 //         error if it exists
-func (reg *ServiceRegistry) GetCloudConnectionFromServiceConfig(
+func (r *ServiceRegistry) GetCloudConnectionFromServiceConfig(
 	controlProxyConfig *config.ConfigMap, service string) (*grpc.ClientConn, error) {
 
 	authority, err := getAuthority(controlProxyConfig, service)
@@ -79,7 +79,7 @@ func (reg *ServiceRegistry) GetCloudConnectionFromServiceConfig(
 	useProxy := getUseProxyCloudConnection(controlProxyConfig)
 	var addr string
 	if useProxy {
-		addr, err = reg.getProxyAddress(controlProxyConfig)
+		addr, err = r.getProxyAddress(controlProxyConfig)
 	} else {
 		addr, err = getCloudServiceAddress(controlProxyConfig)
 	}
@@ -106,19 +106,19 @@ func getAuthority(
 	serviceConfig *config.ConfigMap,
 	service string,
 ) (string, error) {
-	cloudAddr, err := serviceConfig.GetStringParam("cloud_address")
+	cloudAddr, err := serviceConfig.GetString("cloud_address")
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s-%s", service, cloudAddr), nil
+	return fmt.Sprintf("%s-%s", strings.ToLower(service), cloudAddr), nil
 }
 
-func (reg *ServiceRegistry) getProxyAddress(serviceConfig *config.ConfigMap) (string, error) {
-	localPort, err := serviceConfig.GetIntParam("local_port")
+func (r *ServiceRegistry) getProxyAddress(serviceConfig *config.ConfigMap) (string, error) {
+	localPort, err := serviceConfig.GetInt("local_port")
 	if err != nil {
 		return "", err
 	}
-	localAddress, err := reg.GetServiceAddress(ControlProxyServiceName)
+	localAddress, err := r.GetServiceAddress(ControlProxyServiceName)
 	if err != nil {
 		return "", err
 	}
@@ -127,12 +127,12 @@ func (reg *ServiceRegistry) getProxyAddress(serviceConfig *config.ConfigMap) (st
 }
 
 func getCloudServiceAddress(controlProxyConfig *config.ConfigMap) (string, error) {
-	cloudAddr, err := controlProxyConfig.GetStringParam("cloud_address")
+	cloudAddr, err := controlProxyConfig.GetString("cloud_address")
 	if err != nil {
 		return "", err
 	}
 	addrPieces := strings.Split(cloudAddr, ":")
-	port, err := controlProxyConfig.GetIntParam("cloud_port")
+	port, err := controlProxyConfig.GetInt("cloud_port")
 	if err != nil {
 		return "", err
 	}
@@ -140,7 +140,7 @@ func getCloudServiceAddress(controlProxyConfig *config.ConfigMap) (string, error
 }
 
 func getUseProxyCloudConnection(serviceConfig *config.ConfigMap) bool {
-	if proxied, err := serviceConfig.GetBoolParam("proxy_cloud_connections"); err == nil {
+	if proxied, err := serviceConfig.GetBool("proxy_cloud_connections"); err == nil {
 		return proxied
 	}
 	return true // Note: default is True -> proxy cloud connection
@@ -162,40 +162,40 @@ func getDialOptions(serviceConfig *config.ConfigMap, authority string, useProxy 
 		// always try to add OS certs
 		certPool, err := x509.SystemCertPool()
 		if err != nil {
-			log.Printf("OS Cert Pool initialization error: %v", err)
+			glog.Warningf("OS Cert Pool initialization error: %v", err)
 			certPool = x509.NewCertPool()
 		}
-		if rootCaFile, err := serviceConfig.GetStringParam("rootca_cert"); err == nil && len(rootCaFile) > 0 {
+		if rootCaFile, err := serviceConfig.GetString("rootca_cert"); err == nil && len(rootCaFile) > 0 {
 			// Add magma RootCA
 			if rootCa, err := ioutil.ReadFile(rootCaFile); err == nil {
 				if !certPool.AppendCertsFromPEM(rootCa) {
-					log.Printf("Failed to append certificates from %s", rootCaFile)
+					glog.Errorf("Failed to append certificates from %s", rootCaFile)
 				}
 			} else {
-				log.Printf("Cannot load Root CA from '%s': %v", rootCaFile, err)
+				glog.Errorf("Cannot load Root CA from '%s': %v", rootCaFile, err)
 			}
 		}
 		tlsCfg := &tls.Config{ServerName: authority}
 		if len(certPool.Subjects()) > 0 {
 			tlsCfg.RootCAs = certPool
 		} else {
-			log.Print("Empty server certificate pool, using TLS InsecureSkipVerify")
+			glog.Warning("Empty server certificate pool, using TLS InsecureSkipVerify")
 			tlsCfg.InsecureSkipVerify = true
 		}
-		if clientCaFile, err := serviceConfig.GetStringParam("gateway_cert"); err == nil && len(clientCaFile) > 0 {
-			if clientKeyFile, err := serviceConfig.GetStringParam("gateway_key"); err == nil && len(clientKeyFile) > 0 {
+		if clientCaFile, err := serviceConfig.GetString("gateway_cert"); err == nil && len(clientCaFile) > 0 {
+			if clientKeyFile, err := serviceConfig.GetString("gateway_key"); err == nil && len(clientKeyFile) > 0 {
 				clientCert, err := tls.LoadX509KeyPair(clientCaFile, clientKeyFile)
 				if err == nil {
 					tlsCfg.Certificates = []tls.Certificate{clientCert}
 				} else {
-					log.Printf("failed to load Client Certificate & Key from '%s', '%s': %v",
+					glog.Errorf("failed to load Client Certificate & Key from '%s', '%s': %v",
 						clientCaFile, clientKeyFile, err)
 				}
 			} else {
-				log.Printf("failed to get gateway certificate key location: %v", err)
+				glog.Errorf("failed to get gateway certificate key location: %v", err)
 			}
 		} else {
-			log.Printf("failed to get gateway certificate location: %v", err)
+			glog.Errorf("failed to get gateway certificate location: %v", err)
 		}
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
 	}

@@ -6,7 +6,7 @@
 
  /**
  * @flow
- * @relayHash 0cf9b14874deed6615c6cd97503bf5c6
+ * @relayHash c1ddc4c5982a38fd5fc8ada2a6c67675
  */
 
 /* eslint-disable */
@@ -16,7 +16,7 @@
 /*::
 import type { ConcreteRequest } from 'relay-runtime';
 export type CheckListItemEnumSelectionMode = "multiple" | "single" | "%future added value";
-export type CheckListItemType = "enum" | "files" | "simple" | "string" | "yes_no" | "%future added value";
+export type CheckListItemType = "cell_scan" | "enum" | "files" | "simple" | "string" | "wifi_scan" | "yes_no" | "%future added value";
 export type FileType = "FILE" | "IMAGE" | "%future added value";
 export type WorkOrderPriority = "HIGH" | "LOW" | "MEDIUM" | "NONE" | "URGENT" | "%future added value";
 export type WorkOrderStatus = "DONE" | "PENDING" | "PLANNED" | "%future added value";
@@ -29,10 +29,8 @@ export type AddWorkOrderInput = {|
   projectId?: ?string,
   properties?: ?$ReadOnlyArray<PropertyInput>,
   checkList?: ?$ReadOnlyArray<CheckListItemInput>,
-  ownerName?: ?string,
   ownerId?: ?string,
   checkListCategories?: ?$ReadOnlyArray<CheckListCategoryInput>,
-  assignee?: ?string,
   assigneeId?: ?string,
   index?: ?number,
   status?: ?WorkOrderStatus,
@@ -49,9 +47,7 @@ export type PropertyInput = {|
   longitudeValue?: ?number,
   rangeFromValue?: ?number,
   rangeToValue?: ?number,
-  equipmentIDValue?: ?string,
-  locationIDValue?: ?string,
-  serviceIDValue?: ?string,
+  nodeIDValue?: ?string,
   isEditable?: ?boolean,
   isInstanceProperty?: ?boolean,
 |};
@@ -78,6 +74,7 @@ export type FileInput = {|
   fileType?: ?FileType,
   mimeType?: ?string,
   storeKey: string,
+  annotation?: ?string,
 |};
 export type CheckListCategoryInput = {|
   id?: ?string,

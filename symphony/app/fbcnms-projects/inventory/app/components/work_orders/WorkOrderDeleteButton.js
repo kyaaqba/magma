@@ -19,7 +19,7 @@ import type {WithStyles} from '@material-ui/core';
 
 import Button from '@fbcnms/ui/components/design-system/Button';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
-import FormAction from '@fbcnms/ui/components/design-system/Form/FormAction';
+import FormActionWithPermissions from '../../common/FormActionWithPermissions';
 import React from 'react';
 import RemoveWorkOrderMutation from '../../mutations/RemoveWorkOrderMutation';
 import classNames from 'classnames';
@@ -39,6 +39,8 @@ const styles = () => ({
 type Props = {
   className?: string,
   workOrderId: string,
+  workOrderTypeId: string,
+  ignorePermissions?: ?boolean,
   onWorkOrderRemoved: () => void,
 } & WithStyles<typeof styles> &
   WithAlert &
@@ -46,9 +48,15 @@ type Props = {
 
 class WorkOrderDeleteButton extends React.Component<Props> {
   render() {
-    const {className, classes} = this.props;
+    const {workOrderTypeId, ignorePermissions, className, classes} = this.props;
     return (
-      <FormAction>
+      <FormActionWithPermissions
+        permissions={{
+          entity: 'workorder',
+          action: 'delete',
+          workOrderTypeId,
+          ignorePermissions,
+        }}>
         <Button
           className={classNames(className, classes.deleteButton)}
           variant="text"
@@ -56,7 +64,7 @@ class WorkOrderDeleteButton extends React.Component<Props> {
           onClick={this.removeWorkOrder}>
           <DeleteOutlineIcon />
         </Button>
-      </FormAction>
+      </FormActionWithPermissions>
     );
   }
 

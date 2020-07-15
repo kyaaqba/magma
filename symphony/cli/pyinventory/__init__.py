@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 
+from distutils.version import LooseVersion
+from typing import Optional, Tuple
+
+from colorama import Fore
 from gql.gql.reporter import DUMMY_REPORTER, Reporter
+from pysymphony import SymphonyClient
 
 from .api.equipment_type import (
     _populate_equipment_port_types,
     _populate_equipment_types,
 )
 from .api.location_type import _populate_location_types
-from .api.service import _populate_service_types
-from .client import SymphonyClient
+from .api.service_type import _populate_service_types
+from .common.constant import __version__
+from .graphql.query.latest_python_package import LatestPythonPackageQuery
 
 
 """Pyinventory is a python package that allows for querying and modifying the
@@ -24,22 +30,44 @@ from pyinventory import InventoryClient
 # since inventory is multi tenant system you will need to insert which
 # partner you connect as
 client = InventoryClient(email, password, "tenant_name")
-location = client.addLocation(-1.22,2.66, ('City', 'Brooklyn'))
-client.addEquipment('HW1569', 'Antenna HW', location, {'altitude': 53.5})
+location = client.add_location(
+    location_hirerchy=[
+        ("Country", "England"),
+        ("City", "Milton Keynes"),
+        ("Site", "Bletchley Park")
+    ],
+    properties_dict={
+        "Date Property": date.today(),
+        "Lat/Lng Property": (-1.23,9.232),
+        "E-mail Property": "user@fb.com",
+        "Number Property": 11,
+        "String Property": "aa",
+        "Float Property": 1.23,
+    },
+    lat=-11.32,
+    long=98.32,
+    external_id=None
+)
+equipment = client.add_equipment(
+    name="Router X123",
+    equipment_type="Router",
+    location=location,
+    properties_dict={
+        "Date Property": date.today(),
+        "Lat/Lng Property": (-1.23,9.232),
+        "E-mail Property": "user@fb.com",
+        "Number Property": 11,
+        "String Property": "aa",
+        "Float Property": 1.23,
+    }
+)
 ```
 """
 
 
 class InventoryClient(SymphonyClient):
 
-    from .api.file import (
-        add_location_image,
-        add_site_survey_image,
-        delete_document,
-        delete_site_survey_image,
-        add_file,
-        add_files,
-    )
+    from .api.file import add_location_image, delete_document, add_file, add_files
     from .api.location_type import (
         add_location_type,
         delete_locations_by_location_type,
@@ -47,7 +75,6 @@ class InventoryClient(SymphonyClient):
     )
     from .api.location import (
         get_location,
-        get_locations_by_external_id,
         get_location_by_external_id,
         get_location_children,
         get_location_documents,
@@ -65,12 +92,16 @@ class InventoryClient(SymphonyClient):
         get_or_create_equipment_type,
         _edit_equipment_type,
         edit_equipment_type,
+        get_equipment_type_property_type,
+        get_equipment_type_property_type_by_external_id,
+        edit_equipment_type_property_type,
     )
     from .api.equipment import (
         add_equipment,
         add_equipment_to_position,
         get_equipment,
         get_equipment_in_position,
+        get_equipments,
         delete_equipment,
         search_for_equipments,
         delete_all_equipments,
@@ -88,20 +119,21 @@ class InventoryClient(SymphonyClient):
     from .api.link import (
         add_link,
         get_link_in_port_of_equipment,
+        get_links,
         get_all_links_and_port_names_of_equipment,
     )
     from .api.service import (
         add_service,
         add_service_endpoint,
-        add_service_type,
+        add_service_link,
         get_service,
-        delete_service_type_with_services,
     )
-    from .site_survey import (
-        upload_site_survey,
-        get_site_surveys,
-        delete_site_survey,
-        build_site_survey_from_survey_response,
+    from .api.service_type import (
+        add_service_type,
+        get_service_type,
+        edit_service_type,
+        delete_service_type,
+        delete_service_type_with_services,
     )
     from .api.location_template import (
         apply_location_template_to_location,
@@ -114,7 +146,12 @@ class InventoryClient(SymphonyClient):
         edit_equipment_port_type,
         delete_equipment_port_type,
     )
-    from .api.port import get_port, edit_port_properties, edit_link_properties
+    from .api.port import (
+        get_port,
+        edit_port_properties,
+        edit_link_properties,
+        get_ports,
+    )
     from .api.user import (
         add_user,
         get_user,
@@ -124,6 +161,9 @@ class InventoryClient(SymphonyClient):
         get_users,
         get_active_users,
     )
+    from .api.property_type import get_property_type_id
+
+    from .api.features import get_enabled_features, set_feature
 
     def __init__(
         self,
@@ -159,8 +199,62 @@ class InventoryClient(SymphonyClient):
                             discards reports
 
         """
-        super().__init__(email, password, tenant, is_local_host, is_dev_mode, reporter)
+        super().__init__(
+            email,
+            password,
+            tenant,
+            f"Pyinventory/{__version__}",
+            is_local_host,
+            is_dev_mode,
+            reporter,
+        )
         self._verify_version_is_not_broken()
+        self.populate_types()
+
+    def _verify_version_is_not_broken(self) -> None:
+        package = self._get_latest_python_package_version()
+
+        latest_version, latest_breaking_version = (
+            package if package is not None else (None, None)
+        )
+
+        if latest_breaking_version is not None and LooseVersion(
+            latest_breaking_version
+        ) > LooseVersion(__version__):
+            raise Exception(
+                "This version of pyinventory is not supported anymore. \
+                Please download and install the latest version ({})".format(
+                    latest_version
+                )
+            )
+
+        if latest_version is not None and LooseVersion(latest_version) > LooseVersion(
+            __version__
+        ):
+            print(
+                str(Fore.RED)
+                + "A newer version of pyinventory exists ({}). \
+            It is recommended to download and install it".format(
+                    latest_version
+                )
+            )
+
+    def _get_latest_python_package_version(self) -> Optional[Tuple[str, str]]:
+
+        package = LatestPythonPackageQuery.execute(self)
+        if package is not None:
+            last_version = package.lastPythonPackage
+            last_breaking_version = package.lastBreakingPythonPackage
+            if last_version is not None:
+                return (
+                    last_version.version,
+                    last_breaking_version.version
+                    if last_breaking_version
+                    else last_version.version,
+                )
+        return None
+
+    def populate_types(self) -> None:
         _populate_location_types(self)
         _populate_equipment_types(self)
         _populate_service_types(self)

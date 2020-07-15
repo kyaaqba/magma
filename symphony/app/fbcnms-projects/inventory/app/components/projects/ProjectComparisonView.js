@@ -11,13 +11,25 @@ import useRouter from '@fbcnms/ui/hooks/useRouter';
 
 import AddProjectCard from './AddProjectCard';
 import AddProjectDialog from './AddProjectDialog';
+import Button from '@fbcnms/ui/components/design-system/Button';
 import ErrorBoundary from '@fbcnms/ui/components/ErrorBoundary/ErrorBoundary';
+import FormActionWithPermissions from '../../common/FormActionWithPermissions';
 import InventoryView, {DisplayOptions} from '../InventoryViewContainer';
 import ProjectCard from './ProjectCard';
 import ProjectComparisonViewQueryRenderer from './ProjectComparisonViewQueryRenderer';
 import React, {useMemo, useState} from 'react';
+import fbt from 'fbt';
 import {LogEvents, ServerLogger} from '../../common/LoggingUtils';
 import {extractEntityIdFromUrl} from '../../common/RouterUtils';
+import {makeStyles} from '@material-ui/styles';
+
+const QUERY_LIMIT = 1000;
+
+const useStyles = makeStyles(() => ({
+  projectComparisonView: {
+    height: '100%',
+  },
+}));
 
 const ProjectComparisonView = () => {
   const [dialogKey, setDialogKey] = useState(1);
@@ -26,6 +38,7 @@ const ProjectComparisonView = () => {
   const [resultsDisplayMode, setResultsDisplayMode] = useState(
     DisplayOptions.table,
   );
+  const classes = useStyles();
 
   const selectedProjectTypeId = useMemo(
     () => extractEntityIdFromUrl('projectType', location.search),
@@ -72,23 +85,34 @@ const ProjectComparisonView = () => {
   const header = {
     title: 'Projects',
     actionButtons: [
-      {
-        title: 'Add Project',
-        action: () => {
-          setDialogOpen(true);
-          setDialogKey(dialogKey + 1);
-          ServerLogger.info(LogEvents.ADD_PROJECT_BUTTON_CLICKED);
-        },
-      },
+      <FormActionWithPermissions
+        permissions={{
+          entity: 'project',
+          action: 'create',
+          ignoreTypes: true,
+        }}>
+        <Button
+          onClick={() => {
+            setDialogOpen(true);
+            setDialogKey(dialogKey + 1);
+            ServerLogger.info(LogEvents.ADD_PROJECT_BUTTON_CLICKED);
+          }}>
+          <fbt desc="">Create Project</fbt>
+        </Button>
+      </FormActionWithPermissions>,
     ],
   };
   return (
     <ErrorBoundary>
       <InventoryView
         header={header}
-        onViewToggleClicked={setResultsDisplayMode}>
+        className={classes.projectComparisonView}
+        onViewToggleClicked={setResultsDisplayMode}
+        permissions={{
+          entity: 'project',
+        }}>
         <ProjectComparisonViewQueryRenderer
-          limit={50}
+          limit={QUERY_LIMIT}
           filters={[]}
           onProjectSelected={selectedProjectCardId =>
             navigateToProject(selectedProjectCardId)

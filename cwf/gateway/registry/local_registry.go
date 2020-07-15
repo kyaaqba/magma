@@ -17,8 +17,10 @@ import (
 const (
 	ModuleName = "cwf"
 
-	UeSim   = "UESIM"
-	Radiusd = "RADIUSD"
+	Eventd        = "EVENTD"
+	GatewayHealth = "HEALTH"
+	UeSim         = "UESIM"
+	Radiusd       = "RADIUSD"
 )
 
 // Add a new service.
@@ -43,6 +45,8 @@ func addLocalService(serviceType string, port int) {
 }
 
 func init() {
+	addLocalService(Eventd, 50075)
 	addLocalService(UeSim, 10101)
+	addLocalService(GatewayHealth, 9107)
 	addLocalService(Radiusd, 10102)
 }

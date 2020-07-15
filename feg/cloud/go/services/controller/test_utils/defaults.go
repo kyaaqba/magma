@@ -8,7 +8,7 @@
 
 package test_utils
 
-import "magma/feg/cloud/go/plugin/models"
+import "magma/feg/cloud/go/services/feg/obsidian/models"
 
 func NewDefaultNetworkConfig() *models.NetworkFederationConfigs {
 	// GyInitMethod_PER_SESSION
@@ -27,25 +27,29 @@ func NewDefaultNetworkConfig() *models.NetworkFederationConfigs {
 			},
 		},
 		Gx: &models.Gx{
-			Server: &models.DiameterClientConfigs{
-				Protocol:         "tcp",
-				Retransmits:      3,
-				WatchdogInterval: 1,
-				RetryCount:       5,
-				ProductName:      "magma",
-				Host:             "magma-fedgw.magma.com",
-				Realm:            "magma.com",
+			Servers: []*models.DiameterClientConfigs{
+				{
+					Protocol:         "tcp",
+					Retransmits:      3,
+					WatchdogInterval: 1,
+					RetryCount:       5,
+					ProductName:      "magma",
+					Host:             "magma-fedgw.magma.com",
+					Realm:            "magma.com",
+				},
 			},
 		},
 		Gy: &models.Gy{
-			Server: &models.DiameterClientConfigs{
-				Protocol:         "tcp",
-				Retransmits:      3,
-				WatchdogInterval: 1,
-				RetryCount:       5,
-				ProductName:      "magma",
-				Host:             "magma-fedgw.magma.com",
-				Realm:            "magma.com",
+			Servers: []*models.DiameterClientConfigs{
+				{
+					Protocol:         "tcp",
+					Retransmits:      3,
+					WatchdogInterval: 1,
+					RetryCount:       5,
+					ProductName:      "magma",
+					Host:             "magma-fedgw.magma.com",
+					Realm:            "magma.com",
+				},
 			},
 			InitMethod: &gyInitMethodPerSession,
 		},
@@ -65,14 +69,16 @@ func NewDefaultNetworkConfig() *models.NetworkFederationConfigs {
 			StreamSubscribers: false,
 		},
 		Swx: &models.Swx{
-			Server: &models.DiameterClientConfigs{
-				Protocol:         "sctp",
-				Retransmits:      3,
-				WatchdogInterval: 1,
-				RetryCount:       5,
-				ProductName:      "magma",
-				Host:             "magma-fedgw.magma.com",
-				Realm:            "magma.com",
+			Servers: []*models.DiameterClientConfigs{
+				&models.DiameterClientConfigs{
+					Protocol:         "sctp",
+					Retransmits:      3,
+					WatchdogInterval: 1,
+					RetryCount:       5,
+					ProductName:      "magma",
+					Host:             "magma-fedgw.magma.com",
+					Realm:            "magma.com",
+				},
 			},
 			VerifyAuthorization: false,
 			CacheTTLSeconds:     10800,

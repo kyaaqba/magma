@@ -5,23 +5,45 @@
 package resolverutil
 
 import (
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/location"
-	"github.com/facebookincubator/symphony/graph/ent/locationtype"
-	"github.com/facebookincubator/symphony/graph/ent/predicate"
-	"github.com/facebookincubator/symphony/graph/ent/property"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/location"
+	"github.com/facebookincubator/symphony/pkg/ent/locationtype"
+	"github.com/facebookincubator/symphony/pkg/ent/predicate"
+	"github.com/facebookincubator/symphony/pkg/ent/property"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
 	"github.com/pkg/errors"
 )
 
 func handleLocationFilter(q *ent.LocationQuery, filter *models.LocationFilterInput) (*ent.LocationQuery, error) {
-	if filter.FilterType == models.LocationFilterTypeLocationInst {
+	switch filter.FilterType {
+	case models.LocationFilterTypeLocationInst:
 		return LocationFilterPredicate(q, filter)
-	} else if filter.FilterType == models.LocationFilterTypeLocationInstHasEquipment {
+	case models.LocationFilterTypeLocationInstHasEquipment:
 		return locationHasEquipmentFilter(q, filter)
+	case models.LocationFilterTypeLocationInstName:
+		return locationNameFilter(q, filter)
+	case models.LocationFilterTypeLocationInstExternalID:
+		return locationExternalIDFilter(q, filter)
 	}
 	return nil, errors.Errorf("filter type is not supported: %s", filter.FilterType)
+}
+
+func locationExternalIDFilter(q *ent.LocationQuery, filter *models.LocationFilterInput) (*ent.LocationQuery, error) {
+	switch filter.Operator {
+	case models.FilterOperatorContains:
+		return q.Where(location.ExternalIDContainsFold(*filter.StringValue)), nil
+	case models.FilterOperatorIs:
+		return q.Where(location.ExternalID(*filter.StringValue)), nil
+	}
+	return nil, errors.Errorf("operation %s is not supported", filter.Operator)
+}
+
+func locationNameFilter(q *ent.LocationQuery, filter *models.LocationFilterInput) (*ent.LocationQuery, error) {
+	if filter.Operator == models.FilterOperatorIs {
+		return q.Where(location.NameEqualFold(*filter.StringValue)), nil
+	}
+	return nil, errors.Errorf("operation %s is not supported", filter.Operator)
 }
 
 func locationHasEquipmentFilter(q *ent.LocationQuery, filter *models.LocationFilterInput) (*ent.LocationQuery, error) {
@@ -70,7 +92,7 @@ func handleLocationPropertyFilter(q *ent.LocationQuery, filter *models.LocationF
 				property.And(
 					property.HasTypeWith(
 						propertytype.Name(p.Name),
-						propertytype.Type(p.Type.String()),
+						propertytype.TypeEQ(p.Type),
 					),
 					pred,
 				),
@@ -78,13 +100,13 @@ func handleLocationPropertyFilter(q *ent.LocationQuery, filter *models.LocationF
 			location.And(
 				location.HasTypeWith(locationtype.HasPropertyTypesWith(
 					propertytype.Name(p.Name),
-					propertytype.Type(p.Type.String()),
+					propertytype.TypeEQ(p.Type),
 					typePred,
 				)),
 				location.Not(location.HasPropertiesWith(
 					property.HasTypeWith(
 						propertytype.Name(p.Name),
-						propertytype.Type(p.Type.String()),
+						propertytype.TypeEQ(p.Type),
 					)),
 				))))
 
@@ -99,7 +121,7 @@ func handleLocationPropertyFilter(q *ent.LocationQuery, filter *models.LocationF
 				property.And(
 					property.HasTypeWith(
 						propertytype.Name(p.Name),
-						propertytype.Type(p.Type.String()),
+						propertytype.TypeEQ(p.Type),
 					),
 					propPred,
 				),
@@ -107,18 +129,17 @@ func handleLocationPropertyFilter(q *ent.LocationQuery, filter *models.LocationF
 			location.And(
 				location.HasTypeWith(locationtype.HasPropertyTypesWith(
 					propertytype.Name(p.Name),
-					propertytype.Type(p.Type.String()),
+					propertytype.TypeEQ(p.Type),
 					propTypePred,
 				)),
 				location.Not(location.HasPropertiesWith(
 					property.HasTypeWith(
 						propertytype.Name(p.Name),
-						propertytype.Type(p.Type.String()),
+						propertytype.TypeEQ(p.Type),
 					)),
 				))))
 		return q, nil
 	default:
 		return nil, errors.Errorf("operator %q not supported", filter.Operator)
 	}
-
 }

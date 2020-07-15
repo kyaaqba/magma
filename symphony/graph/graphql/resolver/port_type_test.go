@@ -2,23 +2,24 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// nolint: goconst
 package resolver
 
 import (
+	"context"
 	"testing"
 
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
+	"github.com/AlekSi/pointer"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestAddEquipmentPortType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	_, err := mr.AddEquipmentPortType(ctx, models.AddEquipmentPortTypeInput{
@@ -34,8 +35,8 @@ func TestAddEquipmentPortType(t *testing.T) {
 
 func TestAddEquipmentPortTypes(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	_, err := mr.AddEquipmentPortType(ctx, models.AddEquipmentPortTypeInput{Name: "example_type_a"})
@@ -49,8 +50,8 @@ func TestAddEquipmentPortTypes(t *testing.T) {
 
 func TestAddEquipmentPortTypeWithProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr := r.Mutation()
 
 	strValue, strIndex := "Foo", 7
@@ -58,13 +59,13 @@ func TestAddEquipmentPortTypeWithProperties(t *testing.T) {
 
 	strPropType := models.PropertyTypeInput{
 		Name:        "str_prop",
-		Type:        models.PropertyKindString,
+		Type:        propertytype.TypeString,
 		Index:       &strIndex,
 		StringValue: &strValue,
 	}
 	intPropType := models.PropertyTypeInput{
 		Name:     "int_prop",
-		Type:     models.PropertyKindInt,
+		Type:     propertytype.TypeInt,
 		Index:    &intIndex,
 		IntValue: &intValue,
 	}
@@ -75,23 +76,23 @@ func TestAddEquipmentPortTypeWithProperties(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	intProp := portType.QueryPropertyTypes().Where(propertytype.Type(models.PropertyKindInt.String())).OnlyX(ctx)
-	strProp := portType.QueryPropertyTypes().Where(propertytype.Type(models.PropertyKindString.String())).OnlyX(ctx)
+	intProp := portType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeInt)).OnlyX(ctx)
+	strProp := portType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 
 	require.Equal(t, "int_prop", intProp.Name, "verifying int property type's name")
-	require.Equal(t, "", intProp.StringVal, "verifying int property type's string value (default as this is an int property)")
-	require.Equal(t, intValue, intProp.IntVal, "verifying int property type's int value")
+	require.Nil(t, intProp.StringVal, "verifying int property type's string value (default as this is an int property)")
+	require.Equal(t, intValue, pointer.GetInt(intProp.IntVal), "verifying int property type's int value")
 	require.Equal(t, intIndex, intProp.Index, "verifying int property type's index")
 	require.Equal(t, "str_prop", strProp.Name, "verifying string property type's name")
-	require.Equal(t, strValue, strProp.StringVal, "verifying string property type's String value")
-	require.Equal(t, 0, strProp.IntVal, "verifying int property type's int value")
+	require.Equal(t, strValue, pointer.GetString(strProp.StringVal), "verifying string property type's String value")
+	require.Nil(t, strProp.IntVal, "verifying int property type's int value")
 	require.Equal(t, strIndex, strProp.Index, "verifying string property type's index")
 }
 
 func TestAddEquipmentPortTypeWithLinkProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr := r.Mutation()
 
 	strValue, strIndex := "Foo", 7
@@ -99,13 +100,13 @@ func TestAddEquipmentPortTypeWithLinkProperties(t *testing.T) {
 
 	strPropType := models.PropertyTypeInput{
 		Name:        "str_prop",
-		Type:        models.PropertyKindString,
+		Type:        propertytype.TypeString,
 		Index:       &strIndex,
 		StringValue: &strValue,
 	}
 	intPropType := models.PropertyTypeInput{
 		Name:     "int_prop",
-		Type:     models.PropertyKindInt,
+		Type:     propertytype.TypeInt,
 		Index:    &intIndex,
 		IntValue: &intValue,
 	}
@@ -116,23 +117,23 @@ func TestAddEquipmentPortTypeWithLinkProperties(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	intProp := portType.QueryLinkPropertyTypes().Where(propertytype.Type(models.PropertyKindInt.String())).OnlyX(ctx)
-	strProp := portType.QueryLinkPropertyTypes().Where(propertytype.Type(models.PropertyKindString.String())).OnlyX(ctx)
+	intProp := portType.QueryLinkPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeInt)).OnlyX(ctx)
+	strProp := portType.QueryLinkPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 
 	require.Equal(t, "int_prop", intProp.Name, "verifying int property type's name")
-	require.Equal(t, "", intProp.StringVal, "verifying int property type's string value (default as this is an int property)")
-	require.Equal(t, intValue, intProp.IntVal, "verifying int property type's int value")
+	require.Nil(t, intProp.StringVal, "verifying int property type's string value (default as this is an int property)")
+	require.Equal(t, intValue, pointer.GetInt(intProp.IntVal), "verifying int property type's int value")
 	require.Equal(t, intIndex, intProp.Index, "verifying int property type's index")
 	require.Equal(t, "str_prop", strProp.Name, "verifying string property type's name")
-	require.Equal(t, strValue, strProp.StringVal, "verifying string property type's String value")
-	require.Equal(t, 0, strProp.IntVal, "verifying int property type's int value")
+	require.Equal(t, strValue, pointer.GetString(strProp.StringVal), "verifying string property type's String value")
+	require.Nil(t, strProp.IntVal, "verifying int property type's int value")
 	require.Equal(t, strIndex, strProp.Index, "verifying string property type's index")
 }
 
 func TestAddEquipmentPortTypesSameName(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	portType, err := mr.AddEquipmentPortType(ctx, models.AddEquipmentPortTypeInput{Name: "example_type_name"})
@@ -146,8 +147,8 @@ func TestAddEquipmentPortTypesSameName(t *testing.T) {
 
 func TestRemoveEquipmentPortType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	portType, err := mr.AddEquipmentPortType(ctx, models.AddEquipmentPortTypeInput{Name: "example_type_name"})
@@ -168,8 +169,8 @@ func TestRemoveEquipmentPortType(t *testing.T) {
 
 func TestEditEquipmentPortType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	portType, err := mr.AddEquipmentPortType(ctx, models.AddEquipmentPortTypeInput{Name: "example_type_name"})
@@ -200,8 +201,8 @@ func TestEditEquipmentPortType(t *testing.T) {
 
 func TestEditEquipmentPortTypeWithLinkProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr := r.Mutation()
 
 	strValue := "Foo"
@@ -217,7 +218,7 @@ func TestEditEquipmentPortTypeWithLinkProperties(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	strProp := portType.QueryLinkPropertyTypes().Where(propertytype.Type("string")).OnlyX(ctx)
+	strProp := portType.QueryLinkPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 	strValue = "Foo - edited"
 	intValue := 5
 	strPropType = models.PropertyTypeInput{
@@ -240,13 +241,13 @@ func TestEditEquipmentPortTypeWithLinkProperties(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, portType.Name, newType.Name, "successfully edited EquipmentPort type name")
 
-	strProp = portType.QueryLinkPropertyTypes().Where(propertytype.Type("string")).OnlyX(ctx)
+	strProp = portType.QueryLinkPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 	require.Equal(t, "str_prop_new", strProp.Name, "successfully edited prop type name")
-	require.Equal(t, strValue, strProp.StringVal, "successfully edited prop type string value")
+	require.Equal(t, strValue, pointer.GetString(strProp.StringVal), "successfully edited prop type string value")
 
-	intProp := portType.QueryLinkPropertyTypes().Where(propertytype.Type("int")).OnlyX(ctx)
+	intProp := portType.QueryLinkPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeInt)).OnlyX(ctx)
 	require.Equal(t, "int_prop", intProp.Name, "successfully edited prop type name")
-	require.Equal(t, intValue, intProp.IntVal, "successfully edited prop type int value")
+	require.Equal(t, intValue, pointer.GetInt(intProp.IntVal), "successfully edited prop type int value")
 
 	intValue = 6
 	intPropType = models.PropertyTypeInput{
@@ -265,8 +266,8 @@ func TestEditEquipmentPortTypeWithLinkProperties(t *testing.T) {
 
 func TestEditEquipmentPortTypeWithLinkPropertiesSameName(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr := r.Mutation()
 
 	strValue := "Foo"
@@ -299,8 +300,8 @@ func TestEditEquipmentPortTypeWithLinkPropertiesSameName(t *testing.T) {
 
 func TestRemoveEquipmentPortTypeWithLinkedEquipmentType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	portType, err := mr.AddEquipmentPortType(ctx, models.AddEquipmentPortTypeInput{

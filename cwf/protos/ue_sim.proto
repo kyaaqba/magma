@@ -32,6 +32,7 @@ message UEConfig {
 
 message AuthenticateRequest {
     string imsi = 1;
+    string calledStationID = 2;
 }
 
 message AuthenticateResponse {
@@ -40,6 +41,7 @@ message AuthenticateResponse {
 
 message DisconnectRequest {
     string imsi = 1;
+    string calledStationID = 2;
 }
 
 message DisconnectResponse {
@@ -53,6 +55,10 @@ message GenTrafficRequest {
     uint64 timeInSecs = 4;    
     uint64 reportingIntervalInSecs = 5;    
     bool reverseMode = 6;
+    // Configure a max timeout iperf client will run
+    uint32 timeout = 7;
+    // Enables/Disable a function to check if server is alive before sending any traffic
+    bool disableServerReachabilityCheck = 8;
 }
 
 message GenTrafficResponse {

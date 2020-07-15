@@ -14,21 +14,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/any"
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
-
 	"magma/feg/gateway/policydb"
 	fegstreamer "magma/gateway/streamer"
 	"magma/lte/cloud/go/protos"
 	"magma/orc8r/cloud/go/services/streamer"
-	"magma/orc8r/cloud/go/services/streamer/providers"
 	streamer_test_init "magma/orc8r/cloud/go/services/streamer/test_init"
 	"magma/orc8r/lib/go/definitions"
 	orcprotos "magma/orc8r/lib/go/protos"
 	platform_registry "magma/orc8r/lib/go/registry"
 	"magma/orc8r/lib/go/service/config"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/any"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 )
 
 // Mock Cloud Streamer
@@ -138,13 +137,24 @@ func (os *mockObjectStore) GetAll() (map[string]interface{}, error) {
 	return returnVals, nil
 }
 
+func (os *mockObjectStore) DeleteAll() error {
+	valsByKey, err := os.GetAll()
+	if err != nil {
+		return err
+	}
+	for key := range valsByKey {
+		os.Delete(key)
+	}
+	return nil
+}
+
 func initOnce(t *testing.T) {
 	streamer_test_init.StartTestService(t)
 }
 
 func TestPolicyDBBaseNamesWithGRPC(t *testing.T) {
 	onceTestsInit.Do(func() { initOnce(t) })
-	providers.RegisterStreamProvider(&mockStreamProvider{Name: "base_names"})
+	streamer_test_init.StartNewTestProvider(t, &mockStreamProvider{Name: "base_names"})
 	dbClient := &policydb.RedisPolicyDBClient{
 		PolicyMap:      &mockObjectStore{},
 		BaseNameMap:    &mockObjectStore{},
@@ -166,7 +176,7 @@ func TestPolicyDBBaseNamesWithGRPC(t *testing.T) {
 
 func TestPolicyDBRulesWithGRPC(t *testing.T) {
 	onceTestsInit.Do(func() { initOnce(t) })
-	providers.RegisterStreamProvider(&mockStreamProvider{Name: "policydb"})
+	streamer_test_init.StartNewTestProvider(t, &mockStreamProvider{Name: "policydb"})
 	dbClient := &policydb.RedisPolicyDBClient{
 		PolicyMap:      &mockObjectStore{},
 		BaseNameMap:    &mockObjectStore{},

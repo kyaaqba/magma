@@ -17,7 +17,6 @@ ovs_uplink_mac: "ff:ff:ff:ff:ff:ff"
 
 # Interface used for determing MTU
 pgw_uplink: "gtp_br0"
-ovs_uplink_port_number: 65534
 
 ###############
 ## IMPORTANT ##
@@ -27,3 +26,6 @@ ovs_uplink_port_number: 65534
 ovs_gtp_port_number: 32768
 # Internal port for monitoring service
 ovs_mtr_port_number: 15577
+
+# Non-NAT specific config
+ovs_uplink_port_number: 2

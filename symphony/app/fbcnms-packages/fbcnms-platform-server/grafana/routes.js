@@ -18,6 +18,7 @@ import Client from './GrafanaAPI';
 import GrafanaErrorMessage from './GrafanaErrorMessage';
 import {
   makeGrafanaUsername,
+  syncDashboards,
   syncDatasource,
   syncGrafanaUser,
   syncTenants,
@@ -25,23 +26,23 @@ import {
 
 import type {Task} from './handlers';
 
+import type {ExpressResponse} from 'express';
 import type {FBCNMSRequest} from '@fbcnms/auth/access';
 
 const GRAFANA_PROTOCOL = 'http';
-const GRAFANA_HOST = process.env.USER_GRAFANA_HOSTNAME ?? 'user-grafana';
-const GRAFANA_PORT = process.env.USER_GRAFANA_PORT ?? '3000';
-const GRAFANA_URL = `${GRAFANA_PROTOCOL}://${GRAFANA_HOST}:${GRAFANA_PORT}`;
+const GRAFANA_ADDRESS = process.env.USER_GRAFANA_ADDRESS ?? 'user-grafana:3000';
+const GRAFANA_URL = `${GRAFANA_PROTOCOL}://${GRAFANA_ADDRESS}`;
 
 const AUTH_PROXY_HEADER = 'X-WEBAUTH-USER';
 
-const router = express.Router();
+const router: express.Router<FBCNMSRequest, ExpressResponse> = express.Router();
 
 const grafanaAdminClient = Client(GRAFANA_URL, {
   [AUTH_PROXY_HEADER]: 'admin',
 });
 
 const syncGrafana = () => {
-  return async function(req: FBCNMSRequest, res, next) {
+  return async function (req: FBCNMSRequest, res, next) {
     const tasksCompleted = [];
     // Sync User/Organization
     const userRes = await syncGrafanaUser(grafanaAdminClient, req);
@@ -65,6 +66,12 @@ const syncGrafana = () => {
         tenantsRes.errorTask,
       );
     }
+    // Create Dashboards
+    const dbRes = await syncDashboards(grafanaAdminClient, req);
+    tasksCompleted.push(...dbRes.completedTasks);
+    if (dbRes.errorTask) {
+      return await displayErrorMessage(res, tasksCompleted, dbRes.errorTask);
+    }
     return next();
   };
 };
@@ -82,18 +89,15 @@ async function displayErrorMessage(
       grafanaHealth={healthResponse.data}
     />
   );
-  res
-    .status(errorTask.status)
-    .send(ReactDOM.renderToString(message))
-    .end();
+  res.status(errorTask.status).send(ReactDOM.renderToString(message)).end();
 }
 
 const proxyMiddleware = () => {
-  return async function(req: FBCNMSRequest, res, next) {
+  return async function (req: FBCNMSRequest, res, next) {
     const userID = req.user.id;
 
     return proxy(GRAFANA_URL, {
-      proxyReqOptDecorator: function(proxyReqOpts, _srcReq) {
+      proxyReqOptDecorator: function (proxyReqOpts, _srcReq) {
         proxyReqOpts.headers[AUTH_PROXY_HEADER] = makeGrafanaUsername(userID);
         return proxyReqOpts;
       },

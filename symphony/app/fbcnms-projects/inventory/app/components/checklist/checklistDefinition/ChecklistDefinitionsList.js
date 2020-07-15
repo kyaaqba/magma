@@ -20,6 +20,7 @@ import {Draggable} from 'react-beautiful-dnd';
 import {ReorderIcon} from '@fbcnms/ui/components/design-system/Icons';
 import {makeStyles} from '@material-ui/styles';
 import {sortByIndex} from '../../draggable/DraggableUtils';
+import {useFormContext} from '../../../common/FormContext';
 
 type Props = {
   items: Array<CheckListItem>,
@@ -55,14 +56,18 @@ const useStyles = makeStyles(() => ({
 const ChecklistDefinitionsList = ({items, editedDefinitionId}: Props) => {
   const classes = useStyles();
   const dispatch = useContext(ChecklistItemsDialogMutateDispatchContext);
+  const form = useFormContext();
 
-  const checklistItems = items.sort(sortByIndex).map(item => {
+  const checklistItems = items.sort(sortByIndex).map((item, index) => {
     return (
       <Draggable
         key={item.id}
         draggableId={item.id}
-        index={item.index}
-        isDragDisabled={item.id !== editedDefinitionId}>
+        index={index}
+        isDragDisabled={
+          form.alerts.missingPermissions.detected ||
+          item.id !== editedDefinitionId
+        }>
         {(provided, snapshot) => (
           <div
             className={classes.listItem}
@@ -96,12 +101,14 @@ const ChecklistDefinitionsList = ({items, editedDefinitionId}: Props) => {
   return (
     <div className={classes.itemsList}>
       <DragDropContext
-        onDragEnd={result => {
-          dispatch({
-            type: 'CHANGE_ITEM_POSITION',
-            sourceIndex: result.source.index,
-            destinationIndex: result.destination.index,
-          });
+        onDragEnd={({source, destination}) => {
+          if (destination != null) {
+            dispatch({
+              type: 'CHANGE_ITEM_POSITION',
+              sourceIndex: source.index,
+              destinationIndex: destination.index,
+            });
+          }
         }}>
         <Droppable droppableId="checklist_definitions_droppable">
           {provided => (

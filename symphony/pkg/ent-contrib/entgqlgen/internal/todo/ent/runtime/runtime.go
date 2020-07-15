@@ -9,6 +9,6 @@ package runtime
 // The schema-stitching logic is generated in github.com/facebookincubator/symphony/pkg/ent-contrib/entgqlgen/internal/todo/ent/runtime.go
 
 const (
-	Version = "v0.1.5-0.20200329151113-6e6651c8787c"            // Version of ent codegen.
-	Sum     = "h1:L1IenZUDpfS8yG/xSTh0l+VVnwphBlAIG10vJcR1CSU=" // Sum of ent codegen.
+	Version = "v0.2.7-0.20200712105603-f7d4a52e681c"            // Version of ent codegen.
+	Sum     = "h1:2sIrZjy2O2is7D5Ymk5LO296bfgsKZp2mxkPOi89Vhs=" // Sum of ent codegen.
 )

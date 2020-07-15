@@ -7,6 +7,10 @@ in the LICENSE file in the root directory of this source tree.
 {{ define "pagination" }}
 {{ template "header" $ }}
 
+{{- if not (hasTemplate "collection") }}
+{{ fail "pagination requires field collection" }}
+{{- end }}
+
 import (
 	"github.com/ugorji/go/codec"
 )
@@ -69,6 +73,7 @@ type {{ $edge }} struct {
 type {{ $conn }} struct {
 	Edges []*{{ $edge }} `json:"edges"`
 	PageInfo PageInfo    `json:"pageInfo"`
+	TotalCount int       `json:"totalCount"`
 }
 
 {{ $query := print $node.QueryName -}}
@@ -98,6 +103,17 @@ func ({{ $receiver }} *{{ $query }}) Paginate(ctx context.Context, after *Cursor
 		}
 	}
 
+	var totalCount int
+	if field := fieldForPath(ctx, "totalCount"); field != nil {
+		count, err := {{ $receiver }}.Clone().Count(ctx)
+		if err != nil {
+			return &{{ $conn }}{
+				Edges: []*{{ $edge }}{},
+			}, err
+		}
+		totalCount = count
+	}
+
 	if after != nil {
 		{{ $receiver }} = {{ $receiver }}.Where({{ $pkg }}.IDGT(after.ID))
 	}
@@ -110,14 +126,12 @@ func ({{ $receiver }} *{{ $query }}) Paginate(ctx context.Context, after *Cursor
 	if last != nil {
 		{{ $receiver }} = {{ $receiver }}.Order(Desc({{ $pkg }}.FieldID)).Limit(*last + 1)
 	}
-
-	{{- if hasTemplate "collection" }}
-		{{ $receiver }} = {{ $receiver }}.collectConnectionFields(ctx)
-	{{- end }}
+	{{ $receiver }} = {{ $receiver }}.collectConnectionFields(ctx)
 
 	nodes, err := {{ $receiver }}.All(ctx)
 	if err != nil || len(nodes) == 0 {
 		return &{{ $conn }}{
+		    TotalCount: totalCount,
 			Edges: []*{{ $edge }}{},
 		}, err
 	}
@@ -127,7 +141,7 @@ func ({{ $receiver }} *{{ $query }}) Paginate(ctx context.Context, after *Cursor
 		}
 	}
 
-	var conn {{ $conn }}
+	conn := {{ $conn }}{ TotalCount: totalCount }
 	if first != nil && len(nodes) > *first {
 		conn.PageInfo.HasNextPage = true
 		nodes = nodes[:len(nodes)-1]
@@ -150,28 +164,25 @@ func ({{ $receiver }} *{{ $query }}) Paginate(ctx context.Context, after *Cursor
 	return &conn, nil
 }
 
-{{ if hasTemplate "collection" -}}
 func ({{ $receiver }} *{{ $query }}) collectConnectionFields(ctx context.Context) *{{ $query }} {
 	if field := fieldForPath(ctx, "edges", "node"); field != nil {
-		{{ $receiver }} = {{ $receiver }}.collectField(graphql.GetRequestContext(ctx), *field)
+		{{ $receiver }} = {{ $receiver }}.collectField(graphql.GetOperationContext(ctx), *field)
 	}
 	return {{ $receiver }}
 }
 {{ end }}
-{{ end }}
 
-{{ if hasTemplate "collection" -}}
 func fieldForPath(ctx context.Context, path ...string) *graphql.CollectedField {
-	resctx := graphql.GetResolverContext(ctx)
-	if resctx == nil {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
 		return nil
 	}
-	reqctx := graphql.GetRequestContext(ctx)
-	field := resctx.Field
+	oc := graphql.GetOperationContext(ctx)
+	field := fc.Field
 
 walk:
 	for _, name := range path {
-		for _, f := range graphql.CollectFields(reqctx, field.Selections, nil) {
+		for _, f := range graphql.CollectFields(oc, field.Selections, nil) {
 			if f.Name == name {
 				field = f
 				continue walk
@@ -181,5 +192,4 @@ walk:
 	}
 	return &field
 }
-{{ end -}}
 {{ end }}

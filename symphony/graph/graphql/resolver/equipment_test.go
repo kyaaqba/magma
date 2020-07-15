@@ -14,22 +14,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentport"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentportdefinition"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentposition"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentpositiondefinition"
-	"github.com/facebookincubator/symphony/graph/ent/property"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
-	"github.com/facebookincubator/symphony/graph/graphql/directive"
 	"github.com/facebookincubator/symphony/graph/graphql/generated"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
-	"github.com/facebookincubator/symphony/pkg/log/logtest"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentport"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentportdefinition"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentposition"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentpositiondefinition"
+	"github.com/facebookincubator/symphony/pkg/ent/property"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
 	"github.com/facebookincubator/symphony/pkg/orc8r"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/99designs/gqlgen/client"
-	"github.com/99designs/gqlgen/handler"
 	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,8 +34,8 @@ import (
 
 func TestAddEquipment(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr := r.Mutation(), r.Query()
 
@@ -77,8 +74,10 @@ func TestAddEquipment(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	fetchedEquipment, err := qr.Equipment(ctx, equipment.ID)
+	fetchedNode, err := qr.Node(ctx, equipment.ID)
 	require.NoError(t, err)
+	fetchedEquipment, ok := fetchedNode.(*ent.Equipment)
+	require.True(t, ok)
 
 	assert.Equal(t, equipment.ID, fetchedEquipment.ID)
 	assert.Equal(t, equipment.Name, fetchedEquipment.Name)
@@ -103,13 +102,7 @@ func TestAddEquipment(t *testing.T) {
 	assert.ElementsMatch(t, []int{1, 2}, fetchedPositionIndices)
 }
 
-func TestAddEquipmentWithProperties(t *testing.T) {
-	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
-
-	mr, er := r.Mutation(), r.Equipment()
-
+func prepareLocation(ctx context.Context, t *testing.T, mr generated.MutationResolver) *ent.Location {
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
 		Name: "location_type_name_1",
 	})
@@ -119,10 +112,20 @@ func TestAddEquipmentWithProperties(t *testing.T) {
 		Type: locationType.ID,
 	})
 	require.NoError(t, err)
+	return location
+}
+
+func TestAddEquipmentWithProperties(t *testing.T) {
+	r := newTestResolver(t)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
+
+	mr, er := r.Mutation(), r.Equipment()
+	location := prepareLocation(ctx, t, mr)
 	equipmentType, err := mr.AddEquipmentType(ctx, models.AddEquipmentTypeInput{
 		Name: "example_type_name",
 		Properties: []*models.PropertyTypeInput{
-			{Name: "bar_prop", Type: models.PropertyKindString},
+			{Name: "bar_prop", Type: propertytype.TypeString},
 		},
 	})
 	require.NoError(t, err)
@@ -145,14 +148,142 @@ func TestAddEquipmentWithProperties(t *testing.T) {
 	require.Len(t, fetchedProperties, 1)
 	typ := fetchedProperties[0].QueryType().OnlyX(ctx)
 	assert.Equal(t, typ.Name, "bar_prop")
-	assert.Equal(t, typ.Type, "string")
-	assert.Equal(t, fetchedProperties[0].StringVal, val)
+	assert.Equal(t, typ.Type, propertytype.TypeString)
+	assert.Equal(t, *fetchedProperties[0].StringVal, val)
+}
+
+func TestAddEditEquipmentWithNillableProperties(t *testing.T) {
+	r := newTestResolver(t)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
+
+	mr, er, pr, ptr := r.Mutation(), r.Equipment(), r.Property(), r.PropertyType()
+	location := prepareLocation(ctx, t, mr)
+	equipmentType, err := mr.AddEquipmentType(ctx, models.AddEquipmentTypeInput{
+		Name: "example_type_name",
+		Properties: []*models.PropertyTypeInput{
+			{Name: "str_prop", Type: propertytype.TypeString},
+			{Name: "int_prop", Type: propertytype.TypeInt},
+			{Name: "float_prop", Type: propertytype.TypeFloat},
+			{Name: "bool_prop", Type: propertytype.TypeBool},
+			{Name: "str_prop_with_default", Type: propertytype.TypeString, StringValue: pointer.ToString("Value")},
+			{Name: "int_prop_with_default", Type: propertytype.TypeInt, IntValue: pointer.ToInt(45)},
+			{Name: "float_prop_with_default", Type: propertytype.TypeFloat, FloatValue: pointer.ToFloat64(45.212)},
+			{Name: "bool_prop_with_default", Type: propertytype.TypeBool, BooleanValue: pointer.ToBool(true)},
+		},
+	})
+	require.NoError(t, err)
+
+	intPropID := equipmentType.QueryPropertyTypes().Where(propertytype.Name("int_prop")).OnlyXID(ctx)
+	intPropWithDefaultID := equipmentType.QueryPropertyTypes().Where(propertytype.Name("int_prop_with_default")).OnlyXID(ctx)
+	boolPropID := equipmentType.QueryPropertyTypes().Where(propertytype.Name("bool_prop")).OnlyXID(ctx)
+	strPropID := equipmentType.QueryPropertyTypes().Where(propertytype.Name("str_prop")).OnlyXID(ctx)
+
+	equipmentType, err = mr.EditEquipmentType(ctx, models.EditEquipmentTypeInput{
+		ID:   equipmentType.ID,
+		Name: "example_type_name",
+		Properties: []*models.PropertyTypeInput{
+			{ID: pointer.ToInt(intPropID), Name: "int_prop", Type: propertytype.TypeInt, IntValue: pointer.ToInt(12)},
+			{ID: pointer.ToInt(intPropWithDefaultID), Name: "int_prop_with_default", Type: propertytype.TypeInt},
+		},
+	})
+	require.NoError(t, err)
+
+	propTypes := equipmentType.QueryPropertyTypes().AllX(ctx)
+	require.Len(t, propTypes, 8)
+	for _, propType := range propTypes {
+		pRawVal, err := ptr.RawValue(ctx, propType)
+		require.NotNil(t, pRawVal)
+		rawVal := *pRawVal
+		require.NoError(t, err)
+		switch propType.Name {
+		case "str_prop":
+			require.Nil(t, propType.StringVal)
+			require.Equal(t, "", rawVal)
+		case "int_prop":
+			require.Equal(t, 12, pointer.GetInt(propType.IntVal))
+			require.Equal(t, "12", rawVal)
+		case "float_prop":
+			require.Nil(t, propType.FloatVal)
+			require.Equal(t, "", rawVal)
+		case "bool_prop":
+			require.Nil(t, propType.BoolVal)
+			require.Equal(t, "", rawVal)
+		case "str_prop_with_default":
+			require.Equal(t, "Value", pointer.GetString(propType.StringVal))
+			require.Equal(t, "Value", rawVal)
+		case "int_prop_with_default":
+			require.Nil(t, propType.IntVal)
+			require.Equal(t, "", rawVal)
+		case "float_prop_with_default":
+			require.Equal(t, 45.212, pointer.GetFloat64(propType.FloatVal))
+			require.Equal(t, "45.212", rawVal)
+		case "bool_prop_with_default":
+			require.Equal(t, true, pointer.GetBool(propType.BoolVal))
+			require.Equal(t, "true", rawVal)
+		default:
+			t.Fatalf("prop type %q not found", propType.Name)
+		}
+	}
+
+	equipment, err := mr.AddEquipment(ctx, models.AddEquipmentInput{
+		Name:     "equipment_name_1",
+		Type:     equipmentType.ID,
+		Location: &location.ID,
+		Properties: []*models.PropertyInput{
+			{PropertyTypeID: intPropID, IntValue: pointer.ToInt(33)},
+			{PropertyTypeID: intPropWithDefaultID},
+			{PropertyTypeID: boolPropID},
+			{PropertyTypeID: strPropID, StringValue: pointer.ToString("NewValue")},
+		},
+	})
+	require.NoError(t, err)
+
+	intProp := equipment.QueryProperties().Where(property.HasTypeWith(propertytype.ID(intPropID))).OnlyX(ctx)
+	intPropWithDefault := equipment.QueryProperties().Where(property.HasTypeWith(propertytype.ID(intPropWithDefaultID))).OnlyX(ctx)
+
+	equipment, err = mr.EditEquipment(ctx, models.EditEquipmentInput{
+		ID:   equipment.ID,
+		Name: "equipment_name_1",
+		Properties: []*models.PropertyInput{
+			{ID: pointer.ToInt(intProp.ID), PropertyTypeID: intPropID},
+			{ID: pointer.ToInt(intPropWithDefault.ID), PropertyTypeID: intPropWithDefaultID, IntValue: pointer.ToInt(55)},
+		},
+	})
+	require.NoError(t, err)
+
+	fetchedProperties, err := er.Properties(ctx, equipment)
+	require.NoError(t, err)
+	require.Len(t, fetchedProperties, 4)
+	for _, prop := range fetchedProperties {
+		pRawVal, err := pr.RawValue(ctx, prop)
+		require.NoError(t, err)
+		require.NotNil(t, pRawVal)
+		rawVal := *pRawVal
+		propTypeID := prop.QueryType().OnlyXID(ctx)
+		switch propTypeID {
+		case intPropID:
+			require.Nil(t, prop.IntVal)
+			require.Equal(t, "", rawVal)
+		case intPropWithDefaultID:
+			require.Equal(t, 55, pointer.GetInt(prop.IntVal))
+			require.Equal(t, "55", rawVal)
+		case boolPropID:
+			require.Nil(t, prop.BoolVal)
+			require.Equal(t, "", rawVal)
+		case strPropID:
+			require.Equal(t, "NewValue", pointer.GetString(prop.StringVal))
+			require.Equal(t, "NewValue", rawVal)
+		default:
+			t.Fatalf("prop type %q not found", propTypeID)
+		}
+	}
 }
 
 func TestAddAndDeleteEquipmentHyperlink(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, er := r.Mutation(), r.Equipment()
 
 	equipmentType, err := mr.AddEquipmentType(ctx, models.AddEquipmentTypeInput{
@@ -219,14 +350,14 @@ func TestOrc8rStatusEquipment(t *testing.T) {
 	require.NoError(t, err)
 
 	orc8rClient := srv.Client()
-	orc8rClient.Transport = orc8r.Transport{
+	orc8rClient.Transport = &orc8r.Transport{
 		Base: orc8rClient.Transport,
 		Host: uri.Host,
 	}
 	r := newTestResolver(t, WithOrc8rClient(orc8rClient))
-	defer r.drv.Close()
+	defer r.Close()
 
-	ctx := viewertest.NewContext(r.client)
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr := r.Mutation()
 
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -266,21 +397,7 @@ func TestOrc8rStatusEquipment(t *testing.T) {
 	})
 	require.Error(t, err)
 
-	c := client.New(handler.GraphQL(
-		generated.NewExecutableSchema(
-			generated.Config{
-				Resolvers:  r,
-				Directives: directive.New(logtest.NewTestLogger(t)),
-			},
-		),
-		handler.RequestMiddleware(
-			func(ctx context.Context, next func(context.Context) []byte) []byte {
-				ctx = ent.NewContext(ctx, r.client)
-				return next(ctx)
-			},
-		),
-	))
-
+	c := r.GraphClient()
 	const query = `query($id: ID!) {
 		equipment: node(id: $id) {
 			... on Equipment {
@@ -315,8 +432,8 @@ func TestOrc8rStatusEquipment(t *testing.T) {
 
 func TestAddEquipmentWithoutLocation(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr := r.Mutation()
 	equipmentType, err := mr.AddEquipmentType(ctx, models.AddEquipmentTypeInput{
@@ -333,8 +450,8 @@ func TestAddEquipmentWithoutLocation(t *testing.T) {
 
 func TestRemoveEquipmentWithChildren(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr := r.Mutation(), r.Query()
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -384,23 +501,23 @@ func TestRemoveEquipmentWithChildren(t *testing.T) {
 
 	require.Zero(t, childEquipment.QueryPositions().CountX(ctx), "should delete also the positions")
 
-	eq, err := qr.Equipment(ctx, equipment.ID)
+	fetchedNode, err := qr.Node(ctx, equipment.ID)
 	require.NoError(t, err)
-	require.Nil(t, eq, "should return nil in case of not found")
+	require.Nil(t, fetchedNode, "should return nil in case of not found")
 
-	fetchedChildEquipment, err := qr.Equipment(ctx, childEquipment.ID)
+	fetchedChildNode, err := qr.Node(ctx, childEquipment.ID)
 	require.NoError(t, err)
-	require.Nil(t, fetchedChildEquipment, "should delete the child as well")
+	require.Nil(t, fetchedChildNode, "should delete the child as well")
 
-	fetchedGrandChildEquipment, err := qr.Equipment(ctx, grandChildEquipment.ID)
+	fetchedGrandChildNode, err := qr.Node(ctx, grandChildEquipment.ID)
 	require.NoError(t, err)
-	require.Nil(t, fetchedGrandChildEquipment, "should delete all equipment recursively")
+	require.Nil(t, fetchedGrandChildNode, "should delete all equipment recursively")
 }
 
 func TestRemoveEquipment(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr := r.Mutation(), r.Query()
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -440,8 +557,8 @@ func TestRemoveEquipment(t *testing.T) {
 
 func TestAttachEquipmentToPosition(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -490,7 +607,10 @@ func TestAttachEquipmentToPosition(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	fetchedParentEquipment, _ := qr.Equipment(ctx, parentEquipment.ID)
+	fetchedParentNode, err := qr.Node(ctx, parentEquipment.ID)
+	require.NoError(t, err)
+	fetchedParentEquipment, ok := fetchedParentNode.(*ent.Equipment)
+	require.True(t, ok)
 	assert.Equal(t, fetchedParentEquipment.QueryPositions().CountX(ctx), 3)
 
 	fetchedPosition := parentEquipment.QueryPositions().Where(equipmentposition.HasDefinitionWith(equipmentpositiondefinition.Name("Position 3"))).OnlyX(ctx)
@@ -510,8 +630,8 @@ func TestAttachEquipmentToPosition(t *testing.T) {
 
 func TestMoveEquipmentToPosition(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -554,7 +674,10 @@ func TestMoveEquipmentToPosition(t *testing.T) {
 	fetchedPosition, err := mr.MoveEquipmentToPosition(ctx, &parentEquipment.ID, &posDefID, childEquipment.ID)
 	require.NoError(t, err)
 
-	fetchedChildEquipment, _ := qr.Equipment(ctx, childEquipment.ID)
+	fetchedChildNode, err := qr.Node(ctx, childEquipment.ID)
+	require.NoError(t, err)
+	fetchedChildEquipment, ok := fetchedChildNode.(*ent.Equipment)
+	require.True(t, ok)
 
 	require.NotNil(t, fetchedPosition)
 	cid := childEquipment.QueryPositions().FirstXID(ctx)
@@ -564,13 +687,13 @@ func TestMoveEquipmentToPosition(t *testing.T) {
 
 	_, err = mr.MoveEquipmentToPosition(ctx, &childEquipment.ID, &posDefID, parentEquipment.ID)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "equipment position cycle")
+	require.Regexp(t, `equipment position \d+ cycle, parent \d+`, err.Error())
 }
 
 func TestDetachEquipmentFromPosition(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -612,8 +735,10 @@ func TestDetachEquipmentFromPosition(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	fetchedParentEquipment, err := qr.Equipment(ctx, parentEquipment.ID)
+	fetchedParentNode, err := qr.Node(ctx, parentEquipment.ID)
 	require.NoError(t, err)
+	fetchedParentEquipment, ok := fetchedParentNode.(*ent.Equipment)
+	require.True(t, ok)
 	fetchedPosition := fetchedParentEquipment.QueryPositions().FirstX(ctx)
 
 	require.Equal(t, childEquipment.QueryParentPosition().FirstXID(ctx), fetchedPosition.ID)
@@ -625,17 +750,19 @@ func TestDetachEquipmentFromPosition(t *testing.T) {
 	require.Zero(t, updatedPosition.QueryAttachment().CountX(ctx))
 
 	// Check the updated parent equipment position
-	updatedParentEquipment, err := qr.Equipment(ctx, parentEquipment.ID)
+	updatedParentNode, err := qr.Node(ctx, parentEquipment.ID)
 	require.NoError(t, err)
+	updatedParentEquipment, ok := updatedParentNode.(*ent.Equipment)
+	require.True(t, ok)
 	refetchedPosition := updatedParentEquipment.QueryPositions().FirstX(ctx)
 	require.Nil(t, refetchedPosition.QueryAttachment().FirstX(ctx))
 
 	// TODO: verify what's the exppected behavior
 	//
 	// Verify child equipment is not attached to any position
-	refetchedChildEquipment, err := qr.Equipment(ctx, childEquipment.ID)
+	refetchedChildNode, err := qr.Node(ctx, childEquipment.ID)
 	require.NoError(t, err)
-	require.Nil(t, refetchedChildEquipment)
+	require.Nil(t, refetchedChildNode)
 
 	// Detach nil equipment from position
 	_, err = mr.RemoveEquipmentFromPosition(ctx, fetchedPosition.ID, nil)
@@ -644,8 +771,8 @@ func TestDetachEquipmentFromPosition(t *testing.T) {
 
 func TestDetachEquipmentFromPositionWithWorkOrder(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr, wor := r.Mutation(), r.Query(), r.WorkOrder()
 
 	workOrder := createWorkOrder(ctx, t, *r, "work_order_name_101")
@@ -680,8 +807,10 @@ func TestDetachEquipmentFromPositionWithWorkOrder(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	fetchedParentEquipment, err := qr.Equipment(ctx, parentEquipment.ID)
+	fetchedParentNode, err := qr.Node(ctx, parentEquipment.ID)
 	assert.NoError(t, err)
+	fetchedParentEquipment, ok := fetchedParentNode.(*ent.Equipment)
+	assert.True(t, ok)
 	fetchedPosition := fetchedParentEquipment.QueryPositions().OnlyX(ctx)
 
 	assert.Equal(t, childEquipment.QueryParentPosition().OnlyXID(ctx), fetchedPosition.ID)
@@ -711,8 +840,8 @@ func TestDetachEquipmentFromPositionWithWorkOrder(t *testing.T) {
 
 func TestAddDetachEquipmentFromPositionSameWorkOrder(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr, wor := r.Mutation(), r.Query(), r.WorkOrder()
 
 	workOrder := createWorkOrder(ctx, t, *r, "work_order_name_101")
@@ -746,8 +875,10 @@ func TestAddDetachEquipmentFromPositionSameWorkOrder(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	fetchedParentEquipment, err := qr.Equipment(ctx, parentEquipment.ID)
+	fetchedParentNode, err := qr.Node(ctx, parentEquipment.ID)
 	assert.NoError(t, err)
+	fetchedParentEquipment, ok := fetchedParentNode.(*ent.Equipment)
+	assert.True(t, ok)
 	fetchedPosition := fetchedParentEquipment.QueryPositions().FirstX(ctx)
 
 	assert.Equal(t, childEquipment.QueryParentPosition().OnlyXID(ctx), fetchedPosition.ID)
@@ -771,15 +902,15 @@ func TestAddDetachEquipmentFromPositionSameWorkOrder(t *testing.T) {
 	assert.Len(t, installedEquipment, 0)
 
 	// Verify child equipment is not attached to any position
-	refetchedChildEquipment, err := qr.Equipment(ctx, childEquipment.ID)
-	assert.Nil(t, refetchedChildEquipment)
+	refetchedChildNode, err := qr.Node(ctx, childEquipment.ID)
+	assert.Nil(t, refetchedChildNode)
 	assert.NoError(t, err)
 }
 
 func TestEquipmentPortsAreCreatedFromType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr := r.Mutation(), r.Query()
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -815,7 +946,11 @@ func TestEquipmentPortsAreCreatedFromType(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	fetchedEquipment, _ := qr.Equipment(ctx, equipment.ID)
+	fetchedNode, err := qr.Node(ctx, equipment.ID)
+	require.NoError(t, err)
+	fetchedEquipment, ok := fetchedNode.(*ent.Equipment)
+	require.True(t, ok)
+
 	fetchedPort := fetchedEquipment.QueryPorts().OnlyX(ctx)
 	def := fetchedPort.QueryDefinition().OnlyX(ctx)
 	assert.Equal(t, def.Name, portInput.Name)
@@ -826,8 +961,8 @@ func TestEquipmentPortsAreCreatedFromType(t *testing.T) {
 
 func TestEquipmentParentLocation(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, er := r.Mutation(), r.Equipment()
 
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -872,8 +1007,8 @@ func TestEquipmentParentLocation(t *testing.T) {
 
 func TestEquipmentParentEquipment(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, er := r.Mutation(), r.Equipment()
 
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -935,8 +1070,8 @@ func TestEquipmentParentEquipment(t *testing.T) {
 
 func TestEditEquipment(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr := r.Mutation(), r.Query()
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -953,8 +1088,8 @@ func TestEditEquipment(t *testing.T) {
 	equipmentType, err := mr.AddEquipmentType(ctx, models.AddEquipmentTypeInput{
 		Name: "equipment_type_name_1",
 		Properties: []*models.PropertyTypeInput{
-			{Name: "bar_prop", Type: models.PropertyKindString},
-			{Name: "foo_prop", Type: models.PropertyKindString, StringValue: &devVal},
+			{Name: "bar_prop", Type: propertytype.TypeString},
+			{Name: "foo_prop", Type: propertytype.TypeString, StringValue: &devVal},
 		},
 	})
 	require.NoError(t, err)
@@ -994,14 +1129,17 @@ func TestEditEquipment(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	fetchedEquipment, _ := qr.Equipment(ctx, equipment.ID)
+	fetchedNode, err := qr.Node(ctx, equipment.ID)
+	require.NoError(t, err)
+	fetchedEquipment, ok := fetchedNode.(*ent.Equipment)
+	require.True(t, ok)
 	propTypeA := fetchedEquipment.QueryProperties().Where(property.HasTypeWith(propertytype.Name("bar_prop"))).OnlyX(ctx)
 	propTypeB := fetchedEquipment.QueryProperties().Where(property.HasTypeWith(propertytype.Name("foo_prop"))).OnlyX(ctx)
 
 	require.Equal(t, fetchedEquipment.Name, newEquipment.Name)
 	require.Equal(t, fetchedEquipment.QueryLocation().OnlyXID(ctx), newEquipment.QueryLocation().OnlyXID(ctx))
-	require.Equal(t, val, propTypeA.StringVal)
-	require.Equal(t, valB, propTypeB.StringVal)
+	require.Equal(t, val, pointer.GetString(propTypeA.StringVal))
+	require.Equal(t, valB, pointer.GetString(propTypeB.StringVal))
 
 	equipmentB, err := mr.AddEquipment(ctx, models.AddEquipmentInput{
 		Name:       "equipment_name_1",
@@ -1019,8 +1157,8 @@ func TestEditEquipment(t *testing.T) {
 
 func TestEditEquipmentPort(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr := r.Mutation()
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -1036,7 +1174,7 @@ func TestEditEquipmentPort(t *testing.T) {
 	strValue := "Foo"
 	strPropType := models.PropertyTypeInput{
 		Name:        "str_prop",
-		Type:        models.PropertyKindString,
+		Type:        propertytype.TypeString,
 		StringValue: &strValue,
 	}
 	propTypeInput := []*models.PropertyTypeInput{&strPropType}
@@ -1082,13 +1220,13 @@ func TestEditEquipmentPort(t *testing.T) {
 	})
 	require.NoError(t, err)
 	editedProperty := editedEquipmentPort.QueryProperties().FirstX(ctx)
-	require.Equal(t, val, editedProperty.StringVal)
+	require.Equal(t, val, pointer.GetString(editedProperty.StringVal))
 }
 
 func TestAddLinkToNewlyAddedPortDefinition(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr, pr := r.Mutation(), r.Query(), r.EquipmentPort()
 	locationType, err := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -1104,7 +1242,7 @@ func TestAddLinkToNewlyAddedPortDefinition(t *testing.T) {
 	strValue := "Foo"
 	strPropType := models.PropertyTypeInput{
 		Name:        "str_prop",
-		Type:        models.PropertyKindString,
+		Type:        propertytype.TypeString,
 		StringValue: &strValue,
 	}
 	propTypeInput := []*models.PropertyTypeInput{&strPropType}
@@ -1182,8 +1320,14 @@ func TestAddLinkToNewlyAddedPortDefinition(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	fetchedEquipmentA, _ := qr.Equipment(ctx, equipmentA.ID)
-	fetchedEquipmentZ, _ := qr.Equipment(ctx, equipmentZ.ID)
+	fetchedNodeA, err := qr.Node(ctx, equipmentA.ID)
+	require.NoError(t, err)
+	fetchedEquipmentA, ok := fetchedNodeA.(*ent.Equipment)
+	require.True(t, ok)
+	fetchedNodeZ, err := qr.Node(ctx, equipmentZ.ID)
+	require.NoError(t, err)
+	fetchedEquipmentZ, ok := fetchedNodeZ.(*ent.Equipment)
+	require.True(t, ok)
 	fetchedPortA := fetchedEquipmentA.QueryPorts().Where(equipmentport.HasDefinitionWith(equipmentportdefinition.Name("Port - new"))).OnlyX(ctx)
 	fetchedPortZ := fetchedEquipmentZ.QueryPorts().Where(equipmentport.HasDefinitionWith(equipmentportdefinition.Name("Port 1 - edited"))).OnlyX(ctx)
 

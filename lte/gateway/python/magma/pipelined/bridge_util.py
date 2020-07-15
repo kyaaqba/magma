@@ -69,6 +69,17 @@ class BridgeTools:
             )
         return int(port_num)
 
+    @staticmethod
+    def create_internal_iface(bridge_name, iface_name, ip):
+        """
+        Creates a simple bridge, sets up an interface.
+        Used when running unit tests
+        """
+        subprocess.Popen(["ovs-vsctl", "add-port", bridge_name, iface_name,
+                          "--", "set", "Interface", iface_name,
+                          "type=internal"]).wait()
+        if ip is not None:
+            subprocess.Popen(["ifconfig", iface_name, ip]).wait()
 
     @staticmethod
     def create_bridge(bridge_name, iface_name):
@@ -76,6 +87,8 @@ class BridgeTools:
         Creates a simple bridge, sets up an interface.
         Used when running unit tests
         """
+        subprocess.Popen(["ovs-vsctl", "--if-exists", "del-br",
+                          bridge_name]).wait()
         subprocess.Popen(["ovs-vsctl", "add-br", bridge_name]).wait()
         subprocess.Popen(["ovs-vsctl", "set", "bridge", bridge_name,
                           "protocols=OpenFlow10,OpenFlow13,OpenFlow14",
@@ -133,8 +146,13 @@ class BridgeTools:
             set_cmd = ["ovs-ofctl", "dump-flows", bridge_name, "--no-stats"]
         if table_num:
             set_cmd.append("table=%s" % table_num)
+
         flows = \
-            subprocess.check_output(set_cmd).decode('utf-8').split('\n')[1:-1]
+            subprocess.check_output(set_cmd).decode('utf-8').split('\n')
+        flows = list(filter(lambda x: (x is not None and
+                                       x != '' and
+                                       x.find("NXST_FLOW") == -1),
+                            flows))
         return flows
 
     @staticmethod
@@ -225,7 +243,7 @@ class BridgeTools:
 
             for flow in flows:
                 table_num = int(re.search(cls.TABLE_NUM_REGEX, flow).group(1))
-                if table_num in selected_tables:
+                if table_num in selected_tables or not selected_tables:
                     yield flow
 
         return [parse_flow(flow) for flow in

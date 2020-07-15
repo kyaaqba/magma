@@ -11,26 +11,35 @@
 import type {SectionsConfigs} from '../layout/Section';
 
 import AlarmIcon from '@material-ui/icons/Alarm';
-import Alarms from '../insights/Alarms/Alarms';
+import Alarms from '@fbcnms/ui/insights/Alarms/Alarms';
 import CellWifiIcon from '@material-ui/icons/CellWifi';
 import Enodebs from './Enodebs';
+import EquipmentDashboard from '../../views/equipment/EquipmentDashboard';
 import Gateways from '../Gateways';
-import Insights from '../insights/Insights';
+import Insights from '@fbcnms/ui/insights/Insights';
 import ListIcon from '@material-ui/icons/List';
-import Logs from '../insights/Logs/Logs';
+import Logs from '@fbcnms/ui/insights/Logs/Logs';
 import LteConfigure from '../LteConfigure';
+import LteDashboard from './LteDashboard';
 import LteMetrics from './LteMetrics';
+import NetworkCheckIcon from '@material-ui/icons/NetworkCheck';
+import NetworkDashboard from '../../views/network/NetworkDashboard';
 import PeopleIcon from '@material-ui/icons/People';
 import PublicIcon from '@material-ui/icons/Public';
 import React from 'react';
+import RouterIcon from '@material-ui/icons/Router';
 import SettingsCellIcon from '@material-ui/icons/SettingsCell';
 import SettingsInputAntennaIcon from '@material-ui/icons/SettingsInputAntenna';
 import ShowChartIcon from '@material-ui/icons/ShowChart';
+import SubscriberDashboard from '../../views/subscriber/SubscriberOverview';
 import Subscribers from '../Subscribers';
+import TrafficDashboard from '../../views/traffic/TrafficOverview';
+import WifiTetheringIcon from '@material-ui/icons/WifiTethering';
 
 export function getLteSections(
   alertsEnabled: boolean,
   logsEnabled: boolean,
+  dashboardV2Enabled: boolean,
 ): SectionsConfigs {
   const sections = [
     'map', // landing path
@@ -87,6 +96,38 @@ export function getLteSections(
       label: 'Alerts',
       icon: <AlarmIcon />,
       component: Alarms,
+    });
+  }
+  if (dashboardV2Enabled) {
+    sections[1].splice(2, 0, {
+      path: 'dashboard',
+      label: 'Dashboard',
+      icon: <ShowChartIcon />,
+      component: LteDashboard,
+    });
+    sections[1].splice(3, 0, {
+      path: 'equipment',
+      label: 'EquipmentV2',
+      icon: <RouterIcon />,
+      component: EquipmentDashboard,
+    });
+    sections[1].splice(4, 0, {
+      path: 'network',
+      label: 'NetworkV2',
+      icon: <NetworkCheckIcon />,
+      component: NetworkDashboard,
+    });
+    sections[1].splice(5, 0, {
+      path: 'subscriberv2',
+      label: 'SubscriberV2',
+      icon: <PeopleIcon />,
+      component: SubscriberDashboard,
+    });
+    sections[1].splice(5, 0, {
+      path: 'traffic',
+      label: 'Traffic',
+      icon: <WifiTetheringIcon />,
+      component: TrafficDashboard,
     });
   }
   return sections;

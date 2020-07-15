@@ -19,7 +19,7 @@ import type {WithStyles} from '@material-ui/core';
 
 import Button from '@fbcnms/ui/components/design-system/Button';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
-import FormAction from '@fbcnms/ui/components/design-system/Form/FormAction';
+import FormActionWithPermissions from '../../common/FormActionWithPermissions';
 import React from 'react';
 import RemoveProjectMutation from '../../mutations/RemoveProjectMutation';
 import classNames from 'classnames';
@@ -46,9 +46,14 @@ type Props = {
 
 class ProjectMoreActionsButton extends React.Component<Props> {
   render() {
-    const {className, classes} = this.props;
+    const {project, className, classes} = this.props;
     return (
-      <FormAction>
+      <FormActionWithPermissions
+        permissions={{
+          entity: 'project',
+          action: 'delete',
+          projectTypeId: project.type.id,
+        }}>
         <Button
           className={classNames(className, classes.deleteButton)}
           variant="text"
@@ -56,7 +61,7 @@ class ProjectMoreActionsButton extends React.Component<Props> {
           onClick={this.removeProject}>
           <DeleteOutlineIcon />
         </Button>
-      </FormAction>
+      </FormActionWithPermissions>
     );
   }
 
@@ -114,6 +119,9 @@ export default withStyles(styles)(
             id
             name
             numberOfWorkOrders
+            type {
+              id
+            }
           }
         `,
       }),

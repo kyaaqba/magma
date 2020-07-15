@@ -48,11 +48,17 @@ const styles = {
 class EquipmentTypeItem extends React.Component<Props> {
   render() {
     const {classes, equipmentType, onEdit} = this.props;
+
+    if (equipmentType == null) {
+      return null;
+    }
+
     return (
       <div>
         <ExpansionPanel>
           <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
             <ConfigureExpansionPanel
+              entityName="equipmentType"
               icon={<RouterIcon />}
               name={equipmentType.name}
               instanceCount={equipmentType.numberOfEquipment}

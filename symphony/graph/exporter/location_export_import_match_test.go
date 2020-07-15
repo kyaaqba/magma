@@ -15,11 +15,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/event"
+	"github.com/AlekSi/pointer"
 	"github.com/facebookincubator/symphony/graph/importer"
-	"github.com/facebookincubator/symphony/graph/viewer"
+	"github.com/facebookincubator/symphony/pkg/ent"
 	"github.com/facebookincubator/symphony/pkg/log/logtest"
+	"github.com/facebookincubator/symphony/pkg/pubsub"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,9 +74,9 @@ func writeModifiedLocationsCSV(t *testing.T, r *csv.Reader, method method, withV
 		lines[3][5] = "should"
 		lines[3][6] = "fail"
 	}
-	for _, l := range lines {
-		stringLine := strings.Join(l, ",")
-		fileWriter.Write([]byte(stringLine + "\n"))
+	for _, line := range lines {
+		stringLine := strings.Join(line, ",")
+		_, _ = io.WriteString(fileWriter, stringLine+"\n")
 	}
 	ct := bw.FormDataContentType()
 	require.NoError(t, bw.Close())
@@ -86,21 +87,21 @@ func importLocationsFile(t *testing.T, client *ent.Client, r io.Reader, method m
 	readr := csv.NewReader(r)
 	buf, contentType := writeModifiedLocationsCSV(t, readr, method, withVerify, skipLines)
 
+	logger := logtest.NewTestLogger(t)
 	h, _ := importer.NewHandler(
 		importer.Config{
-			Logger:     logtest.NewTestLogger(t),
-			Emitter:    event.NewNopEmitter(),
-			Subscriber: event.NewNopSubscriber(),
+			Logger:     logger,
+			Subscriber: pubsub.NewNopSubscriber(),
 		},
 	)
-	th := viewer.TenancyHandler(h, viewer.NewFixedTenancy(client))
+	th := viewertest.TestHandler(t, h, client)
 	server := httptest.NewServer(th)
 	defer server.Close()
 
 	req, err := http.NewRequest(http.MethodPost, server.URL+"/export_locations", buf)
 	require.Nil(t, err)
 
-	req.Header.Set(tenantHeader, "fb-test")
+	viewertest.SetDefaultViewerHeaders(req)
 	req.Header.Set("Content-Type", contentType)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -143,11 +144,12 @@ func TestExportAndEditLocations(t *testing.T) {
 						for _, prop := range props {
 							switch prop.QueryType().OnlyX(ctx).Name {
 							case propNameDate:
-								require.Equal(t, "1988-01-01", prop.StringVal)
+								require.Equal(t, "1988-01-01", pointer.GetString(prop.StringVal))
 							case propNameBool:
-								require.Equal(t, false, prop.BoolVal)
+								require.NotNil(t, prop.BoolVal)
+								require.Equal(t, false, *prop.BoolVal)
 							case propNameStr:
-								require.Equal(t, "new-str", prop.StringVal)
+								require.Equal(t, "new-str", pointer.GetString(prop.StringVal))
 							}
 						}
 					}
@@ -191,11 +193,11 @@ func TestExportAndAddLocations(t *testing.T) {
 					for _, prop := range props {
 						switch prop.QueryType().OnlyX(ctx).Name {
 						case propNameDate:
-							require.Equal(t, "1988-03-29", prop.StringVal)
+							require.Equal(t, "1988-03-29", pointer.GetString(prop.StringVal))
 						case propNameBool:
-							require.Equal(t, true, prop.BoolVal)
+							require.Equal(t, true, pointer.GetBool(prop.BoolVal))
 						case propNameStr:
-							require.Equal(t, "override", prop.StringVal)
+							require.Equal(t, "override", pointer.GetString(prop.StringVal))
 						}
 					}
 				}

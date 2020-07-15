@@ -8,6 +8,7 @@
  * @format
  */
 
+import type {ExpressResponse} from 'express';
 import type {FBCNMSRequest} from '@fbcnms/auth/access';
 
 import asyncHandler from '@fbcnms/util/asyncHandler';
@@ -16,19 +17,16 @@ import {Organization, jsonArrayContains} from '@fbcnms/sequelize-models';
 import {masterOrgMiddleware} from '@fbcnms/platform-server/master/middleware';
 import {triggerActionsAlert} from '../graphgrpc/magmaalert';
 
-const router = express.Router();
+const router: express.Router<FBCNMSRequest, ExpressResponse> = express.Router();
 
 router.post(
   '/magma',
   masterOrgMiddleware,
-  asyncHandler(async (req: FBCNMSRequest, res) => {
+  asyncHandler(async (req: FBCNMSRequest, res: ExpressResponse) => {
     const {status, alerts} = req.body;
 
     const error = (message: string) =>
-      res
-        .status(200)
-        .send({success: false, message})
-        .end();
+      res.status(200).send({success: false, message}).end();
 
     if (status !== 'firing') {
       error('"firing" webhooks are only supported');
@@ -58,10 +56,7 @@ router.post(
       }),
     );
 
-    res
-      .status(200)
-      .send({success: true, message: 'ok'})
-      .end();
+    res.status(200).send({success: true, message: 'ok'}).end();
   }),
 );
 

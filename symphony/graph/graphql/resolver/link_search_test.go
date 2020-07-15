@@ -8,12 +8,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/workorder"
+
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
 
 	"github.com/AlekSi/pointer"
 
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/stretchr/testify/require"
 )
@@ -42,14 +45,19 @@ func prepareLinkData(ctx context.Context, r *TestResolver, props []*models.Prope
 	wot, _ := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "WO-type1"})
 	wo1, _ := mr.AddWorkOrder(ctx, models.AddWorkOrderInput{Name: "wo1", WorkOrderTypeID: wot.ID})
 	wo2, _ := mr.AddWorkOrder(ctx, models.AddWorkOrderInput{Name: "wo2", WorkOrderTypeID: wot.ID})
-	wo2, _ = mr.EditWorkOrder(ctx, models.EditWorkOrderInput{ID: wo2.ID, Name: "wo2", Status: models.WorkOrderStatusDone})
+	wo2, _ = mr.EditWorkOrder(ctx, models.EditWorkOrderInput{
+		ID:     wo2.ID,
+		Name:   "wo2",
+		Status: workOrderStatusPtr(workorder.StatusDONE),
+	})
 	locType1, _ := mr.AddLocationType(ctx, models.AddLocationTypeInput{
 		Name: "loc_type1",
 	})
 
 	loc1, _ := mr.AddLocation(ctx, models.AddLocationInput{
-		Name: "loc_inst1",
-		Type: locType1.ID,
+		Name:       "loc_inst1",
+		Type:       locType1.ID,
+		ExternalID: pointer.ToString("111"),
 	})
 
 	ptyp, _ := mr.AddEquipmentPortType(ctx, models.AddEquipmentPortTypeInput{
@@ -62,7 +70,7 @@ func prepareLinkData(ctx context.Context, r *TestResolver, props []*models.Prope
 			},
 			{
 				Name: "connected_date",
-				Type: models.PropertyKindDate,
+				Type: propertytype.TypeDate,
 			},
 		},
 	})
@@ -272,8 +280,8 @@ func prepareLinkDataByHirerchy(ctx context.Context, r *TestResolver) linkSearchH
 
 func TestSearchLinksFutureState(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := prepareLinkData(ctx, r, nil)
 	/*
@@ -311,8 +319,8 @@ func TestSearchLinksFutureState(t *testing.T) {
 
 func TestSearchLinksByLocation(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := prepareLinkData(ctx, r, nil)
 	/*
@@ -347,6 +355,16 @@ func TestSearchLinksByLocation(t *testing.T) {
 	res1, err := qr.LinkSearch(ctx, []*models.LinkFilterInput{&f1}, &limit)
 	require.NoError(t, err)
 	require.Len(t, res1.Links, 2)
+
+	f1External := models.LinkFilterInput{
+		FilterType:  models.LinkFilterTypeLocationInstExternalID,
+		Operator:    models.FilterOperatorContains,
+		StringValue: pointer.ToString("111"),
+	}
+	res1, err = qr.LinkSearch(ctx, []*models.LinkFilterInput{&f1External}, &limit)
+	require.NoError(t, err)
+	require.Len(t, res1.Links, 2)
+
 	f2 := models.LinkFilterInput{
 		FilterType: models.LinkFilterTypeLocationInst,
 		Operator:   models.FilterOperatorIsOneOf,
@@ -360,8 +378,8 @@ func TestSearchLinksByLocation(t *testing.T) {
 
 func TestSearchLinksByEquipmentTyp(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := prepareLinkData(ctx, r, nil)
 	/*
@@ -379,9 +397,15 @@ func TestSearchLinksByEquipmentTyp(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, all.Links, 2)
 	maxDepth := 2
-	e1, _ := qr.Equipment(ctx, data.e1)
+	node1, err := qr.Node(ctx, data.e1)
+	require.NoError(t, err)
+	e1, ok := node1.(*ent.Equipment)
+	require.True(t, ok)
 	typ1 := e1.QueryType().OnlyX(ctx)
-	e3, _ := qr.Equipment(ctx, data.e3)
+	node3, err := qr.Node(ctx, data.e3)
+	require.NoError(t, err)
+	e3, ok := node3.(*ent.Equipment)
+	require.True(t, ok)
 	typ2 := e3.QueryType().OnlyX(ctx)
 
 	emptyTyp, _ := mr.AddEquipmentType(ctx, models.AddEquipmentTypeInput{Name: "empty_typ"})
@@ -418,8 +442,8 @@ func TestSearchLinksByEquipmentTyp(t *testing.T) {
 
 func TestSearchLinksByEquipment(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := prepareLinkData(ctx, r, nil)
 	/*
@@ -461,8 +485,8 @@ func TestSearchLinksByEquipment(t *testing.T) {
 
 func TestSearchLinksByEquipmentHirerchy(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := prepareLinkDataByHirerchy(ctx, r)
 	/*
@@ -509,8 +533,8 @@ func TestSearchLinksByEquipmentHirerchy(t *testing.T) {
 
 func TestSearchLinksByService(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := prepareLinkData(ctx, r, nil)
 	/*
@@ -593,13 +617,12 @@ func TestSearchLinksByService(t *testing.T) {
 	res4, err := qr.LinkSearch(ctx, []*models.LinkFilterInput{&f4}, &limit)
 	require.NoError(t, err)
 	require.Len(t, res4.Links, 0)
-
 }
 
 func TestSearchLinksByProperty(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	prepareLinkData(ctx, r, nil)
 	/*
@@ -619,7 +642,7 @@ func TestSearchLinksByProperty(t *testing.T) {
 		Operator:   models.FilterOperatorIs,
 		PropertyValue: &models.PropertyTypeInput{
 			Name:        "propStr",
-			Type:        models.PropertyKindString,
+			Type:        propertytype.TypeString,
 			StringValue: pointer.ToString("newVal"),
 		},
 	}
@@ -634,7 +657,7 @@ func TestSearchLinksByProperty(t *testing.T) {
 		Operator:   models.FilterOperatorDateLessThan,
 		PropertyValue: &models.PropertyTypeInput{
 			Name:        "connected_date",
-			Type:        models.PropertyKindDate,
+			Type:        propertytype.TypeDate,
 			StringValue: pointer.ToString("2019-01-01"),
 		},
 	}
@@ -647,8 +670,8 @@ func TestSearchLinksByProperty(t *testing.T) {
 
 func TestSearchLinksByServiceName(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	_ = prepareLinkData(ctx, r, nil)
 	/*

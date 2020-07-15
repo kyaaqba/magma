@@ -48,7 +48,7 @@ MmeNasStateConverter::~MmeNasStateConverter() = default;
 
 void MmeNasStateConverter::hashtable_ts_to_proto(
   hash_table_ts_t* htbl,
-  google::protobuf::Map<unsigned long, UeContext>* proto_map)
+  google::protobuf::Map<unsigned long, oai::UeContext>* proto_map)
 {
   hashtable_key_array_t* keys = hashtable_ts_get_keys(htbl);
   if (keys == nullptr) {
@@ -56,7 +56,7 @@ void MmeNasStateConverter::hashtable_ts_to_proto(
   }
 
   for (auto i = 0; i < keys->num_keys; i++) {
-    UeContext ue_ctxt_proto;
+    oai::UeContext ue_ctxt_proto;
     ue_mm_context_t* ue_context_p = NULL;
     hashtable_rc_t ht_rc =
       hashtable_ts_get(htbl, keys->keys[i], (void**) &ue_context_p);
@@ -74,7 +74,7 @@ void MmeNasStateConverter::hashtable_ts_to_proto(
 }
 
 void MmeNasStateConverter::proto_to_hashtable_ts(
-  const google::protobuf::Map<unsigned long, UeContext>& proto_map,
+  const google::protobuf::Map<unsigned long, oai::UeContext>& proto_map,
   hash_table_ts_t* state_htbl)
 {
   OAILOG_DEBUG(LOG_MME_APP, "Converting proto to hashtable_ts");
@@ -105,23 +105,35 @@ void MmeNasStateConverter::proto_to_hashtable_ts(
   }
 }
 
+char* MmeNasStateConverter::mme_app_convert_guti_to_string(guti_t* guti_p) {
+#define GUTI_STRING_LEN 21
+  char* str = (char*) calloc(1, sizeof(char) * GUTI_STRING_LEN);
+  snprintf(
+      str, GUTI_STRING_LEN, "%x%x%x%x%x%x%04x%02x%08x",
+      guti_p->gummei.plmn.mcc_digit1, guti_p->gummei.plmn.mcc_digit2,
+      guti_p->gummei.plmn.mcc_digit3, guti_p->gummei.plmn.mnc_digit1,
+      guti_p->gummei.plmn.mnc_digit2, guti_p->gummei.plmn.mnc_digit3,
+      guti_p->gummei.mme_gid, guti_p->gummei.mme_code, guti_p->m_tmsi);
+  return (str);
+}
+
 void MmeNasStateConverter::guti_table_to_proto(
-  const obj_hash_table_uint64_t* guti_htbl,
-  google::protobuf::Map<std::string, unsigned long>* proto_map)
-{
+    const obj_hash_table_uint64_t* guti_htbl,
+    google::protobuf::Map<std::string, unsigned long>* proto_map) {
   void*** key_array_p = (void***) calloc(1, sizeof(void**));
-  unsigned int size = 0;
+  unsigned int size   = 0;
 
   hashtable_rc_t ht_rc =
-    obj_hashtable_uint64_ts_get_keys(guti_htbl, key_array_p, &size);
+      obj_hashtable_uint64_ts_get_keys(guti_htbl, key_array_p, &size);
   if ((!*key_array_p) || (ht_rc != HASH_TABLE_OK)) {
     return;
   }
   for (auto i = 0; i < size; i++) {
     uint64_t mme_ue_id;
-    Guti guti_proto;
-    guti_to_proto(*(guti_t*) (*key_array_p)[i], &guti_proto);
-    const std::string& guti_str = guti_proto.SerializeAsString();
+
+    char* str = mme_app_convert_guti_to_string((guti_t*) (*key_array_p)[i]);
+    std::string guti_str(str);
+    free(str);
     OAILOG_TRACE(
       LOG_MME_APP,
       "Looking for key %p with value %u\n",
@@ -134,24 +146,54 @@ void MmeNasStateConverter::guti_table_to_proto(
     } else {
       OAILOG_ERROR(LOG_MME_APP, "Key %s not in guti_ue_context_htbl", guti_str);
     }
+    OAILOG_DEBUG(
+        LOG_MME_APP, "guti_str:%s mme_ue_id:%d\n", guti_str.c_str(), mme_ue_id);
   }
   FREE_OBJ_HASHTABLE_KEY_ARRAY(key_array_p);
 }
 
-void MmeNasStateConverter::proto_to_guti_table(
-  const google::protobuf::Map<std::string, unsigned long>& proto_map,
-  obj_hash_table_uint64_t* guti_htbl)
-{
-  for (auto const& kv : proto_map) {
-    const std::string& guti_str = kv.first;
-    mme_ue_s1ap_id_t mme_ue_id = kv.second;
-    Guti guti_proto;
-    guti_proto.ParseFromString(guti_str);
+void MmeNasStateConverter::mme_app_convert_string_to_guti(
+    guti_t* guti_p, const std::string& guti_str) {
+  int idx         = 0;
+  std::size_t chars_to_read = 1;
+#define HEX_BASE_VAL 16
+  guti_p->gummei.plmn.mcc_digit1 = std::stoul(
+      guti_str.substr(idx++, chars_to_read), &chars_to_read, HEX_BASE_VAL);
+  guti_p->gummei.plmn.mcc_digit2 = std::stoul(
+      guti_str.substr(idx++, chars_to_read), &chars_to_read, HEX_BASE_VAL);
+  guti_p->gummei.plmn.mcc_digit3 = std::stoul(
+      guti_str.substr(idx++, chars_to_read), &chars_to_read, HEX_BASE_VAL);
+  guti_p->gummei.plmn.mnc_digit1 = std::stoul(
+      guti_str.substr(idx++, chars_to_read), &chars_to_read, HEX_BASE_VAL);
+  guti_p->gummei.plmn.mnc_digit2 = std::stoul(
+      guti_str.substr(idx++, chars_to_read), &chars_to_read, HEX_BASE_VAL);
+  guti_p->gummei.plmn.mnc_digit3 = std::stoul(
+      guti_str.substr(idx++, chars_to_read), &chars_to_read, HEX_BASE_VAL);
+  chars_to_read          = 4;
+  guti_p->gummei.mme_gid = std::stoul(
+      guti_str.substr(idx, chars_to_read), &chars_to_read, HEX_BASE_VAL);
+  idx += chars_to_read;
+  chars_to_read           = 2;
+  guti_p->gummei.mme_code = std::stoul(
+      guti_str.substr(idx, chars_to_read), &chars_to_read, HEX_BASE_VAL);
+  idx += chars_to_read;
+  chars_to_read = 8;
+  guti_p->m_tmsi =
+      std::stoul(guti_str.substr(idx, chars_to_read), 0, HEX_BASE_VAL);
 
-    guti_t* guti_p = (guti_t*) calloc(1, sizeof(guti_t));
-    NasStateConverter::proto_to_guti(guti_proto, guti_p);
+  OAILOG_DEBUG_GUTI(guti_p);
+}
+
+void MmeNasStateConverter::proto_to_guti_table(
+    const google::protobuf::Map<std::string, unsigned long>& proto_map,
+    obj_hash_table_uint64_t* guti_htbl) {
+  for (auto const& kv : proto_map) {
+    mme_ue_s1ap_id_t mme_ue_id  = kv.second;
+    guti_t* guti_p              = (guti_t*) calloc(1, sizeof(guti_t));
+
+    mme_app_convert_string_to_guti(guti_p, kv.first);
     hashtable_rc_t ht_rc = obj_hashtable_uint64_ts_insert(
-      guti_htbl, guti_p, sizeof(*guti_p), mme_ue_id);
+        guti_htbl, guti_p, sizeof(*guti_p), mme_ue_id);
     if (ht_rc != HASH_TABLE_OK) {
       OAILOG_ERROR(
         LOG_MME_APP,
@@ -170,14 +212,14 @@ void MmeNasStateConverter::proto_to_guti_table(
 
 void MmeNasStateConverter::mme_app_timer_to_proto(
   const mme_app_timer_t& state_mme_timer,
-  Timer* timer_proto)
+  oai::Timer* timer_proto)
 {
   timer_proto->set_id(state_mme_timer.id);
   timer_proto->set_sec(state_mme_timer.sec);
 }
 
 void MmeNasStateConverter::proto_to_mme_app_timer(
-  const Timer& timer_proto,
+  const oai::Timer& timer_proto,
   mme_app_timer_t* state_mme_app_timer)
 {
   state_mme_app_timer->id = timer_proto.id();
@@ -186,13 +228,13 @@ void MmeNasStateConverter::proto_to_mme_app_timer(
 
 void MmeNasStateConverter::sgs_context_to_proto(
   sgs_context_t* state_sgs_context,
-  SgsContext* sgs_context_proto)
+  oai::SgsContext* sgs_context_proto)
 {
   // TODO
 }
 
 void MmeNasStateConverter::proto_to_sgs_context(
-  const SgsContext& sgs_context_proto,
+  const oai::SgsContext& sgs_context_proto,
   sgs_context_t* state_sgs_context)
 {
   // TODO
@@ -200,7 +242,7 @@ void MmeNasStateConverter::proto_to_sgs_context(
 
 void MmeNasStateConverter::fteid_to_proto(
   const fteid_t& state_fteid,
-  Fteid* fteid_proto)
+  oai::Fteid* fteid_proto)
 {
   if (state_fteid.ipv4) {
     fteid_proto->set_ipv4_address(state_fteid.ipv4_address.s_addr);
@@ -213,7 +255,7 @@ void MmeNasStateConverter::fteid_to_proto(
 }
 
 void MmeNasStateConverter::proto_to_fteid(
-  const Fteid& fteid_proto,
+  const oai::Fteid& fteid_proto,
   fteid_t* state_fteid)
 {
   if (fteid_proto.ipv4_address()) {
@@ -232,7 +274,7 @@ void MmeNasStateConverter::proto_to_fteid(
 
 void MmeNasStateConverter::bearer_context_to_proto(
   const bearer_context_t& state_bearer_context,
-  BearerContext* bearer_context_proto)
+  oai::BearerContext* bearer_context_proto)
 {
   bearer_context_proto->set_ebi(state_bearer_context.ebi);
   bearer_context_proto->set_transaction_identifier(
@@ -271,7 +313,7 @@ void MmeNasStateConverter::bearer_context_to_proto(
 }
 
 void MmeNasStateConverter::proto_to_bearer_context(
-  const BearerContext& bearer_context_proto,
+  const oai::BearerContext& bearer_context_proto,
   bearer_context_t* state_bearer_context)
 {
   state_bearer_context->ebi = bearer_context_proto.ebi();
@@ -310,32 +352,32 @@ void MmeNasStateConverter::proto_to_bearer_context(
 
 void MmeNasStateConverter::bearer_context_list_to_proto(
   const ue_mm_context_t& state_ue_context,
-  UeContext* ue_context_proto)
+  oai::UeContext* ue_context_proto)
 {
   for (int i = 0; i < BEARERS_PER_UE; i++) {
-    BearerContext* bearer_ctxt_proto = ue_context_proto->add_bearer_contexts();
+    oai::BearerContext* bearer_ctxt_proto = ue_context_proto->add_bearer_contexts();
     if (state_ue_context.bearer_contexts[i]) {
       OAILOG_DEBUG(
         LOG_MME_APP,
         "writing bearer context at index %d with ebi %d",
         i,
         state_ue_context.bearer_contexts[i]->ebi);
-      bearer_ctxt_proto->set_validity(BearerContext::VALID);
+      bearer_ctxt_proto->set_validity(oai::BearerContext::VALID);
       bearer_context_to_proto(
         *state_ue_context.bearer_contexts[i], bearer_ctxt_proto);
     } else {
-      bearer_ctxt_proto->set_validity(BearerContext::INVALID);
+      bearer_ctxt_proto->set_validity(oai::BearerContext::INVALID);
     }
   }
 }
 
 void MmeNasStateConverter::proto_to_bearer_context_list(
-  const UeContext& ue_context_proto,
+  const oai::UeContext& ue_context_proto,
   ue_mm_context_t* state_ue_context)
 {
   for (int i = 0; i < BEARERS_PER_UE; i++) {
     if (
-      ue_context_proto.bearer_contexts(i).validity() == BearerContext::VALID) {
+      ue_context_proto.bearer_contexts(i).validity() == oai::BearerContext::VALID) {
       OAILOG_DEBUG(LOG_MME_APP, "reading bearer context at index %d", i);
       auto* eps_bearer_ctxt =
         (bearer_context_t*) calloc(1, sizeof(bearer_context_t));
@@ -350,7 +392,7 @@ void MmeNasStateConverter::proto_to_bearer_context_list(
 
 void MmeNasStateConverter::esm_pdn_to_proto(
   const esm_pdn_t& state_esm_pdn,
-  EsmPdn* esm_pdn_proto)
+  oai::EsmPdn* esm_pdn_proto)
 {
   esm_pdn_proto->set_pti(state_esm_pdn.pti);
   esm_pdn_proto->set_is_emergency(state_esm_pdn.is_emergency);
@@ -361,7 +403,7 @@ void MmeNasStateConverter::esm_pdn_to_proto(
 }
 
 void MmeNasStateConverter::proto_to_esm_pdn(
-  const EsmPdn& esm_pdn_proto,
+  const oai::EsmPdn& esm_pdn_proto,
   esm_pdn_t* state_esm_pdn)
 {
   state_esm_pdn->pti = esm_pdn_proto.pti();
@@ -374,7 +416,7 @@ void MmeNasStateConverter::proto_to_esm_pdn(
 
 void MmeNasStateConverter::pdn_context_to_proto(
   const pdn_context_t& state_pdn_context,
-  PdnContext* pdn_context_proto)
+  oai::PdnContext* pdn_context_proto)
 {
   pdn_context_proto->set_context_identifier(
     state_pdn_context.context_identifier);
@@ -426,7 +468,7 @@ void MmeNasStateConverter::pdn_context_to_proto(
 }
 
 void MmeNasStateConverter::proto_to_pdn_context(
-  const PdnContext& pdn_context_proto,
+  const oai::PdnContext& pdn_context_proto,
   pdn_context_t* state_pdn_context)
 {
   state_pdn_context->context_identifier =
@@ -475,21 +517,21 @@ void MmeNasStateConverter::proto_to_pdn_context(
 
 void MmeNasStateConverter::pdn_context_list_to_proto(
   const ue_mm_context_t& state_ue_context,
-  UeContext* ue_context_proto,
+  oai::UeContext* ue_context_proto,
   int num_active_contexts)
 {
   num_active_contexts = 1; // TODO: fix acounting of nb_active_pdn_contexts
   for (int i = 0; i < num_active_contexts; i++) {
     if (state_ue_context.pdn_contexts[i] != nullptr) {
       OAILOG_DEBUG(LOG_MME_APP, "Writing PDN context at index %d", i);
-      PdnContext* pdn_ctxt_proto = ue_context_proto->add_pdn_contexts();
+      oai::PdnContext* pdn_ctxt_proto = ue_context_proto->add_pdn_contexts();
       pdn_context_to_proto(*state_ue_context.pdn_contexts[i], pdn_ctxt_proto);
     }
   }
 }
 
 void MmeNasStateConverter::proto_to_pdn_context_list(
-  const UeContext& ue_context_proto,
+  const oai::UeContext& ue_context_proto,
   ue_mm_context_t* state_ue_context)
 {
   for (int i = 0; i < ue_context_proto.pdn_contexts_size(); i++) {
@@ -502,7 +544,7 @@ void MmeNasStateConverter::proto_to_pdn_context_list(
 
 void MmeNasStateConverter::ue_context_to_proto(
   const ue_mm_context_t* state_ue_context,
-  UeContext* ue_context_proto)
+  oai::UeContext* ue_context_proto)
 {
   ue_context_proto->Clear();
 
@@ -518,11 +560,12 @@ void MmeNasStateConverter::ue_context_to_proto(
   ue_context_proto->set_mm_state(state_ue_context->mm_state);
   ue_context_proto->set_ecm_state(state_ue_context->ecm_state);
 
-  EmmContext* emm_ctx = ue_context_proto->mutable_emm_context();
+  oai::EmmContext* emm_ctx = ue_context_proto->mutable_emm_context();
   NasStateConverter::emm_context_to_proto(
     &state_ue_context->emm_context, emm_ctx);
   ue_context_proto->set_sctp_assoc_id_key(state_ue_context->sctp_assoc_id_key);
   ue_context_proto->set_enb_ue_s1ap_id(state_ue_context->enb_ue_s1ap_id);
+  ue_context_proto->set_enb_s1ap_id_key(state_ue_context->enb_s1ap_id_key);
   ue_context_proto->set_mme_ue_s1ap_id(state_ue_context->mme_ue_s1ap_id);
 
   ue_context_proto->set_attach_type(state_ue_context->attach_type);
@@ -600,10 +643,12 @@ void MmeNasStateConverter::ue_context_to_proto(
   mme_app_timer_to_proto(
     state_ue_context->ulr_response_timer,
     ue_context_proto->mutable_ulr_response_timer());
+  ue_context_proto->mutable_time_mobile_reachability_timer_started()
+      ->set_seconds(state_ue_context->time_mobile_reachability_timer_started);
 }
 
 void MmeNasStateConverter::proto_to_ue_mm_context(
-  const UeContext& ue_context_proto,
+  const oai::UeContext& ue_context_proto,
   ue_mm_context_t* state_ue_mm_context)
 {
   state_ue_mm_context->msisdn = bfromcstr(ue_context_proto.msisdn().c_str());
@@ -687,6 +732,8 @@ void MmeNasStateConverter::proto_to_ue_mm_context(
   proto_to_mme_app_timer(
     ue_context_proto.paging_response_timer(),
     &state_ue_mm_context->paging_response_timer);
+  state_ue_mm_context->time_mobile_reachability_timer_started =
+      ue_context_proto.time_mobile_reachability_timer_started().seconds();
 }
 
 /*********************************************************
@@ -696,7 +743,7 @@ void MmeNasStateConverter::proto_to_ue_mm_context(
 **********************************************************/
 void MmeNasStateConverter::state_to_proto(
   const mme_app_desc_t* mme_nas_state_p,
-  MmeNasState* state_proto)
+  oai::MmeNasState* state_proto)
 {
   OAILOG_FUNC_IN(LOG_MME_APP);
   state_proto->set_nb_enb_connected(mme_nas_state_p->nb_enb_connected);
@@ -726,18 +773,18 @@ void MmeNasStateConverter::state_to_proto(
   hashtable_uint64_ts_to_proto(
     mme_nas_state_p->mme_ue_contexts.tun11_ue_context_htbl,
     mme_ue_ctxts_proto->mutable_tun11_ue_id_htbl());
+  OAILOG_DEBUG(LOG_MME_APP, "Enb_Ue_S1ap_id table to proto");
   hashtable_uint64_ts_to_proto(
     mme_nas_state_p->mme_ue_contexts.enb_ue_s1ap_id_ue_context_htbl,
     mme_ue_ctxts_proto->mutable_enb_ue_id_ue_id_htbl());
-  /* TODO: fix libprotobuf error
-    guti_table_to_proto(
-    mme_nas_state_p->mme_ue_contexts.guti_ue_context_htbl,
-    mme_ue_ctxts_proto->mutable_guti_ue_id_htbl());*/
+  guti_table_to_proto(
+      mme_nas_state_p->mme_ue_contexts.guti_ue_context_htbl,
+      mme_ue_ctxts_proto->mutable_guti_ue_id_htbl());
   OAILOG_FUNC_OUT(LOG_MME_APP);
 }
 
 void MmeNasStateConverter::proto_to_state(
-  const MmeNasState& state_proto,
+  const oai::MmeNasState& state_proto,
   mme_app_desc_t* mme_nas_state_p)
 {
   OAILOG_FUNC_IN(LOG_MME_APP);
@@ -758,10 +805,10 @@ void MmeNasStateConverter::proto_to_state(
   if (mme_nas_state_p->mme_app_ue_s1ap_id_generator == 0) { // uninitialized
     mme_nas_state_p->mme_app_ue_s1ap_id_generator = 1;
   }
-  OAILOG_INFO(LOG_MME_APP, "Read MME statistics from data store");
+  OAILOG_INFO(LOG_MME_APP, "Done reading MME statistics from data store");
 
   // copy mme_ue_contexts
-  MmeUeContext mme_ue_ctxts_proto = state_proto.mme_ue_contexts();
+  oai::MmeUeContext mme_ue_ctxts_proto = state_proto.mme_ue_contexts();
 
   mme_ue_context_t* mme_ue_ctxt_state = &mme_nas_state_p->mme_ue_contexts;
   // copy maps to hashtables
@@ -777,22 +824,21 @@ void MmeNasStateConverter::proto_to_state(
   proto_to_hashtable_uint64_ts(
     mme_ue_ctxts_proto.enb_ue_id_ue_id_htbl(),
     mme_ue_ctxt_state->enb_ue_s1ap_id_ue_context_htbl);
-  /* TODO: fix libprotobuf error
-    proto_to_guti_table(
-    mme_ue_ctxts_proto.guti_ue_id_htbl(),
-    mme_ue_ctxt_state->guti_ue_context_htbl);*/
+  proto_to_guti_table(
+      mme_ue_ctxts_proto.guti_ue_id_htbl(),
+      mme_ue_ctxt_state->guti_ue_context_htbl);
   OAILOG_FUNC_OUT(LOG_MME_APP);
 }
 
 void MmeNasStateConverter::ue_to_proto(
   const ue_mm_context_t* ue_ctxt,
-  UeContext* ue_ctxt_proto)
+  oai::UeContext* ue_ctxt_proto)
 {
   ue_context_to_proto(ue_ctxt, ue_ctxt_proto);
 }
 
 void MmeNasStateConverter::proto_to_ue(
-  const UeContext& ue_ctxt_proto,
+  const oai::UeContext& ue_ctxt_proto,
   ue_mm_context_t* ue_ctxt)
 {
   proto_to_ue_mm_context(ue_ctxt_proto, ue_ctxt);

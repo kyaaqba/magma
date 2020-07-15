@@ -22,13 +22,20 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+var (
+	ctx = context.Background()
+)
+
 // TODO: fill out more test cases for servicer test with mocked storage
 
 func TestStateServicer_GetStates(t *testing.T) {
 	// mock setup: expect 1 RPC to result in a search, the other to a concrete
 	// GetMany
 	mockStore := &mocks.TransactionalBlobStorage{}
-	mockStore.On("Search", blobstore.CreateSearchFilter(strPtr("network1"), []string{"t1", "t2"}, []string{"k1", "k2"})).
+	mockStore.On("Search",
+		blobstore.CreateSearchFilter(strPtr("network1"), []string{"t1", "t2"}, []string{"k1", "k2"}, nil),
+		blobstore.GetDefaultLoadCriteria(),
+	).
 		Return(map[string][]blobstore.Blob{
 			"network1": {
 				{Type: "t1", Key: "k1", Value: []byte("v1"), Version: 42},
@@ -49,10 +56,11 @@ func TestStateServicer_GetStates(t *testing.T) {
 	srv, err := servicers.NewStateServicer(fact)
 	assert.NoError(t, err)
 
-	actual, err := srv.GetStates(context.Background(), &protos.GetStatesRequest{
+	actual, err := srv.GetStates(ctx, &protos.GetStatesRequest{
 		NetworkID:  "network1",
 		TypeFilter: []string{"t1", "t2"},
 		IdFilter:   []string{"k1", "k2"},
+		LoadValues: true,
 	})
 	assert.NoError(t, err)
 	expected := &protos.GetStatesResponse{
@@ -74,7 +82,7 @@ func TestStateServicer_GetStates(t *testing.T) {
 	assert.Equal(t, expected, actual)
 
 	// Prefer concrete GetMany over Search
-	actual, err = srv.GetStates(context.Background(), &protos.GetStatesRequest{
+	actual, err = srv.GetStates(ctx, &protos.GetStatesRequest{
 		NetworkID: "network1",
 		Ids: []*protos.StateID{
 			{Type: "t1", DeviceID: "k1"},
@@ -82,6 +90,7 @@ func TestStateServicer_GetStates(t *testing.T) {
 		},
 		TypeFilter: []string{"t1", "t2"},
 		IdFilter:   []string{"k1", "k2"},
+		LoadValues: false,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)

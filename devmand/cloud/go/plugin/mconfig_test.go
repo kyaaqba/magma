@@ -13,18 +13,21 @@ import (
 	"testing"
 
 	"magma/orc8r/cloud/go/orc8r"
+	orc8rplugin "magma/orc8r/cloud/go/plugin"
 	"magma/orc8r/cloud/go/services/configurator"
 	"magma/orc8r/cloud/go/storage"
 	"orc8r/devmand/cloud/go/devmand"
 	"orc8r/devmand/cloud/go/plugin"
-	models2 "orc8r/devmand/cloud/go/plugin/models"
 	"orc8r/devmand/cloud/go/protos/mconfig"
+	models2 "orc8r/devmand/cloud/go/services/devmand/obsidian/models"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBuilder_Build(t *testing.T) {
+	orc8rplugin.RegisterPluginForTests(t, &plugin.DevmandOrchestratorPlugin{})
+
 	nID := "n1"
 	nw := configurator.Network{ID: nID}
 	device := configurator.NetworkEntity{

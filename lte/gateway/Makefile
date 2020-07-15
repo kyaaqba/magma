@@ -5,7 +5,6 @@ GRPC_CPP_PLUGIN_PATH ?= `which grpc_cpp_plugin`
 BUILD_TYPE ?= Debug
 
 OAI_FLAGS = -DEMBEDDED_SGW=True -DENABLE_OPENFLOW=True
-FUZZ_FLAGS = $(OAI_FLAGS) -DFUZZ=True
 TEST_FLAG = -DBUILD_TESTS=1
 
 all: build
@@ -13,12 +12,6 @@ all: build
 build: build_python build_common build_oai build_sctpd build_session_manager ## Build all
 
 test: test_python test_oai test_session_manager ## Run all tests
-
-# Requires install of afl from http://lcamtuf.coredump.cx/afl/
-fuzz: build_fuzz ## Fuzz test
-	mkdir -p ~/fuzz/input ~/fuzz/output && \
-	echo "testtest" > ~/fuzz/input/sample1 && \
-	afl-fuzz -i ~/fuzz/input/ -o ~/fuzz/output/ -m 300M ~/build/c/oai_fuzz/oai_fuzz/oai_fuzz nas
 
 clean: clean_python  ## Clean all builds
 	rm -rf $(C_BUILD)
@@ -86,10 +79,6 @@ build_oai: build_common ## Build OAI
 build_sctpd: build_common ## Build SCTPD
 	$(call run_cmake, $(C_BUILD)/sctpd, $(GATEWAY_C_DIR)/sctpd, )
 
-# Requires install of afl from http://lcamtuf.coredump.cx/afl/
-build_fuzz: ## Build fuzz tool
-	$(call run_cmake, $(C_BUILD)/oai_fuzz, $(GATEWAY_C_DIR)/oai, $(FUZZ_FLAGS), CC=afl-gcc CXX=afl-g++ AFL_USE_ASAN=1)
-
 build_session_manager: build_common ## Build session manager
 	$(call run_cmake, $(C_BUILD)/session_manager, $(GATEWAY_C_DIR)/session_manager, )
 
@@ -132,7 +121,7 @@ coverage: ## Generate full code coverage report
 	rm -f `find $(OAI_BUILD) -name *.gcda`
 	rm -f `find $(C_BUILD)/session_manager -name *.gcda`
 	# Stop processes to generate gcda
-	sudo pkill -USR1 mme
+	sudo service magma@mme stop
 	sudo pkill -INT sessiond
 	# Wait for gcov output to be generated
 	@echo "Waiting for $(SLEEP_SECS) for gcov to write files"
@@ -150,7 +139,7 @@ coverage: ## Generate full code coverage report
 
 coverage_oai: ## Generate code coverage report for OAI
 	rm -f `find $(OAI_BUILD) -name *.gcda`
-	sudo pkill -USR1 mme
+	sudo service magma@mme stop
 	@echo "Waiting for $(SLEEP_SECS) for gcov to write files"
 	sleep $(SLEEP_SECS)
 	lcov --capture --directory $(OAI_BUILD) --output-file $(COV_OUTPUT_OAI)

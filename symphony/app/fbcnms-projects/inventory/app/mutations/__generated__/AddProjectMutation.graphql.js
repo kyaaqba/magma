@@ -6,7 +6,7 @@
 
  /**
  * @flow
- * @relayHash d757437def42bf69a67505860c19c600
+ * @relayHash 37daf57204e64a85752ebba8673449a5
  */
 
 /* eslint-disable */
@@ -19,7 +19,6 @@ type ProjectsTableView_projects$ref = any;
 export type AddProjectInput = {|
   name: string,
   description?: ?string,
-  creator?: ?string,
   creatorId?: ?string,
   type: string,
   location?: ?string,
@@ -36,9 +35,7 @@ export type PropertyInput = {|
   longitudeValue?: ?number,
   rangeFromValue?: ?number,
   rangeToValue?: ?number,
-  equipmentIDValue?: ?string,
-  locationIDValue?: ?string,
-  serviceIDValue?: ?string,
+  nodeIDValue?: ?string,
   isEditable?: ?boolean,
   isInstanceProperty?: ?boolean,
 |};

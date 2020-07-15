@@ -9,7 +9,7 @@
  */
 
 import Admin from './admin/Admin';
-import ApplicationMain from '@fbcnms/ui/components/ApplicationMain';
+import ApplicationMain from './ApplicationMain';
 import ErrorLayout from './main/ErrorLayout';
 import Index, {ROOT_PATHS} from './main/Index';
 import MagmaV1API from '@fbcnms/magma-api/client/WebClient';
@@ -19,7 +19,7 @@ import React from 'react';
 import {AppContextProvider} from '@fbcnms/ui/context/AppContext';
 import {Redirect, Route, Switch} from 'react-router-dom';
 
-import useMagmaAPI from '../common/useMagmaAPI';
+import useMagmaAPI from '@fbcnms/ui/magma/useMagmaAPI';
 import {sortBy} from 'lodash';
 import {useRouter} from '@fbcnms/ui/hooks';
 

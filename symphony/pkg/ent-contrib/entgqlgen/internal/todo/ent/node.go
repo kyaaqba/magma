@@ -51,16 +51,24 @@ func (t *Todo) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     t.ID,
 		Type:   "Todo",
-		Fields: make([]*Field, 1),
+		Fields: make([]*Field, 2),
 		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
-	if buf, err = json.Marshal(t.Text); err != nil {
+	if buf, err = json.Marshal(t.Status); err != nil {
 		return nil, err
 	}
 	node.Fields[0] = &Field{
+		Type:  "todo.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(t.Text); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
 		Type:  "string",
-		Name:  "Text",
+		Name:  "text",
 		Value: string(buf),
 	}
 	var ids []int
@@ -73,7 +81,7 @@ func (t *Todo) Node(ctx context.Context) (node *Node, err error) {
 	node.Edges[0] = &Edge{
 		IDs:  ids,
 		Type: "Todo",
-		Name: "Parent",
+		Name: "parent",
 	}
 	ids, err = t.QueryChildren().
 		Select(todo.FieldID).
@@ -84,9 +92,21 @@ func (t *Todo) Node(ctx context.Context) (node *Node, err error) {
 	node.Edges[1] = &Edge{
 		IDs:  ids,
 		Type: "Todo",
-		Name: "Children",
+		Name: "children",
 	}
 	return node, nil
+}
+
+func (t *TodoMutation) Node(ctx context.Context) (node *Node, err error) {
+	id, exists := t.ID()
+	if !exists {
+		return nil, nil
+	}
+	ent, err := t.Client().Todo.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return ent.Node(ctx)
 }
 
 func (c *Client) Node(ctx context.Context, id int) (*Node, error) {

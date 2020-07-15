@@ -64,6 +64,7 @@ const useStyles = makeStyles(theme => ({
 type Props = {
   limit?: number,
   showExport?: boolean,
+  initialFilters?: FiltersQuery,
   children: (props: {
     equipment:  // $FlowFixMe (T62907961) Relay flow types
       | PowerSearchEquipmentResultsTable_equipment
@@ -77,19 +78,21 @@ const equipmentSearchQuery = graphql`
     $limit: Int
     $filters: [EquipmentFilterInput!]!
   ) {
-    equipmentSearch(limit: $limit, filters: $filters) {
-      equipment {
-        ...PowerSearchEquipmentResultsTable_equipment
-        ...PowerSearchLinkFirstEquipmentResultsTable_equipment
+    equipments(first: $limit, filterBy: $filters) {
+      edges {
+        node {
+          ...PowerSearchEquipmentResultsTable_equipment
+          ...PowerSearchLinkFirstEquipmentResultsTable_equipment
+        }
       }
-      count
+      totalCount
     }
   }
 `;
 
 const EquipmentComparisonViewQueryRenderer = (props: Props) => {
   const classes = useStyles();
-  const {limit, showExport, children} = props;
+  const {limit, showExport, children, initialFilters} = props;
   const [count, setCount] = useState((0: number));
 
   const possibleProperties = usePropertyFilters('equipment');
@@ -118,7 +121,9 @@ const EquipmentComparisonViewQueryRenderer = (props: Props) => {
 
   // eslint-disable-next-line no-warning-comments
   // $FlowFixMe
-  const filters = (wizardContext.get(filtersContextKey) || []: FiltersQuery);
+  const filters = (wizardContext.get(filtersContextKey) ||
+    initialFilters ||
+    []: FiltersQuery);
 
   return (
     <div className={classes.root}>
@@ -162,9 +167,9 @@ const EquipmentComparisonViewQueryRenderer = (props: Props) => {
         render={(
           props: EquipmentComparisonViewQueryRendererSearchQueryResponse,
         ) => {
-          const {count, equipment} = props.equipmentSearch;
-          setCount(count);
-          if (!equipment || equipment.length === 0) {
+          const {totalCount, edges} = props.equipments;
+          setCount(totalCount);
+          if (edges.length === 0) {
             return (
               <div className={classes.noResultsRoot}>
                 <SearchIcon className={classes.searchIcon} />
@@ -175,7 +180,7 @@ const EquipmentComparisonViewQueryRenderer = (props: Props) => {
             );
           }
           return children({
-            equipment,
+            equipment: edges.map(edge => edge.node),
           });
         }}
       />

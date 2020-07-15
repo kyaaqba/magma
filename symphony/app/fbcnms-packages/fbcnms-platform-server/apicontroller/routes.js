@@ -20,7 +20,7 @@ import auditLoggingDecorator from './auditLoggingDecorator';
 
 import {intersection} from 'lodash';
 
-const router = express.Router();
+const router: express.Router<FBCNMSRequest, ExpressResponse> = express.Router();
 
 const PROXY_TIMEOUT_MS = 30000;
 
@@ -89,7 +89,7 @@ export async function networksResponseDecorator(
   return JSON.stringify(result);
 }
 
-const containsNetworkID = function(
+const containsNetworkID = function (
   allowedNetworkIDs: string[],
   networkID: string,
 ): boolean {
@@ -155,6 +155,15 @@ router.use(
   proxy(API_HOST, {
     ...PROXY_OPTIONS,
     filter: (req, _res) => req.method === 'GET',
+  }),
+);
+
+router.use(
+  '/magma/v1/events/:networkID/:streamName',
+  proxy(API_HOST, {
+    ...PROXY_OPTIONS,
+    filter: networkIdFilter,
+    proxyErrorHandler,
   }),
 );
 

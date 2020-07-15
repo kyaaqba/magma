@@ -9,10 +9,12 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/facebookincubator/symphony/pkg/ent"
+
 	"github.com/AlekSi/pointer"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -84,7 +86,7 @@ func TestLocationTitleInputValidation(t *testing.T) {
 	importer := r.importer
 	defer r.drv.Close()
 
-	ctx := newImportContext(viewertest.NewContext(r.client))
+	ctx := newImportContext(viewertest.NewContext(context.Background(), r.client))
 	prepareBasicData(ctx, t, *r)
 
 	header, _ := NewImportHeader([]string{"aa"}, ImportEntityLocation)
@@ -112,7 +114,7 @@ func TestImportLocationHierarchy(t *testing.T) {
 	r := newImporterTestResolver(t)
 	importer := r.importer
 	defer r.drv.Close()
-	ctx := newImportContext(viewertest.NewContext(r.client))
+	ctx := newImportContext(viewertest.NewContext(context.Background(), r.client))
 
 	ids := prepareBasicData(ctx, t, *r)
 
@@ -177,7 +179,7 @@ func TestValidateLocationPropertiesForType(t *testing.T) {
 	importer := r.importer
 	q := r.importer.r.Query()
 	defer r.drv.Close()
-	ctx := newImportContext(viewertest.NewContext(r.client))
+	ctx := newImportContext(viewertest.NewContext(context.Background(), r.client))
 	data := prepareLocationTypesWithProperties(ctx, t, *r)
 
 	var (
@@ -196,8 +198,10 @@ func TestValidateLocationPropertiesForType(t *testing.T) {
 	fl, _ = NewImportHeader(finalFirstRow, ImportEntityLocation)
 	r1, _ := NewImportRecord(test1, fl)
 	require.NoError(t, err)
-	lType1, err := q.LocationType(ctx, data.locTypeIDS)
+	node1, err := q.Node(ctx, data.locTypeIDS)
 	require.NoError(t, err)
+	lType1, ok := node1.(*ent.LocationType)
+	require.True(t, ok)
 
 	ptypes, err := importer.validatePropertiesForLocationType(ctx, r1, lType1)
 	require.NoError(t, err)
@@ -208,16 +212,18 @@ func TestValidateLocationPropertiesForType(t *testing.T) {
 		switch ptyp.Name {
 		case propName1:
 			require.Equal(t, *value.StringValue, "strVal")
-			require.Equal(t, ptyp.Type, "string")
+			require.Equal(t, ptyp.Type, propertytype.TypeString)
 		case propName2:
 			require.Equal(t, *value.IntValue, 54)
-			require.Equal(t, ptyp.Type, "int")
+			require.Equal(t, ptyp.Type, propertytype.TypeInt)
 		default:
 			require.Fail(t, "property type name should be one of the two")
 		}
 	}
-	lType2, err := q.LocationType(ctx, data.locTypeIDM)
+	node2, err := q.Node(ctx, data.locTypeIDM)
 	require.NoError(t, err)
+	lType2, ok := node2.(*ent.LocationType)
+	require.True(t, ok)
 
 	r2, _ := NewImportRecord(test2, fl)
 	ptypes2, err := importer.validatePropertiesForLocationType(ctx, r2, lType2)
@@ -228,17 +234,19 @@ func TestValidateLocationPropertiesForType(t *testing.T) {
 		switch ptyp.Name {
 		case propName3:
 			require.Equal(t, *value.StringValue, "29/03/88")
-			require.Equal(t, ptyp.Type, "date")
+			require.Equal(t, ptyp.Type, propertytype.TypeDate)
 		case propName4:
 			require.Equal(t, *value.BooleanValue, false)
-			require.Equal(t, ptyp.Type, "bool")
+			require.Equal(t, ptyp.Type, propertytype.TypeBool)
 		default:
 			require.Fail(t, "property type name should be one of the two")
 		}
 	}
 
-	lType3, err := q.LocationType(ctx, data.locTypeIDL)
+	node3, err := q.Node(ctx, data.locTypeIDL)
 	require.NoError(t, err)
+	lType3, ok := node3.(*ent.LocationType)
+	require.True(t, ok)
 
 	r3, _ := NewImportRecord(test3, fl)
 	ptypes3, err := importer.validatePropertiesForLocationType(ctx, r3, lType3)
@@ -251,11 +259,11 @@ func TestValidateLocationPropertiesForType(t *testing.T) {
 		case propName5:
 			require.Equal(t, *value.RangeFromValue, 30.23)
 			require.EqualValues(t, *value.RangeToValue, 50)
-			require.Equal(t, ptyp.Type, "range")
+			require.Equal(t, ptyp.Type, propertytype.TypeRange)
 		case ptyp.Name:
 			require.Equal(t, *value.LatitudeValue, 45.8)
 			require.Equal(t, *value.LongitudeValue, 88.9)
-			require.Equal(t, ptyp.Type, "gps_location")
+			require.Equal(t, ptyp.Type, propertytype.TypeGpsLocation)
 		default:
 			require.Fail(t, "property type name should be one of the two")
 		}
@@ -266,7 +274,7 @@ func TestValidateForExistingLocation(t *testing.T) {
 	r := newImporterTestResolver(t)
 	importer := r.importer
 	defer r.drv.Close()
-	ctx := newImportContext(viewertest.NewContext(r.client))
+	ctx := newImportContext(viewertest.NewContext(context.Background(), r.client))
 	ids := prepareLocationTypesWithProperties(ctx, t, *r)
 
 	firstRowLocations := append(append(locationIDHeader, []string{locTypeNameL, locTypeNameM, locTypeNameS}...), locationFixedDataHeader...)

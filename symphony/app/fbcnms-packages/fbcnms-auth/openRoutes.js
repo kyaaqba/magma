@@ -16,9 +16,7 @@ export default [
   /^\/user\/login(\?.*)?/,
   /^\/user\/onboarding(\?.*)?/,
   /^\/([a-z_-]+\/)?static\/css/,
-  /^\/([a-z_-]+\/)?static\/dist\/login.js/,
-  /^\/([a-z_-]+\/)?static\/dist\/onboarding.js/,
-  /^\/([a-z_-]+\/)?static\/dist\/vendor.js/,
+  /^\/([a-z_-]+\/)?static\/dist\//,
   /^\/([a-z_-]+\/)?static\/fonts/,
   /^\/([a-z_-]+\/)?static\/images/,
   /^\/([a-z_-]+\/)?user\/me$/,
@@ -29,4 +27,5 @@ export default [
   /^\/([a-z_-]+\/)?user\/login\/saml\/callback/,
   /^\/([a-z_-]+\/)?user\/logout$/,
   /^\/([a-z_-]+\/)?__webpack_hmr.js/,
+  /^\/authconfig$/,
 ];

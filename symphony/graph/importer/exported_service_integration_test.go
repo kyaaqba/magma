@@ -16,15 +16,15 @@ import (
 	"testing"
 
 	"github.com/AlekSi/pointer"
-	"github.com/facebookincubator/symphony/graph/ent/property"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
-	"github.com/facebookincubator/symphony/graph/ent/service"
 	"github.com/facebookincubator/symphony/graph/exporter"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
+	"github.com/facebookincubator/symphony/pkg/ent/property"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/ent/service"
 	"github.com/facebookincubator/symphony/pkg/log/logtest"
 
-	"github.com/facebookincubator/symphony/graph/viewer"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/viewer"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/stretchr/testify/require"
 )
@@ -32,6 +32,7 @@ import (
 const (
 	serviceName  = "service"
 	service2Name = "service2"
+	service3Name = "service3"
 )
 
 type method string
@@ -41,24 +42,30 @@ const (
 	MethodEdit method = "EDIT"
 )
 
-// "Service ID", "Service Name", "Service Type", "Service External ID", "Customer Name", "Customer External ID", "prop1", "prop2", "prop3", "prop4"
-func editLine(line []string, index int) {
-	if index == 1 {
+// "Service ID", "Service Name", "Service Type",  "Discovery Method", "Service External ID", "Customer Name", "Customer External ID", "prop1", "prop2", "prop3", "prop4"
+func editLine(t *testing.T, line []string, index int) {
+	switch index {
+	case 1:
 		line[1] = "newName"
-		line[3] = "D243"
-		line[7] = "root"
-		line[8] = "20"
-	} else {
-		line[4] = "Donald"
-		line[5] = "U333"
-		line[9] = "22.4"
-		line[10] = "true"
+		line[4] = "D243"
+		line[23] = "root"
+		line[24] = "20"
+	case 2:
+		line[5] = "Donald"
+		line[6] = "U333"
+		line[25] = "22.4"
+		line[26] = "true"
+	case 3:
+		line[1] = "newServiceName"
+		line[4] = "D24345"
+	default:
+		t.Fatal("unexpected index")
 	}
 }
 
 func writeModifiedCSV(t *testing.T, r *csv.Reader, method method, withVerify bool) (*bytes.Buffer, string) {
 	var newLine []string
-	var lines = make([][]string, 3)
+	var lines = make([][]string, 4)
 	var buf bytes.Buffer
 	bw := multipart.NewWriter(&buf)
 
@@ -87,7 +94,7 @@ func writeModifiedCSV(t *testing.T, r *csv.Reader, method method, withVerify boo
 			default:
 				require.Fail(t, "method should be add or edit")
 			}
-			editLine(newLine, i)
+			editLine(t, newLine, i)
 			lines[i] = newLine
 		}
 	}
@@ -99,11 +106,10 @@ func writeModifiedCSV(t *testing.T, r *csv.Reader, method method, withVerify boo
 		lines[1][1] = "this"
 		lines[1][2] = "should"
 		lines[1][3] = "fail"
-
 	}
 	for _, l := range lines {
 		stringLine := strings.Join(l, ",")
-		fileWriter.Write([]byte(stringLine + "\n"))
+		_, _ = io.WriteString(fileWriter, stringLine+"\n")
 	}
 	ct := bw.FormDataContentType()
 	require.NoError(t, bw.Close())
@@ -179,6 +185,19 @@ func prepareServiceData(ctx context.Context, t *testing.T, r *TestImporterResolv
 		Status:        pointerToServiceStatus(models.ServiceStatusInService),
 	})
 	require.NoError(t, err)
+
+	// no props case
+	serviceType3, err := mr.AddServiceType(ctx, models.ServiceTypeCreateData{
+		Name: service3Name,
+	})
+	require.NoError(t, err)
+
+	_, err = mr.AddService(ctx, models.ServiceCreateData{
+		Name:          service3Name,
+		ServiceTypeID: serviceType3.ID,
+		Status:        pointerToServiceStatus(models.ServiceStatusPending),
+	})
+	require.NoError(t, err)
 }
 
 func deleteServiceData(ctx context.Context, t *testing.T, r *TestImporterResolver) {
@@ -203,13 +222,13 @@ func verifyServiceData(ctx context.Context, t *testing.T, r *TestImporterResolve
 	require.Equal(t, "D243", *s1.ExternalID)
 	require.Equal(t, models.ServiceStatusPending.String(), s1.Status)
 
-	prop1, err := s1.QueryProperties().Where(property.HasTypeWith(propertytype.Type("string"))).Only(ctx)
+	prop1, err := s1.QueryProperties().Where(property.HasTypeWith(propertytype.TypeEQ(propertytype.TypeString))).Only(ctx)
 	require.NoError(t, err)
-	require.Equal(t, "root", prop1.StringVal)
+	require.Equal(t, "root", pointer.GetString(prop1.StringVal))
 
-	prop2, err := s1.QueryProperties().Where(property.HasTypeWith(propertytype.Type("int"))).Only(ctx)
+	prop2, err := s1.QueryProperties().Where(property.HasTypeWith(propertytype.TypeEQ(propertytype.TypeInt))).Only(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 20, prop2.IntVal)
+	require.Equal(t, 20, pointer.GetInt(prop2.IntVal))
 
 	s2, err := r.client.Service.Query().Where(service.Name(service2Name)).Only(ctx)
 	require.NoError(t, err)
@@ -220,19 +239,25 @@ func verifyServiceData(ctx context.Context, t *testing.T, r *TestImporterResolve
 	require.Equal(t, "U333", *customer.ExternalID)
 	require.Equal(t, models.ServiceStatusInService.String(), s2.Status)
 
-	prop3, err := s2.QueryProperties().Where(property.HasTypeWith(propertytype.Type("float"))).Only(ctx)
+	prop3, err := s2.QueryProperties().Where(property.HasTypeWith(propertytype.TypeEQ(propertytype.TypeFloat))).Only(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 22.4, prop3.FloatVal)
-	prop4, err := s2.QueryProperties().Where(property.HasTypeWith(propertytype.Type("bool"))).Only(ctx)
+	require.Equal(t, 22.4, pointer.GetFloat64(prop3.FloatVal))
+
+	prop4, err := s2.QueryProperties().Where(property.HasTypeWith(propertytype.TypeEQ(propertytype.TypeBool))).Only(ctx)
 	require.NoError(t, err)
-	require.Equal(t, true, prop4.BoolVal)
+	require.Equal(t, true, pointer.GetBool(prop4.BoolVal))
+
+	s3, err := r.client.Service.Query().Where(service.Name("newServiceName")).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "D24345", *s3.ExternalID)
+	require.Equal(t, models.ServiceStatusPending.String(), s3.Status)
 }
 
-func exportServiceData(ctx context.Context, t *testing.T, organization string, r *TestImporterResolver) bytes.Buffer {
+func exportServiceData(ctx context.Context, t *testing.T, r *TestImporterResolver) bytes.Buffer {
 	var buf bytes.Buffer
 	handler, err := exporter.NewHandler(logtest.NewTestLogger(t))
 	require.NoError(t, err)
-	th := viewer.TenancyHandler(handler, viewer.NewFixedTenancy(r.client))
+	th := viewer.TenancyHandler(handler, viewer.NewFixedTenancy(r.client), logtest.NewTestLogger(t))
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		th.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -242,7 +267,7 @@ func exportServiceData(ctx context.Context, t *testing.T, organization string, r
 	req, err := http.NewRequest(http.MethodGet, server.URL+"/services", &buf)
 	require.NoError(t, err)
 
-	req.Header.Set("x-auth-organization", organization)
+	viewertest.SetDefaultViewerHeaders(req)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -254,8 +279,12 @@ func exportServiceData(ctx context.Context, t *testing.T, organization string, r
 	return buf
 }
 
-func importServiceExportedData(ctx context.Context, t *testing.T, organization string, buf bytes.Buffer, contentType string, r *TestImporterResolver) int {
-	th := viewer.TenancyHandler(http.HandlerFunc(r.importer.processExportedService), viewer.NewFixedTenancy(r.client))
+func importServiceExportedData(ctx context.Context, t *testing.T, buf bytes.Buffer, contentType string, r *TestImporterResolver) int {
+	th := viewer.TenancyHandler(
+		http.HandlerFunc(r.importer.processExportedService),
+		viewer.NewFixedTenancy(r.client),
+		logtest.NewTestLogger(t),
+	)
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		th.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -265,7 +294,7 @@ func importServiceExportedData(ctx context.Context, t *testing.T, organization s
 	req, err := http.NewRequest(http.MethodPost, server.URL, &buf)
 	require.NoError(t, err)
 
-	req.Header.Set("x-auth-organization", organization)
+	viewertest.SetDefaultViewerHeaders(req)
 	req.Header.Set("Content-Type", contentType)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -278,13 +307,13 @@ func importServiceExportedData(ctx context.Context, t *testing.T, organization s
 func TestServiceImportDataAdd(t *testing.T) {
 	for _, withVerify := range []bool{true, false} {
 		r := newImporterTestResolver(t)
-		ctx := newImportContext(viewertest.NewContext(r.client))
+		ctx := newImportContext(viewertest.NewContext(context.Background(), r.client))
 		prepareServiceData(ctx, t, r)
-		exportedData := exportServiceData(ctx, t, tenantHeader, r)
+		exportedData := exportServiceData(ctx, t, r)
 		deleteServiceData(ctx, t, r)
 		readr := csv.NewReader(&exportedData)
 		modifiedExportedData, contentType := writeModifiedCSV(t, readr, MethodAdd, withVerify)
-		code := importServiceExportedData(ctx, t, tenantHeader, *modifiedExportedData, contentType, r)
+		code := importServiceExportedData(ctx, t, *modifiedExportedData, contentType, r)
 		verifyServiceData(ctx, t, r, withVerify)
 		require.Equal(t, http.StatusOK, code)
 	}
@@ -293,12 +322,12 @@ func TestServiceImportDataAdd(t *testing.T) {
 func TestServiceImportDataEdit(t *testing.T) {
 	for _, withVerify := range []bool{true, false} {
 		r := newImporterTestResolver(t)
-		ctx := newImportContext(viewertest.NewContext(r.client))
+		ctx := newImportContext(viewertest.NewContext(context.Background(), r.client))
 		prepareServiceData(ctx, t, r)
-		exportedData := exportServiceData(ctx, t, tenantHeader, r)
+		exportedData := exportServiceData(ctx, t, r)
 		readr := csv.NewReader(&exportedData)
 		modifiedExportedData, contentType := writeModifiedCSV(t, readr, MethodEdit, withVerify)
-		code := importServiceExportedData(ctx, t, tenantHeader, *modifiedExportedData, contentType, r)
+		code := importServiceExportedData(ctx, t, *modifiedExportedData, contentType, r)
 		verifyServiceData(ctx, t, r, withVerify)
 		require.Equal(t, http.StatusOK, code)
 	}

@@ -5,14 +5,15 @@
 package resolver
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/AlekSi/pointer"
-	"github.com/facebookincubator/symphony/graph/ent/user"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/ent/user"
+	"github.com/facebookincubator/symphony/pkg/viewer"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -23,27 +24,26 @@ func toStatusPointer(status user.Status) *user.Status {
 
 func TestEditUser(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
-	u, err := viewer.UserFromContext(ctx)
-	require.NoError(t, err)
+	u := viewer.FromContext(ctx).(*viewer.UserViewer).User()
 	require.Equal(t, user.StatusACTIVE, u.Status)
 	require.Empty(t, u.FirstName)
 
 	mr := r.Mutation()
-	u, err = mr.EditUser(ctx, models.EditUserInput{ID: u.ID, Status: toStatusPointer(user.StatusDEACTIVATED), FirstName: pointer.ToString("John")})
+	u, err := mr.EditUser(ctx, models.EditUserInput{ID: u.ID, Status: toStatusPointer(user.StatusDEACTIVATED), FirstName: pointer.ToString("John"), LastName: pointer.ToString("Doe")})
 	require.NoError(t, err)
 	require.Equal(t, user.StatusDEACTIVATED, u.Status)
 	require.Equal(t, "John", u.FirstName)
+	require.Equal(t, "Doe", u.LastName)
 }
 
 func TestAddAndDeleteProfileImage(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
-	u, err := viewer.UserFromContext(ctx)
-	require.NoError(t, err)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
+	u := viewer.FromContext(ctx).(*viewer.UserViewer).User()
 
 	mr, ur := r.Mutation(), r.User()
 	file1, err := mr.AddImage(ctx, models.AddImageInput{

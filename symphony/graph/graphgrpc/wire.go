@@ -11,12 +11,12 @@ import (
 
 	"database/sql"
 
-	"github.com/facebookincubator/symphony/graph/viewer"
 	"github.com/facebookincubator/symphony/pkg/actions/action/magmarebootnode"
 	"github.com/facebookincubator/symphony/pkg/actions/executor"
 	"github.com/facebookincubator/symphony/pkg/actions/trigger/magmaalert"
 	"github.com/facebookincubator/symphony/pkg/log"
 	"github.com/facebookincubator/symphony/pkg/orc8r"
+	"github.com/facebookincubator/symphony/pkg/viewer"
 
 	"github.com/google/wire"
 	"google.golang.org/grpc"
@@ -27,7 +27,7 @@ type Config struct {
 	DB      *sql.DB
 	Logger  log.Logger
 	Orc8r   orc8r.Config
-	Tenancy *viewer.MySQLTenancy
+	Tenancy viewer.Tenancy
 }
 
 // NewServer creates a server from config.
@@ -37,7 +37,6 @@ func NewServer(cfg Config) (*grpc.Server, func(), error) {
 		newOrc8rClient,
 		newActionsRegistry,
 		newServer,
-		wire.Bind(new(viewer.Tenancy), new(*viewer.MySQLTenancy)),
 	)
 	return nil, nil, nil
 }

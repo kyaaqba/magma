@@ -5,22 +5,32 @@
 package resolverutil
 
 import (
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/equipment"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentport"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentposition"
-	"github.com/facebookincubator/symphony/graph/ent/location"
-	"github.com/facebookincubator/symphony/graph/ent/predicate"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/equipment"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentport"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentposition"
+	"github.com/facebookincubator/symphony/pkg/ent/location"
+	"github.com/facebookincubator/symphony/pkg/ent/predicate"
 
 	"github.com/pkg/errors"
 )
 
 func handleEquipmentLocationFilter(q *ent.EquipmentQuery, filter *models.EquipmentFilterInput) (*ent.EquipmentQuery, error) {
-	if filter.FilterType == models.EquipmentFilterTypeLocationInst {
+	switch filter.FilterType {
+	case models.EquipmentFilterTypeLocationInst:
 		return equipmentLocationFilter(q, filter)
+	case models.EquipmentFilterTypeLocationInstExternalID:
+		return equipmentLocationExternalIDFilter(q, filter)
 	}
 	return nil, errors.Errorf("filter type is not supported: %s", filter.FilterType)
+}
+
+func equipmentLocationExternalIDFilter(q *ent.EquipmentQuery, filter *models.EquipmentFilterInput) (*ent.EquipmentQuery, error) {
+	if filter.Operator == models.FilterOperatorContains {
+		return q.Where(equipment.HasLocationWith(location.ExternalIDContainsFold(*filter.StringValue))), nil
+	}
+	return nil, errors.Errorf("operation is not supported: %s", filter.Operator)
 }
 
 // BuildLocationAncestorFilter returns a joined predicate for location ancestors

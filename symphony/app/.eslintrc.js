@@ -10,6 +10,11 @@
 // enforces copyright header to be present in every file
 // eslint-disable-next-line max-len
 const openSourcePattern = /\*\n \* Copyright 20\d{2}-present Facebook\. All Rights Reserved\.\n \*\n \* This source code is licensed under the BSD-style license found in the\n \* LICENSE file in the root directory of this source tree\.\n \*\n/;
+// eslint-disable-next-line max-len
+const newOpenSourcePattern = /Copyright \(c\) Facebook, Inc\. and its affiliates\./;
+const combinedOpenSourcePattern = new RegExp(
+  '(' + newOpenSourcePattern.source + ')|(' + openSourcePattern.source + ')',
+);
 
 module.exports.extends = ['eslint-config-fbcnms'];
 module.exports.overrides = [
@@ -24,6 +29,19 @@ module.exports.overrides = [
           bracketSpacing: false,
           jsxBracketSameLine: true,
           parser: 'flow',
+        },
+      ],
+    },
+  },
+  {
+    files: ['*.mdx'],
+    extends: ['plugin:mdx/overrides'],
+    rules: {
+      'flowtype/require-valid-file-annotation': 'off',
+      'prettier/prettier': [
+        2,
+        {
+          parser: 'mdx',
         },
       ],
     },
@@ -55,7 +73,7 @@ module.exports.overrides = [
       'fbcnms-projects/platform-server/**/*.js',
     ],
     rules: {
-      'header/header': [2, 'block', {pattern: openSourcePattern}],
+      'header/header': [2, 'block', {pattern: combinedOpenSourcePattern}],
     },
   },
   {
@@ -83,6 +101,8 @@ module.exports.overrides = [
       'fbcnms-projects/*/scripts/**/*.js',
       'fbcnms-projects/*/server/**/*.js',
       'fbcnms-projects/platform-server/**/*.js',
+      'fbcnms-projects/workflows-proxy/**/*.js',
+      'fbcnms-projects/workflows-wasm-workers/**/*.js',
       'scripts/fb/fbt/*.js',
     ],
     rules: {

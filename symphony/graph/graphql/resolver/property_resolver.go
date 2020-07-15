@@ -6,34 +6,62 @@ package resolver
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/facebookincubator/symphony/graph/ent"
+	"github.com/facebookincubator/symphony/graph/resolverutil"
+
 	"github.com/facebookincubator/symphony/graph/graphql/models"
+	"github.com/facebookincubator/symphony/pkg/ent"
 )
 
 type propertyTypeResolver struct{}
 
-func (propertyTypeResolver) Type(_ context.Context, obj *ent.PropertyType) (models.PropertyKind, error) {
-	return models.PropertyKind(obj.Type), nil
+func (propertyTypeResolver) RawValue(ctx context.Context, propertyType *ent.PropertyType) (*string, error) {
+	raw, err := resolverutil.PropertyValue(ctx, propertyType.Type, propertyType.NodeType, propertyType)
+	return &raw, err
 }
 
 type propertyResolver struct{}
 
+func (propertyResolver) RawValue(ctx context.Context, property *ent.Property) (*string, error) {
+	propertyType, err := property.QueryType().Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("querying property type %w", err)
+	}
+	raw, err := resolverutil.PropertyValue(ctx, propertyType.Type, propertyType.NodeType, property)
+	return &raw, err
+}
+
 func (propertyResolver) PropertyType(ctx context.Context, obj *ent.Property) (*ent.PropertyType, error) {
-	return obj.QueryType().Only(ctx)
+	typ, err := obj.Edges.TypeOrErr()
+	if ent.IsNotLoaded(err) {
+		return obj.QueryType().Only(ctx)
+	}
+	return typ, err
 }
 
-func (propertyResolver) EquipmentValue(ctx context.Context, obj *ent.Property) (*ent.Equipment, error) {
-	e, err := obj.QueryEquipmentValue().Only(ctx)
-	return e, ent.MaskNotFound(err)
-}
-
-func (propertyResolver) LocationValue(ctx context.Context, obj *ent.Property) (*ent.Location, error) {
-	e, err := obj.QueryLocationValue().Only(ctx)
-	return e, ent.MaskNotFound(err)
-}
-
-func (propertyResolver) ServiceValue(ctx context.Context, obj *ent.Property) (*ent.Service, error) {
-	e, err := obj.QueryServiceValue().Only(ctx)
-	return e, ent.MaskNotFound(err)
+func (propertyResolver) NodeValue(ctx context.Context, property *ent.Property) (models.NamedNode, error) {
+	propertyType, err := property.QueryType().Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("querying property type %w", err)
+	}
+	switch propertyType.NodeType {
+	case resolverutil.NodeTypeLocation:
+		l, err := property.QueryLocationValue().Only(ctx)
+		return l, ent.MaskNotFound(err)
+	case resolverutil.NodeTypeEquipment:
+		e, err := property.QueryEquipmentValue().Only(ctx)
+		return e, ent.MaskNotFound(err)
+	case resolverutil.NodeTypeService:
+		s, err := property.QueryServiceValue().Only(ctx)
+		return s, ent.MaskNotFound(err)
+	case resolverutil.NodeTypeWorkOrder:
+		s, err := property.QueryWorkOrderValue().Only(ctx)
+		return s, ent.MaskNotFound(err)
+	case resolverutil.NodeTypeUser:
+		s, err := property.QueryUserValue().Only(ctx)
+		return s, ent.MaskNotFound(err)
+	default:
+		return nil, nil
+	}
 }

@@ -6,12 +6,24 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 services:
+  lte:
+    host: "localhost"
+    port: 9113
+    echo_port: 10113
+    proxy_type: "clientcert"
+    labels:
+      orc8r.io/stream_provider: "true"
+    annotations:
+      orc8r.io/stream_provider_streams: "base_names,network_wide_rules,policydb,rule_mappings,subscriberdb"
+
   subscriberdb:
     host: "localhost"
     port: 9083
+    echo_port: 10083
     proxy_type: "clientcert"
 
   policydb:
     host: "localhost"
     port: 9085
+    echo_port: 10085
     proxy_type: "clientcert"

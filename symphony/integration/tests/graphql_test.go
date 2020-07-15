@@ -17,11 +17,12 @@ import (
 	"time"
 
 	"github.com/AlekSi/pointer"
-	"github.com/facebookincubator/symphony/graph/graphgrpc"
+	"github.com/cenkalti/backoff/v4"
+	"github.com/facebookincubator/symphony/graph/graphgrpc/schema"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
 	"github.com/facebookincubator/symphony/pkg/ctxgroup"
-
-	"github.com/cenkalti/backoff"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/ent/workorder"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/uuid"
 	"github.com/shurcooL/graphql"
@@ -30,17 +31,17 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/net/context/ctxhttp"
-	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type client struct {
-	client *graphql.Client
-	log    *zap.Logger
-	tenant string
-	user   string
+	client     *graphql.Client
+	log        *zap.Logger
+	tenant     string
+	user       string
+	automation bool
 }
 
 func TestMain(m *testing.M) {
@@ -77,7 +78,15 @@ func waitFor(services ...string) error {
 	return g.Wait()
 }
 
-func newClient(t *testing.T, tenant, user string) *client {
+type option func(*client)
+
+func withAutomation() option {
+	return func(c *client) {
+		c.automation = true
+	}
+}
+
+func newClient(t *testing.T, tenant, user string, opts ...option) *client {
 	c := client{
 		log: zaptest.NewLogger(t).With(
 			zap.String("tenant", tenant),
@@ -89,13 +98,22 @@ func newClient(t *testing.T, tenant, user string) *client {
 		"http://graph/query",
 		&http.Client{Transport: &c},
 	)
+	for _, opt := range opts {
+		opt(&c)
+	}
 	require.NoError(t, c.createTenant())
+	require.NoError(t, c.createOwnerUser())
 	return &c
 }
 
 func (c *client) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("x-auth-organization", c.tenant)
-	req.Header.Set("x-auth-user-email", c.user)
+	if !c.automation {
+		req.Header.Set("x-auth-user-email", c.user)
+	} else {
+		req.Header.Set("x-auth-automation-name", c.user)
+	}
+	req.Header.Set("x-auth-user-role", "OWNER")
 	return http.DefaultTransport.RoundTrip(req)
 }
 
@@ -104,7 +122,7 @@ func (c *client) createTenant() error {
 	if err != nil {
 		return err
 	}
-	_, err = graphgrpc.NewTenantServiceClient(conn).
+	_, err = schema.NewTenantServiceClient(conn).
 		Create(context.Background(), &wrappers.StringValue{Value: c.tenant})
 	switch st, _ := status.FromError(err); st.Code() {
 	case codes.OK, codes.AlreadyExists:
@@ -114,14 +132,32 @@ func (c *client) createTenant() error {
 	return nil
 }
 
-type addLocationTypeResponse struct {
-	ID   graphql.ID
-	Name graphql.String
+func (c *client) createOwnerUser() error {
+	conn, err := grpc.Dial("graph:443", grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+	_, err = schema.NewUserServiceClient(conn).
+		Create(context.Background(), &schema.AddUserInput{Tenant: c.tenant, Id: c.user, IsOwner: true})
+	switch st, _ := status.FromError(err); st.Code() {
+	case codes.OK:
+	default:
+		return st.Err()
+	}
+	return nil
 }
 
-func (c *client) addLocationType(name string, properties ...*models.PropertyTypeInput) (*addLocationTypeResponse, error) {
+type locationTypeResponse struct {
+	ID            graphql.ID
+	Name          graphql.String
+	PropertyTypes []struct {
+		ID graphql.ID
+	}
+}
+
+func (c *client) addLocationType(name string, properties ...*models.PropertyTypeInput) (*locationTypeResponse, error) {
 	var m struct {
-		Response addLocationTypeResponse `graphql:"addLocationType(input: $input)"`
+		Response locationTypeResponse `graphql:"addLocationType(input: $input)"`
 	}
 	vars := map[string]interface{}{
 		"input": models.AddLocationTypeInput{
@@ -192,6 +228,24 @@ type queryLocationResponse struct {
 	}
 }
 
+func (c *client) queryLocationType(id graphql.ID) (*locationTypeResponse, error) {
+	var q struct {
+		Node struct {
+			Response locationTypeResponse `graphql:"... on LocationType"`
+		} `graphql:"node(id: $id)"`
+	}
+	vars := map[string]interface{}{
+		"id": id,
+	}
+	switch err := c.client.Query(context.Background(), &q, vars); {
+	case err != nil:
+		return nil, err
+	case q.Node.Response.ID == nil:
+		return nil, errors.New("location type not found")
+	}
+	return &q.Node.Response, nil
+}
+
 func (c *client) queryLocation(id graphql.ID) (*queryLocationResponse, error) {
 	var q struct {
 		Node struct {
@@ -249,7 +303,7 @@ type addEquipmentTypeResponse struct {
 	Properties []struct {
 		ID   graphql.ID
 		Name graphql.String
-		Kind models.PropertyKind `graphql:"type"`
+		Kind propertytype.Type `graphql:"type"`
 	} `graphql:"propertyTypes"`
 }
 
@@ -332,7 +386,7 @@ type addWorkOrderTypeResponse struct {
 	Properties []struct {
 		ID   graphql.ID
 		Name graphql.String
-		Kind models.PropertyKind `graphql:"type"`
+		Kind propertytype.Type `graphql:"type"`
 	} `graphql:"propertyTypes"`
 }
 
@@ -389,17 +443,17 @@ func (c *client) executeWorkOrder(workOrder *addWorkOrderResponse) error {
 		} `graphql:"editWorkOrder(input: $input)"`
 	}
 	ownerID := IDToInt(workOrder.Owner.ID)
+	st := workorder.StatusDONE
 	vars := map[string]interface{}{
 		"input": models.EditWorkOrderInput{
-			ID:       IDToInt(workOrder.ID),
-			Name:     string(workOrder.Name),
-			OwnerID:  &ownerID,
-			Status:   models.WorkOrderStatusDone,
-			Priority: models.WorkOrderPriorityNone,
+			ID:      IDToInt(workOrder.ID),
+			Name:    string(workOrder.Name),
+			OwnerID: &ownerID,
+			Status:  &st,
 		},
 	}
 	if err := c.client.Mutate(context.Background(), &em, vars); err != nil {
-		return xerrors.Errorf("editing work order: %w", err)
+		return fmt.Errorf("editing work order: %w", err)
 	}
 
 	var m struct {
@@ -411,7 +465,7 @@ func (c *client) executeWorkOrder(workOrder *addWorkOrderResponse) error {
 		"id": workOrder.ID,
 	}
 	if err := c.client.Mutate(context.Background(), &m, vars); err != nil {
-		return xerrors.Errorf("executing work order: %w", err)
+		return fmt.Errorf("executing work order: %w", err)
 	}
 	return nil
 }
@@ -432,6 +486,15 @@ func TestAddLocation(t *testing.T) {
 
 func TestAddLocationType(t *testing.T) {
 	c := newClient(t, testTenant, testUser)
+	name := "location_type_" + uuid.New().String()
+	typ, err := c.addLocationType(name)
+	require.NoError(t, err)
+	assert.NotNil(t, typ.ID)
+	assert.EqualValues(t, name, typ.Name)
+}
+
+func TestAddLocationWithAutomation(t *testing.T) {
+	c := newClient(t, testTenant, testUser, withAutomation())
 	name := "location_type_" + uuid.New().String()
 	typ, err := c.addLocationType(name)
 	require.NoError(t, err)
@@ -488,37 +551,37 @@ func TestExecuteWorkOrder(t *testing.T) {
 	typ, err := c.addWorkOrderType("work_order_type_" + uuid.New().String())
 	require.NoError(t, err)
 	name := "work_order_" + uuid.New().String()
-	workorder, err := c.addWorkOrder(name, typ.ID)
+	wo, err := c.addWorkOrder(name, typ.ID)
 	require.NoError(t, err)
-	assert.EqualValues(t, testUser, workorder.Owner.Email)
+	assert.EqualValues(t, testUser, wo.Owner.Email)
 
 	et, err := c.addEquipmentType("router_type_" + uuid.New().String())
 	require.NoError(t, err)
 	l, err := c.addLocation("location_"+uuid.New().String(), nil)
 	require.NoError(t, err)
-	e, err := c.addEquipment("router_"+uuid.New().String(), et.ID, l.ID, workorder.ID)
+	e, err := c.addEquipment("router_"+uuid.New().String(), et.ID, l.ID, wo.ID)
 	require.NoError(t, err)
 
 	eq, err := c.queryEquipment(e.ID)
 	require.NoError(t, err)
 	assert.Equal(t, models.FutureStateInstall, eq.State)
 
-	err = c.executeWorkOrder(workorder)
+	err = c.executeWorkOrder(wo)
 	require.NoError(t, err)
 
 	eq, err = c.queryEquipment(e.ID)
 	require.NoError(t, err)
 	assert.Empty(t, eq.State)
 
-	workorder, err = c.addWorkOrder(name, typ.ID)
+	wo, err = c.addWorkOrder(name, typ.ID)
 	require.NoError(t, err)
-	err = c.removeEquipment(eq.ID, workorder.ID)
+	err = c.removeEquipment(eq.ID, wo.ID)
 	require.NoError(t, err)
 
 	eq, err = c.queryEquipment(e.ID)
 	require.NoError(t, err)
 	assert.EqualValues(t, models.FutureStateRemove, eq.State)
-	err = c.executeWorkOrder(workorder)
+	err = c.executeWorkOrder(wo)
 	require.NoError(t, err)
 }
 
@@ -529,11 +592,11 @@ func TestPossibleProperties(t *testing.T) {
 		"router_type_"+uuid.New().String(),
 		&models.PropertyTypeInput{
 			Name: "Width",
-			Type: models.PropertyKindInt,
+			Type: propertytype.TypeInt,
 		},
 		&models.PropertyTypeInput{
 			Name: "Manufacturer",
-			Type: models.PropertyKindString,
+			Type: propertytype.TypeString,
 		},
 	)
 	require.NoError(t, err)
@@ -542,7 +605,7 @@ func TestPossibleProperties(t *testing.T) {
 		"router_type_"+uuid.New().String(),
 		&models.PropertyTypeInput{
 			Name: "Width",
-			Type: models.PropertyKindInt,
+			Type: propertytype.TypeInt,
 		},
 	)
 	require.NoError(t, err)
@@ -566,11 +629,11 @@ func TestViewer(t *testing.T) {
 	var q struct {
 		Viewer struct {
 			Tenant graphql.String
-			Email  graphql.String
+			User   User
 		} `graphql:"me"`
 	}
 	err := c.client.Query(context.Background(), &q, nil)
 	require.NoError(t, err)
 	assert.EqualValues(t, testTenant, q.Viewer.Tenant)
-	assert.EqualValues(t, testUser, q.Viewer.Email)
+	assert.EqualValues(t, testUser, q.Viewer.User.Email)
 }

@@ -44,7 +44,7 @@ const autoSuggestStyles = theme => ({
     ...symphony.typography.subtitle1,
     position: 'fixed',
     boxShadow: theme.shadows[2],
-    zIndex: 2,
+    zIndex: 5,
     transition: 'top 100ms ease-out 0s',
   },
   suggestionsList: {
@@ -199,17 +199,19 @@ const Typeahead = (props: Props) => {
           onSuggestionsClearRequested={emptyFunction}
           renderSuggestion={(suggestion: Suggestion) => (
             <div className={classes.suggestionRoot}>
-              <div>
-                {suggestion.render != null
-                  ? suggestion.render()
-                  : suggestion.name}
-              </div>
-              <Text
-                className={classes.suggestionType}
-                variant="caption"
-                color="gray">
-                {suggestion.type}
-              </Text>
+              {suggestion.render != null ? (
+                suggestion.render()
+              ) : (
+                <div>
+                  <Text>{suggestion.name}</Text>
+                  <Text
+                    className={classes.suggestionType}
+                    variant="caption"
+                    color="gray">
+                    {suggestion.type}
+                  </Text>
+                </div>
+              )}
             </div>
           )}
           onSuggestionSelected={(e, data) => {

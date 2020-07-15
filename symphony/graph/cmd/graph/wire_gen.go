@@ -12,60 +12,64 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/url"
-
 	"github.com/facebookincubator/symphony/graph/event"
 	"github.com/facebookincubator/symphony/graph/graphgrpc"
 	"github.com/facebookincubator/symphony/graph/graphhttp"
-	"github.com/facebookincubator/symphony/graph/viewer"
 	"github.com/facebookincubator/symphony/pkg/log"
 	"github.com/facebookincubator/symphony/pkg/mysql"
+	"github.com/facebookincubator/symphony/pkg/pubsub"
 	"github.com/facebookincubator/symphony/pkg/server"
+	"github.com/facebookincubator/symphony/pkg/viewer"
+	"gocloud.dev/server/health"
 	"google.golang.org/grpc"
+)
 
-	_ "github.com/go-sql-driver/mysql"
-
+import (
+	_ "github.com/facebookincubator/symphony/pkg/ent/runtime"
 	_ "gocloud.dev/pubsub/mempubsub"
-
 	_ "gocloud.dev/pubsub/natspubsub"
 )
 
 // Injectors from wire.go:
 
-func NewApplication(ctx context.Context, flags *cliFlags) (*application, func(), error) {
-	config := flags.Log
-	logger, cleanup, err := log.Provider(config)
+func newApplication(ctx context.Context, flags *cliFlags) (*application, func(), error) {
+	config := flags.LogConfig
+	logger, cleanup, err := log.ProvideLogger(config)
 	if err != nil {
 		return nil, nil, err
 	}
-	string2 := flags.MySQL
-	mySQLTenancy, err := newTenancy(logger, string2)
-	if err != nil {
-		cleanup()
-		return nil, nil, err
-	}
-	url, err := newAuthURL(flags)
+	mysqlConfig := flags.MySQLConfig
+	viewerConfig := flags.TenancyConfig
+	mySQLTenancy, err := newMySQLTenancy(mysqlConfig, viewerConfig, logger)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	eventConfig := flags.Event
-	topicEmitter, cleanup2, err := event.ProvideEmitter(ctx, eventConfig)
+	pubsubConfig := flags.EventConfig
+	topicEmitter, cleanup2, err := pubsub.ProvideEmitter(ctx, pubsubConfig)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	urlSubscriber := event.ProvideSubscriber(eventConfig)
-	options := flags.Census
-	orc8rConfig := flags.Orc8r
+	tenancy, err := newTenancy(mySQLTenancy, logger, topicEmitter)
+	if err != nil {
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	url := flags.AuthURL
+	urlSubscriber := pubsub.ProvideSubscriber(pubsubConfig)
+	telemetryConfig := &flags.TelemetryConfig
+	v := newHealthChecks(mySQLTenancy)
+	orc8rConfig := flags.Orc8rConfig
 	graphhttpConfig := graphhttp.Config{
-		Tenancy:    mySQLTenancy,
-		AuthURL:    url,
-		Emitter:    topicEmitter,
-		Subscriber: urlSubscriber,
-		Logger:     logger,
-		Census:     options,
-		Orc8r:      orc8rConfig,
+		Tenancy:      tenancy,
+		AuthURL:      url,
+		Subscriber:   urlSubscriber,
+		Logger:       logger,
+		Telemetry:    telemetryConfig,
+		HealthChecks: v,
+		Orc8r:        orc8rConfig,
 	}
 	server, cleanup3, err := graphhttp.NewServer(graphhttpConfig)
 	if err != nil {
@@ -73,22 +77,25 @@ func NewApplication(ctx context.Context, flags *cliFlags) (*application, func(),
 		cleanup()
 		return nil, nil, err
 	}
-	db := mysql.Open(string2)
+	config2 := &flags.MySQLConfig
+	db, cleanup4 := mysql.Provider(config2)
 	graphgrpcConfig := graphgrpc.Config{
 		DB:      db,
 		Logger:  logger,
 		Orc8r:   orc8rConfig,
-		Tenancy: mySQLTenancy,
+		Tenancy: tenancy,
 	}
-	grpcServer, cleanup4, err := graphgrpc.NewServer(graphgrpcConfig)
+	grpcServer, cleanup5, err := graphgrpc.NewServer(graphgrpcConfig)
 	if err != nil {
+		cleanup4()
 		cleanup3()
 		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
-	mainApplication := newApplication(logger, server, grpcServer, flags)
+	mainApplication := newApp(logger, server, grpcServer, flags)
 	return mainApplication, func() {
+		cleanup5()
 		cleanup4()
 		cleanup3()
 		cleanup2()
@@ -98,29 +105,31 @@ func NewApplication(ctx context.Context, flags *cliFlags) (*application, func(),
 
 // wire.go:
 
-func newApplication(logger log.Logger, httpServer *server.Server, grpcServer *grpc.Server, flags *cliFlags) *application {
+func newApp(logger log.Logger, httpServer *server.Server, grpcServer *grpc.Server, flags *cliFlags) *application {
 	var app application
 	app.Logger = logger.Background()
 	app.http.Server = httpServer
-	app.http.addr = flags.HTTPAddress
+	app.http.addr = flags.HTTPAddress.String()
 	app.grpc.Server = grpcServer
-	app.grpc.addr = flags.GRPCAddress
+	app.grpc.addr = flags.GRPCAddress.String()
 	return &app
 }
 
-func newTenancy(logger log.Logger, dsn string) (*viewer.MySQLTenancy, error) {
-	tenancy, err := viewer.NewMySQLTenancy(dsn)
+func newTenancy(tenancy *viewer.MySQLTenancy, logger log.Logger, emitter pubsub.Emitter) (viewer.Tenancy, error) {
+	eventer := event.Eventer{Logger: logger, Emitter: emitter}
+	return viewer.NewCacheTenancy(tenancy, eventer.HookTo), nil
+}
+
+func newHealthChecks(tenancy *viewer.MySQLTenancy) []health.Checker {
+	return []health.Checker{tenancy}
+}
+
+func newMySQLTenancy(mySQLConfig mysql.Config, tenancyConfig viewer.Config, logger log.Logger) (*viewer.MySQLTenancy, error) {
+	tenancy, err := viewer.NewMySQLTenancy(mySQLConfig.String(), tenancyConfig.TenantMaxConn)
 	if err != nil {
 		return nil, fmt.Errorf("creating mysql tenancy: %w", err)
 	}
+	tenancy.SetLogger(logger)
 	mysql.SetLogger(logger)
 	return tenancy, nil
-}
-
-func newAuthURL(flags *cliFlags) (*url.URL, error) {
-	u, err := url.Parse(flags.AuthURL)
-	if err != nil {
-		return nil, fmt.Errorf("parsing auth url: %w", err)
-	}
-	return u, nil
 }

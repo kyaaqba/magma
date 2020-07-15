@@ -5,12 +5,13 @@
 package resolver
 
 import (
+	"context"
 	"testing"
 
 	"github.com/AlekSi/pointer"
 
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +23,7 @@ const (
 
 func validateEmptyFilters(t *testing.T, r *TestResolver) {
 	qr := r.Query()
-	ctx := viewertest.NewContext(r.client)
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	for _, entity := range models.AllFilterEntity {
 		filters, err := qr.ReportFilters(ctx, entity)
 		require.NoError(t, err)
@@ -32,8 +33,8 @@ func validateEmptyFilters(t *testing.T, r *TestResolver) {
 
 func TestAddReportFilter(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr, rfr := r.Mutation(), r.Query(), r.ReportFilter()
 	validateEmptyFilters(t, r)
@@ -97,8 +98,8 @@ func TestAddReportFilter(t *testing.T) {
 
 func TestAddInvalidReportFilters(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr := r.Mutation()
 	validateEmptyFilters(t, r)
 	data := prepareEquipmentData(ctx, r, "A", nil)
@@ -177,8 +178,8 @@ func TestAddInvalidReportFilters(t *testing.T) {
 
 func TestEditReportFilters(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 	validateEmptyFilters(t, r)
 	data := prepareEquipmentData(ctx, r, "A", nil)

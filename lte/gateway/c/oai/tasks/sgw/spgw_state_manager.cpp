@@ -61,7 +61,7 @@ void SpgwStateManager::create_state()
   state_cache_p = (spgw_state_t*) calloc(1, sizeof(spgw_state_t));
 
   bstring b = bfromcstr(S11_BEARER_CONTEXT_INFO_HT_NAME);
-  state_imsi_ht = hashtable_ts_create(
+  state_ue_ht = hashtable_ts_create(
     SGW_STATE_CONTEXT_HT_MAX_SIZE,
     nullptr,
     (void (*)(void**)) sgw_free_s11_bearer_context_information,
@@ -103,7 +103,7 @@ void SpgwStateManager::free_state()
   }
 
   if (
-    hashtable_ts_destroy(state_imsi_ht) !=
+    hashtable_ts_destroy(state_ue_ht) !=
     HASH_TABLE_OK) {
     OAI_FPRINTF_ERR(
       "An error occurred while destroying SGW s11_bearer_context_information "
@@ -130,8 +130,8 @@ int SpgwStateManager::read_ue_state_from_db()
   }
   auto keys = redis_client->get_keys("IMSI*" + task_name + "*");
   for (const auto& key : keys) {
-    gateway::spgw::S11BearerContext ue_proto =
-      gateway::spgw::S11BearerContext();
+    oai::S11BearerContext ue_proto =
+      oai::S11BearerContext();
     s_plus_p_gw_eps_bearer_context_information_t* ue_context =
       (s_plus_p_gw_eps_bearer_context_information_t*) (calloc(
         1, sizeof(s_plus_p_gw_eps_bearer_context_information_t)));
@@ -141,7 +141,7 @@ int SpgwStateManager::read_ue_state_from_db()
     SpgwStateConverter::proto_to_ue(ue_proto, ue_context);
 
     hashtable_ts_insert(
-      state_imsi_ht,
+      state_ue_ht,
       ue_context->sgw_eps_bearer_context_information.s_gw_teid_S11_S4,
       (void*) ue_context);
     OAILOG_DEBUG(log_task, "Reading UE state from db for %s", key.c_str());

@@ -9,7 +9,7 @@ LICENSE file in the root directory of this source tree.
 package orc8r
 
 const (
-	ModuleName string = "orc8r"
+	ModuleName = "orc8r"
 
 	NetworkFeaturesConfig   = "orc8r_features"
 	MagmadGatewayType       = "magmad_gateway"
@@ -21,4 +21,14 @@ const (
 	UpgradeReleaseChannelEntityType = "upgrade_release_channel"
 
 	DnsdNetworkType = "dnsd_network"
+
+	MetricsExporterLabel = "orc8r.io/metrics_exporter"
+	StateIndexerLabel    = "orc8r.io/state_indexer"
+	StreamProviderLabel  = "orc8r.io/stream_provider"
+
+	StateIndexerVersionAnnotation   = "orc8r.io/state_indexer_version"
+	StateIndexerTypesAnnotation     = "orc8r.io/state_indexer_types"
+	StreamProviderStreamsAnnotation = "orc8r.io/stream_provider_streams"
+
+	AnnotationListSeparator = ","
 )

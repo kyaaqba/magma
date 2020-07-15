@@ -6,14 +6,17 @@ package resolver
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentport"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentportdefinition"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/ent/serviceendpointdefinition"
+
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentport"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentportdefinition"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/require"
@@ -50,8 +53,9 @@ func preparePortData(ctx context.Context, r *TestResolver) portSearchDataModels 
 	})
 
 	loc1, _ := mr.AddLocation(ctx, models.AddLocationInput{
-		Name: "loc_inst1",
-		Type: locType1.ID,
+		Name:       "loc_inst1",
+		Type:       locType1.ID,
+		ExternalID: pointer.ToString("111"),
 	})
 
 	loc2, _ := mr.AddLocation(ctx, models.AddLocationInput{
@@ -72,7 +76,7 @@ func preparePortData(ctx context.Context, r *TestResolver) portSearchDataModels 
 			},
 			{
 				Name: "connected_date",
-				Type: models.PropertyKindDate,
+				Type: propertytype.TypeDate,
 			},
 		},
 	})
@@ -159,8 +163,8 @@ func preparePortData(ctx context.Context, r *TestResolver) portSearchDataModels 
 
 func TestSearchPortEquipmentName(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := preparePortData(ctx, r)
 	qr := r.Query()
@@ -184,8 +188,8 @@ func TestSearchPortEquipmentName(t *testing.T) {
 
 func TestSearchPortHasLink(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	preparePortData(ctx, r)
 	qr := r.Query()
@@ -207,8 +211,8 @@ func TestSearchPortHasLink(t *testing.T) {
 
 func TestSearchPortDefinition(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	d := preparePortData(ctx, r)
 
@@ -229,8 +233,8 @@ func TestSearchPortDefinition(t *testing.T) {
 
 func TestSearchPortLocation(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	d := preparePortData(ctx, r)
 	qr := r.Query()
@@ -246,12 +250,22 @@ func TestSearchPortLocation(t *testing.T) {
 	require.NoError(t, err)
 	ports := res1.Ports
 	require.Len(t, ports, 4)
+
+	fExternal := models.PortFilterInput{
+		FilterType:  models.PortFilterTypeLocationInstExternalID,
+		Operator:    models.FilterOperatorContains,
+		StringValue: pointer.ToString("1"),
+	}
+	res1, err = qr.PortSearch(ctx, []*models.PortFilterInput{&fExternal}, &limit)
+	require.NoError(t, err)
+	ports = res1.Ports
+	require.Len(t, ports, 4)
 }
 
 func TestSearchPortProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	preparePortData(ctx, r)
 
@@ -263,7 +277,7 @@ func TestSearchPortProperties(t *testing.T) {
 		Operator:   models.FilterOperatorIs,
 		PropertyValue: &models.PropertyTypeInput{
 			Name:        "propStr",
-			Type:        models.PropertyKindString,
+			Type:        propertytype.TypeString,
 			StringValue: pointer.ToString("t1"),
 		},
 	}
@@ -278,7 +292,7 @@ func TestSearchPortProperties(t *testing.T) {
 		Operator:   models.FilterOperatorIs,
 		PropertyValue: &models.PropertyTypeInput{
 			Name:        "propStr",
-			Type:        models.PropertyKindString,
+			Type:        propertytype.TypeString,
 			StringValue: pointer.ToString("newVal"),
 		},
 	}
@@ -293,7 +307,7 @@ func TestSearchPortProperties(t *testing.T) {
 		Operator:   models.FilterOperatorIs,
 		PropertyValue: &models.PropertyTypeInput{
 			Name:         "propBool",
-			Type:         models.PropertyKindBool,
+			Type:         propertytype.TypeBool,
 			BooleanValue: pointer.ToBool(true),
 		},
 	}
@@ -308,7 +322,7 @@ func TestSearchPortProperties(t *testing.T) {
 		Operator:   models.FilterOperatorIs,
 		PropertyValue: &models.PropertyTypeInput{
 			Name:         "propBool",
-			Type:         models.PropertyKindBool,
+			Type:         propertytype.TypeBool,
 			BooleanValue: pointer.ToBool(false),
 		},
 	}
@@ -323,7 +337,7 @@ func TestSearchPortProperties(t *testing.T) {
 		Operator:   models.FilterOperatorDateLessThan,
 		PropertyValue: &models.PropertyTypeInput{
 			Name:        "connected_date",
-			Type:        models.PropertyKindDate,
+			Type:        propertytype.TypeDate,
 			StringValue: pointer.ToString("2019-01-01"),
 		},
 	}
@@ -336,8 +350,8 @@ func TestSearchPortProperties(t *testing.T) {
 
 func TestSearchPortsByService(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := preparePortData(ctx, r)
 
@@ -350,8 +364,24 @@ func TestSearchPortsByService(t *testing.T) {
 	port3, err := data.e3.QueryPorts().Where(equipmentport.HasDefinitionWith(equipmentportdefinition.Name(equipmentType2Port1Name))).Only(ctx)
 	require.NoError(t, err)
 
-	st, _ := mr.AddServiceType(ctx, models.ServiceTypeCreateData{
-		Name: "Service Type", HasCustomer: false})
+	st, err := mr.AddServiceType(ctx, models.ServiceTypeCreateData{
+		Name:        "Service Type",
+		HasCustomer: false,
+		Endpoints: []*models.ServiceEndpointDefinitionInput{
+			{
+				Name:            "endpoint type1",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ1.ID,
+				Index:           0,
+			},
+			{
+				Name:            "endpoint type2",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ2.ID,
+				Index:           1,
+			},
+		}})
+	require.NoError(t, err)
 
 	s1, err := mr.AddService(ctx, models.ServiceCreateData{
 		Name:          "Service Instance 1",
@@ -360,10 +390,14 @@ func TestSearchPortsByService(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	ept0 := st.QueryEndpointDefinitions().Where(serviceendpointdefinition.Index(0)).OnlyX(ctx)
+	ept1 := st.QueryEndpointDefinitions().Where(serviceendpointdefinition.Index(1)).OnlyX(ctx)
+
 	_, err = mr.AddServiceEndpoint(ctx, models.AddServiceEndpointInput{
-		ID:     s1.ID,
-		PortID: port1.ID,
-		Role:   models.ServiceEndpointRoleConsumer,
+		ID:          s1.ID,
+		EquipmentID: data.e1.ID,
+		PortID:      pointer.ToInt(port1.ID),
+		Definition:  ept0.ID,
 	})
 	require.NoError(t, err)
 
@@ -374,21 +408,26 @@ func TestSearchPortsByService(t *testing.T) {
 	})
 	require.NoError(t, err)
 	_, err = mr.AddServiceEndpoint(ctx, models.AddServiceEndpointInput{
-		ID:     s2.ID,
-		PortID: port1.ID,
-		Role:   models.ServiceEndpointRoleConsumer,
+		ID:          s2.ID,
+		EquipmentID: data.e1.ID,
+		PortID:      pointer.ToInt(port1.ID),
+		Definition:  ept0.ID,
 	})
 	require.NoError(t, err)
+
 	_, err = mr.AddServiceEndpoint(ctx, models.AddServiceEndpointInput{
-		ID:     s2.ID,
-		PortID: port2.ID,
-		Role:   models.ServiceEndpointRoleConsumer,
+		ID:          s2.ID,
+		EquipmentID: data.e1.ID,
+		PortID:      pointer.ToInt(port2.ID),
+		Definition:  ept0.ID,
 	})
 	require.NoError(t, err)
+
 	_, err = mr.AddServiceEndpoint(ctx, models.AddServiceEndpointInput{
-		ID:     s2.ID,
-		PortID: port3.ID,
-		Role:   models.ServiceEndpointRoleConsumer,
+		ID:          s2.ID,
+		EquipmentID: data.e3.ID,
+		PortID:      pointer.ToInt(port3.ID),
+		Definition:  ept1.ID,
 	})
 	require.NoError(t, err)
 
@@ -438,4 +477,89 @@ func TestSearchPortsByService(t *testing.T) {
 	res4, err := qr.PortSearch(ctx, []*models.PortFilterInput{&f4}, &limit)
 	require.NoError(t, err)
 	require.Len(t, res4.Ports, 5)
+}
+
+func TestReorderEndpointDefinitions(t *testing.T) {
+	r := newTestResolver(t)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
+
+	data := preparePortData(ctx, r)
+
+	mr := r.Mutation()
+
+	st, err := mr.AddServiceType(ctx, models.ServiceTypeCreateData{
+		Name:        "Service Type",
+		HasCustomer: false,
+		Endpoints: []*models.ServiceEndpointDefinitionInput{
+			{
+				Name:            "nameX",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ1.ID,
+				Index:           0,
+			},
+			{
+				Name:            "nameY",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ2.ID,
+				Index:           1,
+			},
+			{
+				Name:            "nameZ",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ1.ID,
+				Index:           2,
+			},
+			{
+				Name:            "nameW",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ2.ID,
+				Index:           3,
+			},
+		}})
+	require.NoError(t, err)
+	epd := st.QueryEndpointDefinitions().Order(ent.Asc(serviceendpointdefinition.FieldIndex)).AllX(ctx)
+	for i, v := range epd {
+		require.Equal(t, i, v.Index)
+	}
+	st, err = mr.EditServiceType(ctx, models.ServiceTypeEditData{
+		ID:          st.ID,
+		Name:        "Service Type",
+		HasCustomer: false,
+		Endpoints: []*models.ServiceEndpointDefinitionInput{
+			{
+				ID:              pointer.ToInt(epd[0].ID),
+				Name:            "new name 3",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ1.ID,
+				Index:           3,
+			},
+			{
+				ID:              pointer.ToInt(epd[1].ID),
+				Name:            "new name 2",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ2.ID,
+				Index:           2,
+			},
+			{
+				ID:              pointer.ToInt(epd[2].ID),
+				Name:            "new name 1",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ1.ID,
+				Index:           1,
+			},
+			{
+				ID:              pointer.ToInt(epd[3].ID),
+				Name:            "new name 0",
+				Role:            pointer.ToString("CONSUMER"),
+				EquipmentTypeID: data.typ2.ID,
+				Index:           0,
+			},
+		}})
+	require.NoError(t, err)
+
+	epd = st.QueryEndpointDefinitions().AllX(ctx)
+	for _, v := range epd {
+		require.Contains(t, v.Name, strconv.Itoa(v.Index))
+	}
 }

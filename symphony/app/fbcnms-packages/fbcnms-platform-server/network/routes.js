@@ -8,6 +8,7 @@
  * @format
  */
 
+import type {ExpressResponse} from 'express';
 import type {FBCNMSRequest} from '@fbcnms/auth/access';
 import type {
   network_cellular_configs,
@@ -20,12 +21,13 @@ import express from 'express';
 
 import MagmaV1API from '../magma';
 import {AccessRoles} from '@fbcnms/auth/roles';
-import {CWF, FEG, LTE, SYMPHONY} from '@fbcnms/types/network';
+import {CWF, FEG, LTE, SYMPHONY, XWFM} from '@fbcnms/types/network';
 import {access} from '@fbcnms/auth/access';
+import {difference} from 'lodash';
 
 const logger = require('@fbcnms/logging').getLogger(module);
 
-const router = express.Router();
+const router: express.Router<FBCNMSRequest, ExpressResponse> = express.Router();
 
 const DEFAULT_CELLULAR_CONFIG: network_cellular_configs = {
   epc: {
@@ -121,6 +123,24 @@ router.post(
             },
           },
         });
+      } else if (data.networkType === XWFM) {
+        resp = await MagmaV1API.postCwf({
+          cwfNetwork: {
+            ...commonField,
+            dns: DEFAULT_DNS_CONFIG,
+            federation: {feg_network_id: data.fegNetworkID},
+            carrier_wifi: {
+              aaa_server: {
+                accounting_enabled: true,
+                create_session_on_auth: true,
+                idle_session_timeout_ms: 500000,
+              },
+              default_rule_id: '',
+              eap_aka: {},
+              network_services: [],
+            },
+          },
+        });
       } else if (data.networkType === FEG) {
         resp = await MagmaV1API.postFeg({
           fegNetwork: {
@@ -192,4 +212,43 @@ router.post(
   }),
 );
 
+router.post(
+  '/delete',
+  access(AccessRoles.SUPERUSER),
+  asyncHandler(async (req: FBCNMSRequest, res) => {
+    const {networkID} = req.body;
+
+    try {
+      await MagmaV1API.deleteNetworksByNetworkId({
+        networkId: networkID,
+      });
+
+      // Remove network from organization
+      if (req.organization) {
+        const organization = await req.organization();
+
+        const networkIDs = difference(organization.networkIDs, [networkID]);
+        await organization.update({networkIDs});
+      }
+    } catch (e) {
+      logger.error(e, {
+        response: e.response?.data,
+      });
+      res
+        .status(200)
+        .send({
+          success: false,
+        })
+        .end();
+      return;
+    }
+
+    res
+      .status(200)
+      .send({
+        success: true,
+      })
+      .end();
+  }),
+);
 export default router;

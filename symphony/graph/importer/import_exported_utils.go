@@ -11,12 +11,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/equipment"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentposition"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentpositiondefinition"
-	"github.com/facebookincubator/symphony/graph/ent/locationtype"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/equipment"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentposition"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentpositiondefinition"
+	"github.com/facebookincubator/symphony/pkg/ent/locationtype"
 	"github.com/pkg/errors"
 )
 
@@ -144,6 +144,7 @@ func (m *importer) verifyOrCreateLocationHierarchy(ctx context.Context, l Import
 	var currParentID *int
 	var loc *ent.Location
 	ic := getImportContext(ctx)
+	client := m.ClientFrom(ctx)
 
 	locStart, indexToStopLoop := l.Header().LocationsRangeIdx()
 	if limit != nil {
@@ -158,7 +159,7 @@ func (m *importer) verifyOrCreateLocationHierarchy(ctx context.Context, l Import
 			break
 		}
 		typID := ic.indexToLocationTypeID[i+locStart] // the actual index
-		typ, err := m.r.Query().LocationType(ctx, typID)
+		typ, err := client.LocationType.Get(ctx, typID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "missing location type: id=%q", typID)
 		}
@@ -307,7 +308,7 @@ func (m *importer) validatePropertiesForPortType(ctx context.Context, line Impor
 	}
 	for _, ptype := range propTypes {
 		ptypeName := ptype.Name
-		pInput, err := line.GetPropertyInput(m.ClientFrom(ctx), ctx, portType, ptypeName)
+		pInput, err := line.GetPropertyInput(ctx, portType, ptypeName)
 		if err != nil {
 			return nil, err
 		}

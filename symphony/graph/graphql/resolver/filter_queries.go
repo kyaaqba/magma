@@ -9,9 +9,9 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 
-	"github.com/facebookincubator/symphony/graph/ent"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
 	"github.com/facebookincubator/symphony/graph/resolverutil"
+	"github.com/facebookincubator/symphony/pkg/ent"
 	"github.com/pkg/errors"
 )
 
@@ -41,6 +41,14 @@ func (r queryResolver) ServiceSearch(ctx context.Context, filters []*models.Serv
 
 func (r queryResolver) UserSearch(ctx context.Context, filters []*models.UserFilterInput, limit *int) (*models.UserSearchResult, error) {
 	return resolverutil.UserSearch(ctx, r.ClientFrom(ctx), filters, limit)
+}
+
+func (r queryResolver) PermissionsPolicySearch(ctx context.Context, filters []*models.PermissionsPolicyFilterInput, limit *int) (*models.PermissionsPolicySearchResult, error) {
+	return resolverutil.PermissionsPolicySearch(ctx, r.ClientFrom(ctx), filters, limit)
+}
+
+func (r queryResolver) UsersGroupSearch(ctx context.Context, filters []*models.UsersGroupFilterInput, limit *int) (*models.UsersGroupSearchResult, error) {
+	return resolverutil.UsersGroupSearch(ctx, r.ClientFrom(ctx), filters, limit)
 }
 
 func (r queryResolver) ProjectSearch(ctx context.Context, filters []*models.ProjectFilterInput, limit *int) ([]*ent.Project, error) {
