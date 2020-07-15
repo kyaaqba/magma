@@ -1,0 +1,72 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus"
+    },
+    "postgresdb_admin_login": {
+      "value": "magma_dev"
+    },
+    "postgresdb_admin_password": {
+      "value": "Sonar_SFT_654321!!"
+    },
+    "postgresql_db_server_name": {
+        "value":"orc8r-postgresqldb-01"
+    },
+    "mariadb_admin_login": {
+      "value": "magma_dev"
+    },
+    "mariadb_admin_password": {
+      "value": "Sonar_SFT_654321!!"
+    },
+    "maria_db_server_name": {
+        "value": "orc8r-mariadbserver-01"
+    },
+    "virtualNetwork_resourceGroup": {
+      "value": "<INSERT NETWORK RESOURCE GROUP NAME>"
+    },
+    "virtualNetwork_name": {
+      "value": "orc8r-vnet-01"
+    },
+    "virtualNetwork_aksSubnet": {
+      "value": "orc8r-subnet-aks-01"
+    },
+    "virtualNetwork_dataSubnet": {
+      "value": "orc8r-subnet-data-01"
+    },
+    "aks_clusterName": {
+      "value": "magma-aks"
+    },
+    "aks_subnetRoleAssignmentName": {
+      "value": "<INSERT UNIQUE NAME FOR ROLE ASSIGNMENT>"
+    },
+    "aks_servicePrincipalObjectId": {
+      "value": "<INSERT SERVICE PRINCIPAL OBJECT ID FOR CLUSTER IDENTITY>"
+    },
+    "aks_servicePrincipalClientId": {
+      "value": "<INSERT SERVICE PRINCIPAL CLIENT ID FOR CLUSTER IDENTITY>"
+    },
+    "aks_servicePrincipalClientSecret": {
+      "value": "<INSERT SERVICE PRINCIPAL CLIENT SECRET FOR CLUSTER IDENTITY>"
+    },
+    "aks_AAD_ClientAppID": {
+      "value": "<INSERT CLIENT APP CLIENT ID FOR AAD AUTH>"
+    },
+    "aks_AAD_ServerAppID": {
+      "value": "<INSERT SERVER APP CLIENT ID FOR AAD AUTH>"
+    },
+    "aks_AAD_TenantID": {
+      "value": "<INSERT AAD TENANT ID FOR AAD AUTH>"
+    },
+    "aks_AAD_ServerAppSecret": {
+      "value": "<INSERT SERVER APP CLIENT SECRET FOR AAD AUTH>"
+    },
+    "aks_serviceCidr": {
+      "value": "20.0.0.0/16"
+    },
+    "aks_dnsServiceIP": {
+      "value": "20.0.0.10"
+    }
+  }
+}
