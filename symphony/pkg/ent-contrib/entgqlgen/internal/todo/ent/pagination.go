@@ -72,8 +72,9 @@ type TodoEdge struct {
 
 // TodoConnection is the connection containing edges to Todo.
 type TodoConnection struct {
-	Edges    []*TodoEdge `json:"edges"`
-	PageInfo PageInfo    `json:"pageInfo"`
+	Edges      []*TodoEdge `json:"edges"`
+	PageInfo   PageInfo    `json:"pageInfo"`
+	TotalCount int         `json:"totalCount"`
 }
 
 // Paginate executes the query and returns a relay based cursor connection to Todo.
@@ -100,6 +101,17 @@ func (t *TodoQuery) Paginate(ctx context.Context, after *Cursor, first *int, bef
 		}
 	}
 
+	var totalCount int
+	if field := fieldForPath(ctx, "totalCount"); field != nil {
+		count, err := t.Clone().Count(ctx)
+		if err != nil {
+			return &TodoConnection{
+				Edges: []*TodoEdge{},
+			}, err
+		}
+		totalCount = count
+	}
+
 	if after != nil {
 		t = t.Where(todo.IDGT(after.ID))
 	}
@@ -117,7 +129,8 @@ func (t *TodoQuery) Paginate(ctx context.Context, after *Cursor, first *int, bef
 	nodes, err := t.All(ctx)
 	if err != nil || len(nodes) == 0 {
 		return &TodoConnection{
-			Edges: []*TodoEdge{},
+			TotalCount: totalCount,
+			Edges:      []*TodoEdge{},
 		}, err
 	}
 	if last != nil {
@@ -126,7 +139,7 @@ func (t *TodoQuery) Paginate(ctx context.Context, after *Cursor, first *int, bef
 		}
 	}
 
-	var conn TodoConnection
+	conn := TodoConnection{TotalCount: totalCount}
 	if first != nil && len(nodes) > *first {
 		conn.PageInfo.HasNextPage = true
 		nodes = nodes[:len(nodes)-1]
@@ -151,22 +164,22 @@ func (t *TodoQuery) Paginate(ctx context.Context, after *Cursor, first *int, bef
 
 func (t *TodoQuery) collectConnectionFields(ctx context.Context) *TodoQuery {
 	if field := fieldForPath(ctx, "edges", "node"); field != nil {
-		t = t.collectField(graphql.GetRequestContext(ctx), *field)
+		t = t.collectField(graphql.GetOperationContext(ctx), *field)
 	}
 	return t
 }
 
 func fieldForPath(ctx context.Context, path ...string) *graphql.CollectedField {
-	resctx := graphql.GetResolverContext(ctx)
-	if resctx == nil {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
 		return nil
 	}
-	reqctx := graphql.GetRequestContext(ctx)
-	field := resctx.Field
+	oc := graphql.GetOperationContext(ctx)
+	field := fc.Field
 
 walk:
 	for _, name := range path {
-		for _, f := range graphql.CollectFields(reqctx, field.Selections, nil) {
+		for _, f := range graphql.CollectFields(oc, field.Selections, nil) {
 			if f.Name == name {
 				field = f
 				continue walk

@@ -12,7 +12,6 @@ package mconfig
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -20,12 +19,16 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/golang/glog"
+
+	"magma/gateway/config"
+	_ "magma/orc8r/lib/go/initflag"
 	"magma/orc8r/lib/go/protos"
 )
 
 var (
 	localConfig   unsafe.Pointer
-	cfgMu         sync.Mutex
+	cfgMu         sync.RWMutex
 	lastFileInfo  os.FileInfo
 	lastFilePath  string
 	refreshTicker *time.Ticker
@@ -40,9 +43,9 @@ func init() {
 			<-refreshTicker.C
 			cfgPath, err := RefreshConfigs()
 			if err == nil {
-				log.Print("Mconfig refresh succeeded from: ", cfgPath)
+				glog.V(1).Info("Mconfig refresh succeeded from: ", cfgPath)
 			} else {
-				log.Printf("Mconfig refresh error: %v", err)
+				glog.Errorf("Mconfig refresh error: %v", err)
 			}
 		}
 	}()
@@ -57,7 +60,7 @@ func RefreshConfigs() (string, error) {
 	configPath := ConfigFilePath()
 	err := RefreshConfigsFrom(configPath)
 	if err != nil {
-		log.Printf("Cannot load configs from %s: %v", configPath, err)
+		glog.Errorf("Cannot load configs from %s: %v", configPath, err)
 		configPath = DefaultConfigFilePath()
 		err = RefreshConfigsFrom(configPath)
 	}
@@ -71,7 +74,7 @@ func ConfigFilePath() string {
 
 // DefaultConfigFilePath returns default GW mconfig file path
 func DefaultConfigFilePath() string {
-	return filepath.Join(DefaultConfigFileDir, MconfigFileName)
+	return filepath.Join(staticConfigFileDir(), MconfigFileName)
 }
 
 // RefreshConfigsFrom checks if Managed Config File mcpath has changed
@@ -87,6 +90,7 @@ func RefreshConfigsFrom(mcpath string) error {
 		return fmt.Errorf("Managed Config File '%s' stat error: %v", mcpath, err)
 	}
 	if sameFile(lastFileInfo, fi) {
+		glog.V(1).Infof("mconfig '%s' is unchanged from %s", mcpath, lastFileInfo.ModTime().Format(time.RFC822))
 		return nil
 	}
 	err = loadFromFile(mcpath)
@@ -108,7 +112,18 @@ func sameFile(oldInfo, newInfo os.FileInfo) bool {
 func configFileDir() string {
 	mcdir := os.Getenv(ConfigFileDirEnv)
 	if len(mcdir) == 0 {
-		mcdir = DefaultDynamicConfigFileDir
+		mcdir = config.GetMagmadConfigs().DynamicMconfigDir
+		if len(mcdir) == 0 {
+			mcdir = DefaultDynamicConfigFileDir
+		}
+	}
+	return mcdir
+}
+
+func staticConfigFileDir() string {
+	mcdir := config.GetMagmadConfigs().StaticMconfigDir
+	if len(mcdir) == 0 {
+		mcdir = DefaultConfigFileDir
 	}
 	return mcdir
 }
@@ -137,4 +152,11 @@ func StopRefreshTicker() {
 		refreshTicker.Stop()
 	}
 	cfgMu.Unlock()
+}
+
+// Info returns last used mconfig file information
+func Info() (fullPath string, fileInfo os.FileInfo) {
+	cfgMu.RLock()
+	defer cfgMu.RUnlock()
+	return lastFilePath, lastFileInfo
 }

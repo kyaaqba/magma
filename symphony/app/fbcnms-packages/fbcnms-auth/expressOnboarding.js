@@ -17,7 +17,7 @@ import {AccessRoles} from './roles';
 import {Organization, User} from '@fbcnms/sequelize-models';
 import {getPropsToUpdate} from './util';
 
-export default function() {
+export default function () {
   const onboardingMiddleware = async (
     req: FBCNMSRequest,
     res: ExpressResponse,
@@ -31,7 +31,10 @@ export default function() {
     next();
   };
 
-  const router = express.Router();
+  const router: express.Router<
+    FBCNMSRequest,
+    ExpressResponse,
+  > = express.Router();
 
   router.get(
     '/onboarding',

@@ -10,14 +10,13 @@
 
 import type {AppContextType} from '@fbcnms/ui/context/AppContext';
 import type {Equipment} from '../../common/Equipment';
-import type {LocationMoreActionsButton_location} from './__generated__/LocationMoreActionsButton_location.graphql';
+import type {LocationMenu_location} from './__generated__/LocationMenu_location.graphql';
 import type {WithSnackbarProps} from 'notistack';
 import type {WithStyles} from '@material-ui/core';
 
 import AppContext from '@fbcnms/ui/context/AppContext';
 import Button from '@fbcnms/ui/components/design-system/Button';
 import Card from '@material-ui/core/Card';
-import EditIcon from '@material-ui/icons/Edit';
 import ErrorMessage from '@fbcnms/ui/components/ErrorMessage';
 import FormAction from '@fbcnms/ui/components/design-system/Form/FormAction';
 import InventoryQueryRenderer from '../../components/InventoryQueryRenderer';
@@ -26,12 +25,13 @@ import LocationCoverageMapTab from './LocationCoverageMapTab';
 import LocationDetailsTab from './LocationDetailsTab';
 import LocationDocumentsCard from './LocationDocumentsCard';
 import LocationFloorPlansTab from './LocationFloorPlansTab';
-import LocationMoreActionsButton from './LocationMoreActionsButton';
+import LocationMenu from './LocationMenu';
 import LocationNetworkMapTab from './LocationNetworkMapTab';
 import LocationSiteSurveyTab from './LocationSiteSurveyTab';
 import React from 'react';
 import Tab from '@material-ui/core/Tab';
 import Tabs from '@material-ui/core/Tabs';
+import fbt from 'fbt';
 import {FormContextProvider} from '../../common/FormContext';
 import {LogEvents, ServerLogger} from '../../common/LoggingUtils';
 import {graphql} from 'react-relay';
@@ -45,9 +45,8 @@ type Props = {
   onWorkOrderSelected: (workOrderId: string) => void,
   onEdit: () => void,
   onAddEquipment: () => void,
-  onLocationRemoved: (
-    removedLocation: LocationMoreActionsButton_location,
-  ) => void,
+  onLocationMoved: (movedLocation: LocationMenu_location) => void,
+  onLocationRemoved: (removedLocation: LocationMenu_location) => void,
 } & WithStyles<typeof styles> &
   WithSnackbarProps;
 
@@ -61,8 +60,6 @@ const styles = theme => ({
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    paddingLeft: '0px',
-    paddingRight: '0px',
   },
   contentRoot: {
     position: 'relative',
@@ -84,7 +81,7 @@ const styles = theme => ({
   locationNameHeader: {
     display: 'flex',
     alignItems: 'center',
-    padding: '0px 24px',
+    padding: '0px 8px',
     marginBottom: '16px',
     '&>:not(:last-child)': {
       marginRight: '8px',
@@ -109,9 +106,6 @@ const styles = theme => ({
   },
   tabsContainer: {
     marginBottom: '16px',
-  },
-  documentsTable: {
-    padding: '24px',
   },
 });
 
@@ -142,7 +136,7 @@ const locationsPropertiesCardQuery = graphql`
           id
         }
         equipments {
-          ...EquipmentTable_equipment
+          ...EquipmentTable_equipments
         }
         properties {
           ...PropertyFormField_property
@@ -160,10 +154,14 @@ const locationsPropertiesCardQuery = graphql`
         surveys {
           id
         }
+        parentCoords {
+          latitude
+          longitude
+        }
         ...LocationSiteSurveyTab_location
         ...LocationDocumentsCard_location
         ...LocationFloorPlansTab_location
-        ...LocationMoreActionsButton_location
+        ...LocationMenu_location
       }
     }
   }
@@ -179,7 +177,13 @@ class LocationPropertiesCard extends React.Component<Props, State> {
   context: AppContextType;
 
   render() {
-    const {classes, locationId, onLocationRemoved, onAddEquipment} = this.props;
+    const {
+      classes,
+      locationId,
+      onLocationMoved,
+      onLocationRemoved,
+      onAddEquipment,
+    } = this.props;
     if (!locationId) {
       return null;
     }
@@ -208,7 +212,12 @@ class LocationPropertiesCard extends React.Component<Props, State> {
           }
 
           return (
-            <FormContextProvider>
+            <FormContextProvider
+              permissions={{
+                entity: 'location',
+                action: 'update',
+                locationTypeId: location.locationType.id,
+              }}>
               <div className={classes.root}>
                 <div className={classes.cardHeader}>
                   <div className={classes.locationNameHeader}>
@@ -216,16 +225,17 @@ class LocationPropertiesCard extends React.Component<Props, State> {
                       locationDetails={location}
                       hideTypes={false}
                     />
-                    <LocationMoreActionsButton
-                      location={location}
-                      onLocationRemoved={onLocationRemoved}
-                    />
                     <FormAction>
-                      <Button
-                        variant="text"
-                        skin="primary"
-                        onClick={this.props.onEdit}>
-                        <EditIcon />
+                      <LocationMenu
+                        location={location}
+                        popoverMenuClassName={classes.popoverMenu}
+                        onLocationMoved={onLocationMoved}
+                        onLocationRemoved={onLocationRemoved}
+                      />
+                    </FormAction>
+                    <FormAction>
+                      <Button onClick={this.props.onEdit}>
+                        <fbt desc="">Edit Location</fbt>
                       </Button>
                     </FormAction>
                   </div>
@@ -293,10 +303,7 @@ class LocationPropertiesCard extends React.Component<Props, State> {
                     />
                   ) : null}
                   {this.state.selectedTab === 'documents' ? (
-                    <LocationDocumentsCard
-                      className={classes.documentsTable}
-                      location={location}
-                    />
+                    <LocationDocumentsCard location={location} />
                   ) : null}
                   {this.state.selectedTab === 'network_map' ? (
                     <LocationNetworkMapTab locationId={location.id} />

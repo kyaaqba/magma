@@ -82,7 +82,7 @@ void __gcov_flush(void);
 // Pid:    3515
 // PPid:   3452
 // ..
-// Threads:	1
+// Threads: 1
 //
 static const char THREADS_STR[] = "Threads:";
 static const char PROC_PATH[] = "/proc/%d/status";
@@ -121,7 +121,6 @@ int signal_mask(void)
 
   sigemptyset(&set);
   sigaddset(&set, SIGTIMER);
-  sigaddset(&set, SIGUSR1);
   sigaddset(&set, SIGABRT);
   sigaddset(&set, SIGSEGV);
   sigaddset(&set, SIGINT);
@@ -135,14 +134,13 @@ int signal_mask(void)
   return 0;
 }
 
-int signal_handle(int *end)
+int signal_handle(int* end, task_zmq_ctx_t* task_ctx)
 {
   int ret;
   siginfo_t info;
 
   sigemptyset(&set);
   sigaddset(&set, SIGTIMER);
-  sigaddset(&set, SIGUSR1);
   sigaddset(&set, SIGABRT);
   sigaddset(&set, SIGSEGV);
   sigaddset(&set, SIGINT);
@@ -169,20 +167,12 @@ int signal_handle(int *end)
    * * * use in switch.
    */
   if (info.si_signo == SIGTIMER) {
-    timer_handle_signal(&info);
+    timer_handle_signal(&info, task_ctx);
   } else {
     /*
      * Dispatch the signal to sub-handlers
      */
     switch (info.si_signo) {
-      case SIGUSR1:
-#if LINK_GCOV
-        __gcov_flush();
-#endif
-        SIG_DEBUG("Received SIGUSR1\n");
-        *end = 1;
-        break;
-
       case SIGSEGV: /* Fall through */
       case SIGABRT:
         SIG_DEBUG("Received SIGABORT\n");
@@ -192,7 +182,7 @@ int signal_handle(int *end)
       case SIGINT:
       case SIGTERM:
         printf("Received SIGINT or SIGTERM\n");
-        itti_send_terminate_message(TASK_UNKNOWN);
+        send_terminate_message(task_ctx);
         *end = 1;
         break;
 

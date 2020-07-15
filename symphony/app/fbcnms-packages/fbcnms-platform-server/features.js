@@ -8,7 +8,8 @@
  * @format
  */
 
-import type {ExpressRequest} from 'express';
+import type {ExpressRequest, ExpressResponse, NextFunction} from 'express';
+import type {FBCNMSRequest} from '@fbcnms/auth/access';
 import type {FeatureID} from '@fbcnms/types/features';
 
 // A rule that gets evaluated when the featureflag is checked
@@ -31,6 +32,7 @@ export type FeatureConfig = {
   title: string,
   enabledByDefault: boolean,
   rules?: FeatureFlagRule[],
+  publicAccess?: boolean,
 };
 
 const {FeatureFlag} = require('@fbcnms/sequelize-models');
@@ -146,7 +148,6 @@ const arrayConfigs = [
     id: 'planned_equipment',
     title: 'Planned Equipment',
     enabledByDefault: false,
-    rules: [AlwaysEnabledInTestEnvRule],
   },
   {
     id: 'multi_subject_reports',
@@ -177,20 +178,44 @@ const arrayConfigs = [
     id: 'saved_searches',
     title: 'Saved Searches',
     enabledByDefault: false,
+    rules: [AlwaysEnabledInTestEnvRule],
   },
   {
-    id: 'user_management',
-    title: 'User Management - Users and Permissions admin section',
+    id: 'user_management_dev',
+    title: 'User Management - Dev mode',
     enabledByDefault: false,
+  },
+  {
+    id: 'permission_policies',
+    title: 'Permission - Policies',
+    enabledByDefault: false,
+    rules: [AlwaysEnabledInTestEnvRule],
+  },
+  {
+    id: 'permissions_ui_enforcement',
+    title: 'Permissions - UI enforcement',
+    enabledByDefault: true,
   },
   {
     id: 'grafana_metrics',
     title: 'Include tab for Grafana in the Metrics page',
+    enabledByDefault: true,
+  },
+  {
+    id: 'dashboard_v2',
+    title: 'V2 LTE Dashboard',
     enabledByDefault: false,
+    rules: [AlwaysEnabledInTestEnvRule],
+  },
+  {
+    id: 'work_order_activities_display',
+    title: 'Work Order Activities Display',
+    enabledByDefault: false,
+    rules: [AlwaysEnabledInTestEnvRule],
   },
 ];
 
-const featureConfigs: {[FeatureID]: FeatureConfig} = {};
+export const featureConfigs: {[FeatureID]: FeatureConfig} = {};
 arrayConfigs.map(config => (featureConfigs[config.id] = config));
 
 export async function isFeatureEnabled(
@@ -222,15 +247,39 @@ export async function isFeatureEnabled(
 export async function getEnabledFeatures(
   req: ExpressRequest,
   organization: ?string,
+  publicAccess: ?boolean,
 ): Promise<FeatureID[]> {
   const results = await Promise.all(
     arrayConfigs.map(async (config): Promise<?FeatureID> => {
+      if (publicAccess && !config.publicAccess) {
+        return null;
+      }
       const enabled = await isFeatureEnabled(req, config.id, organization);
       return enabled ? config.id : null;
     }),
   );
 
   return results.filter(Boolean);
+}
+
+export function insertFeatures(
+  req: FBCNMSRequest,
+  res: ExpressResponse,
+  next: NextFunction,
+) {
+  if (req.user.organization) {
+    getEnabledFeatures(req, req.user.organization)
+      .then(enabledFeatures => {
+        const features = Array.from(enabledFeatures, feature =>
+          String(feature),
+        ).join();
+        req.headers['x-auth-features'] = features;
+        next();
+      })
+      .catch(err => next(err));
+  } else {
+    next();
+  }
 }
 
 export default {...featureConfigs};

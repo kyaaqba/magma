@@ -6,35 +6,49 @@ package event
 
 import (
 	"context"
-	"time"
 
-	"gocloud.dev/pubsub"
-	"gocloud.dev/pubsub/mempubsub"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/log"
+	"github.com/facebookincubator/symphony/pkg/pubsub"
+	"github.com/facebookincubator/symphony/pkg/viewer"
+	"go.uber.org/zap"
 )
 
-const (
-	// TenantHeader is the metadata key holding tenant name.
-	TenantHeader = "event/tenant"
-	// NameHeader is the metadata key holding event name.
-	NameHeader = "event/name"
-)
-
-// Work order events.
-const (
-	WorkOrderAdded = "work_order/added"
-	WorkOrderDone  = "work_order/done"
-)
-
-// Pipe creates a in memory emitter/subscriber pipe.
-func Pipe() (Emitter, Subscriber) {
-	topic := mempubsub.NewTopic()
-	subscriber := SubscriberFunc(
-		func(context.Context) (*pubsub.Subscription, error) {
-			return mempubsub.NewSubscription(topic, time.Second), nil
-		},
-	)
-	return TopicEmitter{topic: topic}, subscriber
+// Eventer generates events from mutations.
+type Eventer struct {
+	Logger  log.Logger
+	Emitter pubsub.Emitter
 }
 
-// DefaultViews are predefined views for opencensus metrics.
-var DefaultViews = pubsub.OpenCensusViews
+// HookTo hooks eventer to ent client.
+func (e *Eventer) HookTo(client *ent.Client) {
+	client.Use(e.logHook())
+	client.WorkOrder.Use(e.workOrderHook())
+}
+
+func (e *Eventer) emit(ctx context.Context, name string, value interface{}) {
+	emit := func() {
+		logger := e.Logger.For(ctx).With(zap.String("name", name))
+		body, err := pubsub.Marshal(value)
+		if err != nil {
+			logger.Warn("cannot marshal event value", zap.Error(err))
+			return
+		}
+		if err := e.Emitter.Emit(ctx, viewer.FromContext(ctx).Tenant(), name, body); err != nil {
+			logger.Warn("cannot emit event", zap.Error(err))
+		}
+		logger.Debug("emitting event")
+	}
+	if tx := ent.TxFromContext(ctx); tx != nil {
+		tx.OnCommit(func(next ent.Committer) ent.Committer {
+			return ent.CommitFunc(func(ctx context.Context, tx *ent.Tx) (err error) {
+				if err = next.Commit(ctx, tx); err == nil {
+					emit()
+				}
+				return err
+			})
+		})
+	} else {
+		emit()
+	}
+}

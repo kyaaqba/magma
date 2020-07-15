@@ -6,7 +6,7 @@
 
  /**
  * @flow
- * @relayHash a0264cdea2d3105e33d5d2f95d4e7e3e
+ * @relayHash 23ddd700b24b9ca468e00d993e9ef424
  */
 
 /* eslint-disable */
@@ -17,11 +17,11 @@
 import type { ConcreteRequest } from 'relay-runtime';
 type DynamicPropertiesGrid_properties$ref = any;
 type DynamicPropertiesGrid_propertyTypes$ref = any;
-type EquipmentTable_equipment$ref = any;
+type EquipmentTable_equipments$ref = any;
 type LocationBreadcrumbsTitle_locationDetails$ref = any;
 type LocationDocumentsCard_location$ref = any;
 type LocationFloorPlansTab_location$ref = any;
-type LocationMoreActionsButton_location$ref = any;
+type LocationMenu_location$ref = any;
 type LocationSiteSurveyTab_location$ref = any;
 type PropertyFormField_property$ref = any;
 type PropertyTypeFormField_propertyType$ref = any;
@@ -51,7 +51,7 @@ export type LocationPropertiesCardQueryResponse = {|
       +id: string
     |}>,
     +equipments?: $ReadOnlyArray<?{|
-      +$fragmentRefs: EquipmentTable_equipment$ref
+      +$fragmentRefs: EquipmentTable_equipments$ref
     |}>,
     +properties?: $ReadOnlyArray<?{|
       +$fragmentRefs: PropertyFormField_property$ref & DynamicPropertiesGrid_properties$ref
@@ -68,7 +68,11 @@ export type LocationPropertiesCardQueryResponse = {|
     +surveys?: $ReadOnlyArray<?{|
       +id: string
     |}>,
-    +$fragmentRefs: LocationBreadcrumbsTitle_locationDetails$ref & LocationSiteSurveyTab_location$ref & LocationDocumentsCard_location$ref & LocationFloorPlansTab_location$ref & LocationMoreActionsButton_location$ref,
+    +parentCoords?: ?{|
+      +latitude: number,
+      +longitude: number,
+    |},
+    +$fragmentRefs: LocationBreadcrumbsTitle_locationDetails$ref & LocationSiteSurveyTab_location$ref & LocationDocumentsCard_location$ref & LocationFloorPlansTab_location$ref & LocationMenu_location$ref,
   |}
 |};
 export type LocationPropertiesCardQuery = {|
@@ -109,7 +113,7 @@ query LocationPropertiesCardQuery(
         id
       }
       equipments {
-        ...EquipmentTable_equipment
+        ...EquipmentTable_equipments
         id
       }
       properties {
@@ -129,10 +133,14 @@ query LocationPropertiesCardQuery(
       surveys {
         id
       }
+      parentCoords {
+        latitude
+        longitude
+      }
       ...LocationSiteSurveyTab_location
       ...LocationDocumentsCard_location
       ...LocationFloorPlansTab_location
-      ...LocationMoreActionsButton_location
+      ...LocationMenu_location
     }
     id
   }
@@ -167,6 +175,7 @@ fragment DynamicPropertiesGrid_propertyTypes on PropertyType {
   index
   isInstanceProperty
   type
+  nodeType
   stringValue
   intValue
   booleanValue
@@ -185,7 +194,7 @@ fragment EntityDocumentsTable_hyperlinks on Hyperlink {
   ...DocumentTable_hyperlinks
 }
 
-fragment EquipmentTable_equipment on Equipment {
+fragment EquipmentTable_equipments on Equipment {
   id
   name
   futureState
@@ -274,8 +283,12 @@ fragment LocationFloorPlansTab_location on Location {
   }
 }
 
-fragment LocationMoreActionsButton_location on Location {
+fragment LocationMenu_location on Location {
   id
+  name
+  locationType {
+    id
+  }
   parentLocation {
     id
   }
@@ -319,10 +332,21 @@ fragment PropertyFormField_property on Property {
     id
     name
     type
-    isEditable
-    isMandatory
-    isInstanceProperty
+    nodeType
+    index
     stringValue
+    intValue
+    booleanValue
+    floatValue
+    latitudeValue
+    longitudeValue
+    rangeFromValue
+    rangeToValue
+    isEditable
+    isInstanceProperty
+    isMandatory
+    category
+    isDeleted
   }
   stringValue
   intValue
@@ -332,15 +356,8 @@ fragment PropertyFormField_property on Property {
   longitudeValue
   rangeFromValue
   rangeToValue
-  equipmentValue {
-    id
-    name
-  }
-  locationValue {
-    id
-    name
-  }
-  serviceValue {
+  nodeValue {
+    __typename
     id
     name
   }
@@ -350,6 +367,7 @@ fragment PropertyTypeFormField_propertyType on PropertyType {
   id
   name
   type
+  nodeType
   index
   stringValue
   intValue
@@ -362,6 +380,8 @@ fragment PropertyTypeFormField_propertyType on PropertyType {
   isEditable
   isInstanceProperty
   isMandatory
+  category
+  isDeleted
 }
 
 fragment SiteSurveyPane_survey on Survey {
@@ -511,16 +531,22 @@ v11 = {
   "selections": (v9/*: any*/)
 },
 v12 = {
-  "kind": "ScalarField",
+  "kind": "LinkedField",
   "alias": null,
-  "name": "type",
+  "name": "parentCoords",
+  "storageKey": null,
   "args": null,
-  "storageKey": null
+  "concreteType": "Coordinates",
+  "plural": false,
+  "selections": [
+    (v4/*: any*/),
+    (v5/*: any*/)
+  ]
 },
 v13 = {
   "kind": "ScalarField",
   "alias": null,
-  "name": "index",
+  "name": "__typename",
   "args": null,
   "storageKey": null
 },
@@ -583,78 +609,115 @@ v21 = {
 v22 = {
   "kind": "ScalarField",
   "alias": null,
-  "name": "isEditable",
+  "name": "category",
   "args": null,
   "storageKey": null
 },
-v23 = {
-  "kind": "ScalarField",
-  "alias": null,
-  "name": "isInstanceProperty",
-  "args": null,
-  "storageKey": null
-},
-v24 = {
-  "kind": "ScalarField",
-  "alias": null,
-  "name": "isMandatory",
-  "args": null,
-  "storageKey": null
-},
-v25 = [
+v23 = [
   (v2/*: any*/),
-  (v3/*: any*/)
+  (v3/*: any*/),
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "type",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "nodeType",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "index",
+    "args": null,
+    "storageKey": null
+  },
+  (v14/*: any*/),
+  (v15/*: any*/),
+  (v16/*: any*/),
+  (v17/*: any*/),
+  (v18/*: any*/),
+  (v19/*: any*/),
+  (v20/*: any*/),
+  (v21/*: any*/),
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "isEditable",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "isInstanceProperty",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "isMandatory",
+    "args": null,
+    "storageKey": null
+  },
+  (v22/*: any*/),
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "isDeleted",
+    "args": null,
+    "storageKey": null
+  }
 ],
-v26 = {
+v24 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "fileName",
   "args": null,
   "storageKey": null
 },
-v27 = {
-  "kind": "ScalarField",
-  "alias": null,
-  "name": "category",
-  "args": null,
-  "storageKey": null
-},
-v28 = {
+v25 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "sizeInBytes",
   "args": null,
   "storageKey": null
 },
-v29 = {
+v26 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "uploaded",
   "args": null,
   "storageKey": null
 },
-v30 = {
+v27 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "fileType",
   "args": null,
   "storageKey": null
 },
-v31 = {
+v28 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "storeKey",
   "args": null,
   "storageKey": null
 },
-v32 = [
+v29 = [
   (v2/*: any*/),
+  (v24/*: any*/),
+  (v22/*: any*/),
+  (v25/*: any*/),
   (v26/*: any*/),
   (v27/*: any*/),
-  (v28/*: any*/),
-  (v29/*: any*/),
-  (v30/*: any*/),
-  (v31/*: any*/)
+  (v28/*: any*/)
 ];
 return {
   "kind": "Request",
@@ -732,7 +795,7 @@ return {
                 "selections": [
                   {
                     "kind": "FragmentSpread",
-                    "name": "EquipmentTable_equipment",
+                    "name": "EquipmentTable_equipments",
                     "args": null
                   }
                 ]
@@ -798,6 +861,7 @@ return {
                 "plural": true,
                 "selections": (v9/*: any*/)
               },
+              (v12/*: any*/),
               {
                 "kind": "FragmentSpread",
                 "name": "LocationBreadcrumbsTitle_locationDetails",
@@ -820,7 +884,7 @@ return {
               },
               {
                 "kind": "FragmentSpread",
-                "name": "LocationMoreActionsButton_location",
+                "name": "LocationMenu_location",
                 "args": null
               }
             ]
@@ -843,13 +907,7 @@ return {
         "concreteType": null,
         "plural": false,
         "selections": [
-          {
-            "kind": "ScalarField",
-            "alias": null,
-            "name": "__typename",
-            "args": null,
-            "storageKey": null
-          },
+          (v13/*: any*/),
           (v2/*: any*/),
           {
             "kind": "InlineFragment",
@@ -880,23 +938,7 @@ return {
                     "args": null,
                     "concreteType": "PropertyType",
                     "plural": true,
-                    "selections": [
-                      (v2/*: any*/),
-                      (v3/*: any*/),
-                      (v12/*: any*/),
-                      (v13/*: any*/),
-                      (v14/*: any*/),
-                      (v15/*: any*/),
-                      (v16/*: any*/),
-                      (v17/*: any*/),
-                      (v18/*: any*/),
-                      (v19/*: any*/),
-                      (v20/*: any*/),
-                      (v21/*: any*/),
-                      (v22/*: any*/),
-                      (v23/*: any*/),
-                      (v24/*: any*/)
-                    ]
+                    "selections": (v23/*: any*/)
                   }
                 ]
               },
@@ -954,7 +996,10 @@ return {
                     "args": null,
                     "concreteType": "EquipmentType",
                     "plural": false,
-                    "selections": (v25/*: any*/)
+                    "selections": [
+                      (v2/*: any*/),
+                      (v3/*: any*/)
+                    ]
                   },
                   {
                     "kind": "LinkedField",
@@ -1023,16 +1068,7 @@ return {
                     "args": null,
                     "concreteType": "PropertyType",
                     "plural": false,
-                    "selections": [
-                      (v2/*: any*/),
-                      (v3/*: any*/),
-                      (v12/*: any*/),
-                      (v22/*: any*/),
-                      (v24/*: any*/),
-                      (v23/*: any*/),
-                      (v14/*: any*/),
-                      (v13/*: any*/)
-                    ]
+                    "selections": (v23/*: any*/)
                   },
                   (v14/*: any*/),
                   (v15/*: any*/),
@@ -1045,32 +1081,16 @@ return {
                   {
                     "kind": "LinkedField",
                     "alias": null,
-                    "name": "equipmentValue",
+                    "name": "nodeValue",
                     "storageKey": null,
                     "args": null,
-                    "concreteType": "Equipment",
+                    "concreteType": null,
                     "plural": false,
-                    "selections": (v25/*: any*/)
-                  },
-                  {
-                    "kind": "LinkedField",
-                    "alias": null,
-                    "name": "locationValue",
-                    "storageKey": null,
-                    "args": null,
-                    "concreteType": "Location",
-                    "plural": false,
-                    "selections": (v25/*: any*/)
-                  },
-                  {
-                    "kind": "LinkedField",
-                    "alias": null,
-                    "name": "serviceValue",
-                    "storageKey": null,
-                    "args": null,
-                    "concreteType": "Service",
-                    "plural": false,
-                    "selections": (v25/*: any*/)
+                    "selections": [
+                      (v13/*: any*/),
+                      (v2/*: any*/),
+                      (v3/*: any*/)
+                    ]
                   }
                 ]
               },
@@ -1082,7 +1102,7 @@ return {
                 "args": null,
                 "concreteType": "File",
                 "plural": true,
-                "selections": (v32/*: any*/)
+                "selections": (v29/*: any*/)
               },
               {
                 "kind": "LinkedField",
@@ -1092,7 +1112,7 @@ return {
                 "args": null,
                 "concreteType": "File",
                 "plural": true,
-                "selections": (v32/*: any*/)
+                "selections": (v29/*: any*/)
               },
               {
                 "kind": "LinkedField",
@@ -1104,7 +1124,7 @@ return {
                 "plural": true,
                 "selections": [
                   (v2/*: any*/),
-                  (v27/*: any*/),
+                  (v22/*: any*/),
                   {
                     "kind": "ScalarField",
                     "alias": null,
@@ -1163,8 +1183,8 @@ return {
                     "plural": false,
                     "selections": [
                       (v2/*: any*/),
-                      (v26/*: any*/),
-                      (v31/*: any*/)
+                      (v24/*: any*/),
+                      (v28/*: any*/)
                     ]
                   },
                   {
@@ -1272,7 +1292,7 @@ return {
                         "concreteType": "File",
                         "plural": false,
                         "selections": [
-                          (v31/*: any*/),
+                          (v28/*: any*/),
                           (v2/*: any*/)
                         ]
                       },
@@ -1395,6 +1415,7 @@ return {
                   }
                 ]
               },
+              (v12/*: any*/),
               {
                 "kind": "ScalarField",
                 "alias": null,
@@ -1423,12 +1444,12 @@ return {
                     "plural": false,
                     "selections": [
                       (v2/*: any*/),
+                      (v24/*: any*/),
+                      (v25/*: any*/),
                       (v26/*: any*/),
+                      (v27/*: any*/),
                       (v28/*: any*/),
-                      (v29/*: any*/),
-                      (v30/*: any*/),
-                      (v31/*: any*/),
-                      (v27/*: any*/)
+                      (v22/*: any*/)
                     ]
                   }
                 ]
@@ -1443,11 +1464,11 @@ return {
     "operationKind": "query",
     "name": "LocationPropertiesCardQuery",
     "id": null,
-    "text": "query LocationPropertiesCardQuery(\n  $locationId: ID!\n) {\n  location: node(id: $locationId) {\n    __typename\n    ... on Location {\n      id\n      name\n      latitude\n      longitude\n      externalId\n      locationType {\n        id\n        name\n        mapType\n        mapZoomLevel\n        propertyTypes {\n          ...PropertyTypeFormField_propertyType\n          ...DynamicPropertiesGrid_propertyTypes\n          id\n        }\n      }\n      ...LocationBreadcrumbsTitle_locationDetails\n      parentLocation {\n        id\n      }\n      children {\n        id\n      }\n      equipments {\n        ...EquipmentTable_equipment\n        id\n      }\n      properties {\n        ...PropertyFormField_property\n        ...DynamicPropertiesGrid_properties\n        id\n      }\n      images {\n        id\n      }\n      files {\n        id\n      }\n      hyperlinks {\n        id\n      }\n      surveys {\n        id\n      }\n      ...LocationSiteSurveyTab_location\n      ...LocationDocumentsCard_location\n      ...LocationFloorPlansTab_location\n      ...LocationMoreActionsButton_location\n    }\n    id\n  }\n}\n\nfragment DocumentTable_files on File {\n  id\n  fileName\n  category\n  ...FileAttachment_file\n}\n\nfragment DocumentTable_hyperlinks on Hyperlink {\n  id\n  category\n  url\n  displayName\n  ...HyperlinkTableRow_hyperlink\n}\n\nfragment DynamicPropertiesGrid_properties on Property {\n  ...PropertyFormField_property\n  propertyType {\n    id\n    index\n  }\n}\n\nfragment DynamicPropertiesGrid_propertyTypes on PropertyType {\n  id\n  name\n  index\n  isInstanceProperty\n  type\n  stringValue\n  intValue\n  booleanValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  floatValue\n}\n\nfragment EntityDocumentsTable_files on File {\n  ...DocumentTable_files\n}\n\nfragment EntityDocumentsTable_hyperlinks on Hyperlink {\n  ...DocumentTable_hyperlinks\n}\n\nfragment EquipmentTable_equipment on Equipment {\n  id\n  name\n  futureState\n  equipmentType {\n    id\n    name\n  }\n  workOrder {\n    id\n    status\n  }\n  device {\n    up\n  }\n  services {\n    id\n  }\n}\n\nfragment FileAttachment_file on File {\n  id\n  fileName\n  sizeInBytes\n  uploaded\n  fileType\n  storeKey\n  category\n  ...ImageDialog_img\n}\n\nfragment HyperlinkTableRow_hyperlink on Hyperlink {\n  id\n  category\n  url\n  displayName\n  createTime\n}\n\nfragment ImageDialog_img on File {\n  storeKey\n  fileName\n}\n\nfragment LocationBreadcrumbsTitle_locationDetails on Location {\n  id\n  name\n  locationType {\n    name\n    id\n  }\n  locationHierarchy {\n    id\n    name\n    locationType {\n      name\n      id\n    }\n  }\n}\n\nfragment LocationDocumentsCard_location on Location {\n  id\n  images {\n    ...EntityDocumentsTable_files\n    id\n  }\n  files {\n    ...EntityDocumentsTable_files\n    id\n  }\n  hyperlinks {\n    ...EntityDocumentsTable_hyperlinks\n    id\n  }\n}\n\nfragment LocationFloorPlansTab_location on Location {\n  id\n  floorPlans {\n    id\n    name\n    image {\n      ...FileAttachment_file\n      id\n    }\n  }\n}\n\nfragment LocationMoreActionsButton_location on Location {\n  id\n  parentLocation {\n    id\n  }\n  children {\n    id\n  }\n  equipments {\n    id\n  }\n  images {\n    id\n  }\n  files {\n    id\n  }\n  surveys {\n    id\n  }\n}\n\nfragment LocationSiteSurveyTab_location on Location {\n  id\n  siteSurveyNeeded\n  surveys {\n    id\n    completionTimestamp\n    name\n    ownerName\n    sourceFile {\n      id\n      fileName\n      storeKey\n    }\n    ...SiteSurveyPane_survey\n  }\n}\n\nfragment PropertyFormField_property on Property {\n  id\n  propertyType {\n    id\n    name\n    type\n    isEditable\n    isMandatory\n    isInstanceProperty\n    stringValue\n  }\n  stringValue\n  intValue\n  floatValue\n  booleanValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  equipmentValue {\n    id\n    name\n  }\n  locationValue {\n    id\n    name\n  }\n  serviceValue {\n    id\n    name\n  }\n}\n\nfragment PropertyTypeFormField_propertyType on PropertyType {\n  id\n  name\n  type\n  index\n  stringValue\n  intValue\n  booleanValue\n  floatValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  isEditable\n  isInstanceProperty\n  isMandatory\n}\n\nfragment SiteSurveyPane_survey on Survey {\n  name\n  completionTimestamp\n  surveyResponses {\n    id\n    questionText\n    formName\n    formIndex\n    questionIndex\n    ...SiteSurveyQuestionReply_question\n  }\n}\n\nfragment SiteSurveyQuestionReplyCellData_data on SurveyQuestion {\n  cellData {\n    networkType\n    signalStrength\n    baseStationID\n    cellID\n    locationAreaCode\n    mobileCountryCode\n    mobileNetworkCode\n    id\n  }\n}\n\nfragment SiteSurveyQuestionReplyWifiData_data on SurveyQuestion {\n  wifiData {\n    band\n    bssid\n    channel\n    frequency\n    strength\n    ssid\n    id\n  }\n}\n\nfragment SiteSurveyQuestionReply_question on SurveyQuestion {\n  questionFormat\n  longitude\n  latitude\n  boolData\n  textData\n  emailData\n  phoneData\n  floatData\n  intData\n  dateData\n  photoData {\n    storeKey\n    id\n  }\n  ...SiteSurveyQuestionReplyWifiData_data\n  ...SiteSurveyQuestionReplyCellData_data\n}\n",
+    "text": "query LocationPropertiesCardQuery(\n  $locationId: ID!\n) {\n  location: node(id: $locationId) {\n    __typename\n    ... on Location {\n      id\n      name\n      latitude\n      longitude\n      externalId\n      locationType {\n        id\n        name\n        mapType\n        mapZoomLevel\n        propertyTypes {\n          ...PropertyTypeFormField_propertyType\n          ...DynamicPropertiesGrid_propertyTypes\n          id\n        }\n      }\n      ...LocationBreadcrumbsTitle_locationDetails\n      parentLocation {\n        id\n      }\n      children {\n        id\n      }\n      equipments {\n        ...EquipmentTable_equipments\n        id\n      }\n      properties {\n        ...PropertyFormField_property\n        ...DynamicPropertiesGrid_properties\n        id\n      }\n      images {\n        id\n      }\n      files {\n        id\n      }\n      hyperlinks {\n        id\n      }\n      surveys {\n        id\n      }\n      parentCoords {\n        latitude\n        longitude\n      }\n      ...LocationSiteSurveyTab_location\n      ...LocationDocumentsCard_location\n      ...LocationFloorPlansTab_location\n      ...LocationMenu_location\n    }\n    id\n  }\n}\n\nfragment DocumentTable_files on File {\n  id\n  fileName\n  category\n  ...FileAttachment_file\n}\n\nfragment DocumentTable_hyperlinks on Hyperlink {\n  id\n  category\n  url\n  displayName\n  ...HyperlinkTableRow_hyperlink\n}\n\nfragment DynamicPropertiesGrid_properties on Property {\n  ...PropertyFormField_property\n  propertyType {\n    id\n    index\n  }\n}\n\nfragment DynamicPropertiesGrid_propertyTypes on PropertyType {\n  id\n  name\n  index\n  isInstanceProperty\n  type\n  nodeType\n  stringValue\n  intValue\n  booleanValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  floatValue\n}\n\nfragment EntityDocumentsTable_files on File {\n  ...DocumentTable_files\n}\n\nfragment EntityDocumentsTable_hyperlinks on Hyperlink {\n  ...DocumentTable_hyperlinks\n}\n\nfragment EquipmentTable_equipments on Equipment {\n  id\n  name\n  futureState\n  equipmentType {\n    id\n    name\n  }\n  workOrder {\n    id\n    status\n  }\n  device {\n    up\n  }\n  services {\n    id\n  }\n}\n\nfragment FileAttachment_file on File {\n  id\n  fileName\n  sizeInBytes\n  uploaded\n  fileType\n  storeKey\n  category\n  ...ImageDialog_img\n}\n\nfragment HyperlinkTableRow_hyperlink on Hyperlink {\n  id\n  category\n  url\n  displayName\n  createTime\n}\n\nfragment ImageDialog_img on File {\n  storeKey\n  fileName\n}\n\nfragment LocationBreadcrumbsTitle_locationDetails on Location {\n  id\n  name\n  locationType {\n    name\n    id\n  }\n  locationHierarchy {\n    id\n    name\n    locationType {\n      name\n      id\n    }\n  }\n}\n\nfragment LocationDocumentsCard_location on Location {\n  id\n  images {\n    ...EntityDocumentsTable_files\n    id\n  }\n  files {\n    ...EntityDocumentsTable_files\n    id\n  }\n  hyperlinks {\n    ...EntityDocumentsTable_hyperlinks\n    id\n  }\n}\n\nfragment LocationFloorPlansTab_location on Location {\n  id\n  floorPlans {\n    id\n    name\n    image {\n      ...FileAttachment_file\n      id\n    }\n  }\n}\n\nfragment LocationMenu_location on Location {\n  id\n  name\n  locationType {\n    id\n  }\n  parentLocation {\n    id\n  }\n  children {\n    id\n  }\n  equipments {\n    id\n  }\n  images {\n    id\n  }\n  files {\n    id\n  }\n  surveys {\n    id\n  }\n}\n\nfragment LocationSiteSurveyTab_location on Location {\n  id\n  siteSurveyNeeded\n  surveys {\n    id\n    completionTimestamp\n    name\n    ownerName\n    sourceFile {\n      id\n      fileName\n      storeKey\n    }\n    ...SiteSurveyPane_survey\n  }\n}\n\nfragment PropertyFormField_property on Property {\n  id\n  propertyType {\n    id\n    name\n    type\n    nodeType\n    index\n    stringValue\n    intValue\n    booleanValue\n    floatValue\n    latitudeValue\n    longitudeValue\n    rangeFromValue\n    rangeToValue\n    isEditable\n    isInstanceProperty\n    isMandatory\n    category\n    isDeleted\n  }\n  stringValue\n  intValue\n  floatValue\n  booleanValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  nodeValue {\n    __typename\n    id\n    name\n  }\n}\n\nfragment PropertyTypeFormField_propertyType on PropertyType {\n  id\n  name\n  type\n  nodeType\n  index\n  stringValue\n  intValue\n  booleanValue\n  floatValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  isEditable\n  isInstanceProperty\n  isMandatory\n  category\n  isDeleted\n}\n\nfragment SiteSurveyPane_survey on Survey {\n  name\n  completionTimestamp\n  surveyResponses {\n    id\n    questionText\n    formName\n    formIndex\n    questionIndex\n    ...SiteSurveyQuestionReply_question\n  }\n}\n\nfragment SiteSurveyQuestionReplyCellData_data on SurveyQuestion {\n  cellData {\n    networkType\n    signalStrength\n    baseStationID\n    cellID\n    locationAreaCode\n    mobileCountryCode\n    mobileNetworkCode\n    id\n  }\n}\n\nfragment SiteSurveyQuestionReplyWifiData_data on SurveyQuestion {\n  wifiData {\n    band\n    bssid\n    channel\n    frequency\n    strength\n    ssid\n    id\n  }\n}\n\nfragment SiteSurveyQuestionReply_question on SurveyQuestion {\n  questionFormat\n  longitude\n  latitude\n  boolData\n  textData\n  emailData\n  phoneData\n  floatData\n  intData\n  dateData\n  photoData {\n    storeKey\n    id\n  }\n  ...SiteSurveyQuestionReplyWifiData_data\n  ...SiteSurveyQuestionReplyCellData_data\n}\n",
     "metadata": {}
   }
 };
 })();
 // prettier-ignore
-(node/*: any*/).hash = '8d74fb9c2960bf14d0a475e53878a4b0';
+(node/*: any*/).hash = '716e709d0b224d74a910d2967878b586';
 module.exports = node;

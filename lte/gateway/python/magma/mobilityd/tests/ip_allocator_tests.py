@@ -16,11 +16,14 @@ import ipaddress
 import unittest
 import time
 
-from magma.mobilityd.ip_allocator import IPAllocator, IPBlockNotFoundError, \
-    NoAvailableIPError, IPNotInUseError, MappingNotFoundError
+from lte.protos.mconfig.mconfigs_pb2 import MobilityD
 
+from magma.mobilityd.ip_address_man import IPAddressManager, \
+    IPNotInUseError, MappingNotFoundError
+from magma.mobilityd.ip_allocator_static import IPBlockNotFoundError, \
+    NoAvailableIPError
 
-# If the preallocated IP addresses in ip_allocator.py code
+# If the preallocated IP addresses in ip_address_man.py code
 # changes, then the test cases must be updated
 class IPAllocatorTests(unittest.TestCase):
     """
@@ -36,11 +39,15 @@ class IPAllocatorTests(unittest.TestCase):
         # NOTE: change below to True to run IP allocator tests locally. We
         # don't persist to Redis during normal unit tests since they are run
         # in Sandcastle.
-        persist_to_redis = False
-        self._allocator = IPAllocator(
+        config = {
+            'recycling_interval': recycling_interval,
+            'persist_to_redis': False,
+            'redis_port': 6379,
+        }
+        self._allocator = IPAddressManager(
             recycling_interval=recycling_interval,
-            persist_to_redis=persist_to_redis,
-            redis_port=6379)
+            allocator_type=MobilityD.IP_POOL,
+            config=config)
         self._allocator.add_ip_block(self._block)
 
     def setUp(self):
@@ -190,7 +197,7 @@ class IPAllocatorTests(unittest.TestCase):
         self._allocator.release_ip_address('SID0', ip0)
 
         # Wait for auto-recycler to kick in
-        time.sleep(1.2 * self.RECYCLING_INTERVAL_SECONDS)
+        time.sleep(2 * self.RECYCLING_INTERVAL_SECONDS)
 
         ip3 = self._allocator.alloc_ip_address('SID3')
         self.assertEqual(ip0, ip3)
@@ -198,7 +205,7 @@ class IPAllocatorTests(unittest.TestCase):
         self._allocator.release_ip_address('SID1', ip1)
 
         # Wait for auto-recycler to kick in
-        time.sleep(1.2 * self.RECYCLING_INTERVAL_SECONDS)
+        time.sleep(2 * self.RECYCLING_INTERVAL_SECONDS)
 
         ip4 = self._allocator.alloc_ip_address('SID4')
         self.assertEqual(ip1, ip4)
@@ -206,7 +213,7 @@ class IPAllocatorTests(unittest.TestCase):
         self._allocator.release_ip_address('SID2', ip2)
 
         # Wait for auto-recycler to kick in
-        time.sleep(1.2 * self.RECYCLING_INTERVAL_SECONDS)
+        time.sleep(2 * self.RECYCLING_INTERVAL_SECONDS)
 
         ip5 = self._allocator.alloc_ip_address('SID5')
         self.assertEqual(ip2, ip5)

@@ -8,9 +8,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
 )
 
 func (r mutationResolver) validatedPropertyInputsFromTemplate(
@@ -27,8 +27,8 @@ func (r mutationResolver) validatedPropertyInputsFromTemplate(
 	typeIDToInput := make(map[int]*models.PropertyInput)
 	switch entity {
 	case models.PropertyEntityWorkOrder:
-		var template *ent.WorkOrderType
-		if template, err = r.ClientFrom(ctx).WorkOrderType.Get(ctx, tmplID); err != nil {
+		var template *ent.WorkOrderTemplate
+		if template, err = r.ClientFrom(ctx).WorkOrderTemplate.Get(ctx, tmplID); err != nil {
 			return nil, fmt.Errorf("can't read work order type: %w", err)
 		}
 		types, err = template.QueryPropertyTypes().
@@ -66,20 +66,20 @@ func (r mutationResolver) validatedPropertyInputsFromTemplate(
 			if !skipMandatoryPropertiesCheck && propTyp.Mandatory {
 				return nil, fmt.Errorf("property type %v is mandatory and must be specified", propTyp.Name)
 			}
-			stringValue := &propTyp.StringVal
-			if models.PropertyKind(propTyp.Type) == models.PropertyKindEnum {
+			stringValue := propTyp.StringVal
+			if propTyp.Type == propertytype.TypeEnum {
 				stringValue = nil
 			}
 			validInput = append(validInput, &models.PropertyInput{
 				PropertyTypeID:     propTyp.ID,
 				StringValue:        stringValue,
-				IntValue:           &propTyp.IntVal,
-				BooleanValue:       &propTyp.BoolVal,
-				FloatValue:         &propTyp.FloatVal,
-				LatitudeValue:      &propTyp.LatitudeVal,
-				LongitudeValue:     &propTyp.LongitudeVal,
-				RangeFromValue:     &propTyp.RangeFromVal,
-				RangeToValue:       &propTyp.RangeToVal,
+				IntValue:           propTyp.IntVal,
+				BooleanValue:       propTyp.BoolVal,
+				FloatValue:         propTyp.FloatVal,
+				LatitudeValue:      propTyp.LatitudeVal,
+				LongitudeValue:     propTyp.LongitudeVal,
+				RangeFromValue:     propTyp.RangeFromVal,
+				RangeToValue:       propTyp.RangeToVal,
 				IsInstanceProperty: &propTyp.IsInstanceProperty,
 				IsEditable:         &propTyp.Editable,
 			})

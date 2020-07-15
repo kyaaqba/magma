@@ -73,12 +73,10 @@ class EnforcementTableTest(unittest.TestCase):
                 'bridge_ip_address': '192.168.128.1',
                 'nat_iface': 'eth2',
                 'enodeb_iface': 'eth1',
-                'enable_queue_pgm': False,
+                'qos': {'enable': False},
                 'clean_restart': True,
             },
-            mconfig=PipelineD(
-                relay_enabled=True
-            ),
+            mconfig=PipelineD(),
             loop=None,
             service_manager=cls.service_manager,
             integ_test=False

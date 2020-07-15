@@ -14,26 +14,24 @@ import (
 	"os"
 	"testing"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentposition"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentpositiondefinition"
-	"github.com/facebookincubator/symphony/graph/ent/location"
-	"github.com/facebookincubator/symphony/graph/ent/property"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
+	"github.com/AlekSi/pointer"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentposition"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentpositiondefinition"
+	"github.com/facebookincubator/symphony/pkg/ent/location"
+	"github.com/facebookincubator/symphony/pkg/ent/property"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/log/logtest"
+	"github.com/facebookincubator/symphony/pkg/viewer"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	tenantHeader = "x-auth-organization"
-)
-
 var locStruct map[string]*ent.Location
 
-func importEquipmentExportedData(ctx context.Context, t *testing.T, organization string, r *TestImporterResolver) int {
+func importEquipmentExportedData(ctx context.Context, t *testing.T, r *TestImporterResolver) int {
 	var buf bytes.Buffer
 	bw := multipart.NewWriter(&buf)
 	err := bw.WriteField("skip_lines", "[5,6]")
@@ -47,7 +45,11 @@ func importEquipmentExportedData(ctx context.Context, t *testing.T, organization
 	contentType := bw.FormDataContentType()
 	require.NoError(t, bw.Close())
 
-	th := viewer.TenancyHandler(http.HandlerFunc(r.importer.processExportedEquipment), viewer.NewFixedTenancy(r.client))
+	th := viewer.TenancyHandler(
+		http.HandlerFunc(r.importer.processExportedEquipment),
+		viewer.NewFixedTenancy(r.client),
+		logtest.NewTestLogger(t),
+	)
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		th.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -57,7 +59,7 @@ func importEquipmentExportedData(ctx context.Context, t *testing.T, organization
 	req, err := http.NewRequest(http.MethodPost, server.URL, &buf)
 	require.Nil(t, err)
 
-	req.Header.Set("x-auth-organization", organization)
+	viewertest.SetDefaultViewerHeaders(req)
 	req.Header.Set("Content-Type", contentType)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -119,7 +121,7 @@ func createEquipmentTypes(ctx context.Context, r *TestImporterResolver) {
 }
 
 func verifyLocationsStructure(ctx context.Context, t *testing.T, r TestImporterResolver) {
-	locs, err := r.importer.r.Query().Locations(ctx, nil, nil, nil, nil, nil, nil, nil, nil)
+	locs, err := r.importer.r.Query().Locations(ctx, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	require.Len(t, locs.Edges, 6)
 	client := r.client
@@ -155,14 +157,14 @@ func verifyLocationsStructure(ctx context.Context, t *testing.T, r TestImporterR
 
 func TestEquipmentImportData(t *testing.T) {
 	r := newImporterTestResolver(t)
-	ctx := newImportContext(viewertest.NewContext(r.client))
-	code := importEquipmentExportedData(ctx, t, tenantHeader, r)
+	ctx := newImportContext(viewertest.NewContext(context.Background(), r.client))
+	code := importEquipmentExportedData(ctx, t, r)
 	require.Equal(t, http.StatusBadRequest, code)
 	q := r.importer.r.Query()
 
 	createLocationTypes(ctx, t, r)
 	createEquipmentTypes(ctx, r)
-	code = importEquipmentExportedData(ctx, t, tenantHeader, r)
+	code = importEquipmentExportedData(ctx, t, r)
 	require.Equal(t, 200, code)
 
 	verifyLocationsStructure(ctx, t, *r)
@@ -175,14 +177,14 @@ func TestEquipmentImportData(t *testing.T) {
 			require.Equal(t, "EquipType1", equip.QueryType().OnlyX(ctx).Name)
 			require.Equal(t, "AA", equip.ExternalID)
 			require.Equal(t, locStruct["b1"].ID, equip.QueryLocation().OnlyXID(ctx))
-			require.Equal(t, "val1", equip.QueryProperties().Where(property.HasTypeWith(propertytype.Name("prop1Str"))).OnlyX(ctx).StringVal)
-			require.Equal(t, 12, equip.QueryProperties().Where(property.HasTypeWith(propertytype.Name("prop1Int"))).OnlyX(ctx).IntVal)
+			require.Equal(t, "val1", pointer.GetString(equip.QueryProperties().Where(property.HasTypeWith(propertytype.Name("prop1Str"))).OnlyX(ctx).StringVal))
+			require.Equal(t, 12, pointer.GetInt(equip.QueryProperties().Where(property.HasTypeWith(propertytype.Name("prop1Int"))).OnlyX(ctx).IntVal))
 		case "B":
 			require.Equal(t, "EquipType2", equip.QueryType().OnlyX(ctx).Name)
 			require.Equal(t, "BB", equip.ExternalID)
 			require.Equal(t, locStruct["b2"].ID, equip.QueryLocation().OnlyXID(ctx))
-			require.Equal(t, "val2", equip.QueryProperties().Where(property.HasTypeWith(propertytype.Name("prop1Str"))).OnlyX(ctx).StringVal)
-			require.Equal(t, 13, equip.QueryProperties().Where(property.HasTypeWith(propertytype.Name("prop1Int"))).OnlyX(ctx).IntVal)
+			require.Equal(t, "val2", pointer.GetString(equip.QueryProperties().Where(property.HasTypeWith(propertytype.Name("prop1Str"))).OnlyX(ctx).StringVal))
+			require.Equal(t, 13, pointer.GetInt(equip.QueryProperties().Where(property.HasTypeWith(propertytype.Name("prop1Int"))).OnlyX(ctx).IntVal))
 		case "C":
 			require.Equal(t, "EquipType3", equip.QueryType().OnlyX(ctx).Name)
 			require.Equal(t, "CC", equip.ExternalID)

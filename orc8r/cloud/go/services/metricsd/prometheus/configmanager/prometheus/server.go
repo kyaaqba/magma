@@ -11,6 +11,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"magma/orc8r/cloud/go/services/metricsd/prometheus/configmanager/fsclient"
 	"magma/orc8r/cloud/go/services/metricsd/prometheus/configmanager/prometheus/alert"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 )
 
 const (
@@ -34,6 +37,16 @@ func main() {
 	restrictQueries := flag.Bool("restrict-queries", false, "If this flag is set all alert rule expressions will be restricted to only match series with {<multitenant-label>=<tenant>}")
 	flag.Parse()
 
+	// Check if rulesDir exists and create it if not
+	if _, err := os.Stat(*rulesDir); os.IsNotExist(err) {
+		files, err := ioutil.ReadDir("/")
+		fmt.Println(files)
+		err = os.Mkdir(*rulesDir, 644)
+		if err != nil {
+			glog.Fatalf("Could not create rules directory: %v", err)
+		}
+	}
+
 	fileLocks, err := alert.NewFileLocker(alert.NewDirectoryClient(*rulesDir))
 	clientTenancy := alert.TenancyConfig{
 		RestrictQueries: *restrictQueries,
@@ -45,6 +58,8 @@ func main() {
 	}
 
 	e := echo.New()
+	e.Use(middleware.CORS())
+
 	handlers.RegisterBaseHandlers(e)
 	handlers.RegisterV0Handlers(e, alertClient)
 	handlers.RegisterV1Handlers(e, alertClient)

@@ -5,14 +5,18 @@
 package resolver
 
 import (
+	"context"
+	"errors"
 	"testing"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/property"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/ent/privacy"
+
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/property"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/viewer"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/assert"
@@ -21,8 +25,8 @@ import (
 
 func TestNumOfProjects(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, ptr := r.Mutation(), r.ProjectType()
 
 	pType, err := mr.CreateProjectType(ctx, models.AddProjectTypeInput{Name: "example_type"})
@@ -82,11 +86,24 @@ func TestProjectQuery(t *testing.T) {
 
 func TestProjectWithWorkOrders(t *testing.T) {
 	resolver := newTestResolver(t)
-	defer resolver.drv.Close()
-	ctx := viewertest.NewContext(resolver.client)
+	defer resolver.Close()
+	ctx := viewertest.NewContext(context.Background(), resolver.client)
 	mutation := resolver.Mutation()
 
-	woType, err := mutation.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "example_type_a"})
+	woType, err := mutation.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{
+		Name: "example_type_a",
+		CheckListCategories: []*models.CheckListCategoryDefinitionInput{
+			{
+				Title: "Category",
+				CheckList: []*models.CheckListDefinitionInput{
+					{
+						Title: "Item 1",
+						Type:  models.CheckListItemTypeString,
+					},
+				},
+			},
+		},
+	})
 	require.NoError(t, err)
 	woDef := models.WorkOrderDefinitionInput{Type: woType.ID, Index: pointer.ToInt(1)}
 
@@ -110,13 +127,20 @@ func TestProjectWithWorkOrders(t *testing.T) {
 	input := models.AddProjectInput{Name: "test", Type: typ.ID, Location: &location.ID}
 	proj, err := mutation.CreateProject(ctx, input)
 	require.NoError(t, err)
-	wos, err := proj.QueryWorkOrders().All(ctx)
+	wos, err := proj.QueryWorkOrders().WithCheckListCategories().All(ctx)
 	require.NoError(t, err)
 	assert.Len(t, wos, 1)
 	wo := wos[0]
 	assert.EqualValues(t, wo.Name, woType.Name)
 	assert.EqualValues(t, wo.Index, *woDef.Index)
 	assert.EqualValues(t, wo.QueryLocation().FirstXID(ctx), location.ID)
+	assert.Len(t, wo.Edges.CheckListCategories, 1)
+
+	clItems, err := wo.QueryCheckListCategories().QueryCheckListItems().All(ctx)
+	require.NoError(t, err)
+	assert.Len(t, clItems, 1)
+	clItem := clItems[0]
+	assert.EqualValues(t, clItem.Title, "Item 1")
 }
 
 func TestEditProjectTypeWorkOrders(t *testing.T) {
@@ -229,7 +253,7 @@ func TestProjectMutation(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, deleted)
 	deleted, err = mutation.DeleteProject(ctx, project.ID)
-	assert.EqualError(t, err, errNoProject.Error(), "project cannot be deleted twice")
+	assert.True(t, errors.Is(err, privacy.Deny))
 	assert.False(t, deleted)
 
 	deleted, err = mutation.DeleteProjectType(ctx, typ.ID)
@@ -255,8 +279,7 @@ func TestEditProject(t *testing.T) {
 
 	var project *ent.Project
 	{
-		u, err := viewer.UserFromContext(ctx)
-		require.NoError(t, err)
+		u := viewer.FromContext(ctx).(*viewer.UserViewer).User()
 		input := models.AddProjectInput{
 			Name:        "test",
 			Description: pointer.ToString("desc"),
@@ -286,8 +309,8 @@ func TestEditProject(t *testing.T) {
 
 func TestEditProjectLocation(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr := r.Mutation()
 	location := createLocation(ctx, t, *r)
 	typ, err := mr.CreateProjectType(ctx, models.AddProjectTypeInput{Name: "example_type"})
@@ -314,7 +337,7 @@ func TestEditProjectLocation(t *testing.T) {
 
 func TestAddProjectWithProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
+	defer r.Close()
 	mutation, ctx := mutationctx(t)
 
 	mr, qr, pr := r.Mutation(), r.Query(), r.Project()
@@ -363,8 +386,7 @@ func TestAddProjectWithProperties(t *testing.T) {
 		RangeToValue:   &fl2,
 	}
 	propInputs := []*models.PropertyInput{&strProp, &strFixedProp, &intProp, &rngProp}
-	u, err := viewer.UserFromContext(ctx)
-	require.NoError(t, err)
+	u := viewer.FromContext(ctx).(*viewer.UserViewer).User()
 	input := models.AddProjectInput{
 		Name:        "test",
 		Description: pointer.ToString("desc"),
@@ -381,20 +403,20 @@ func TestAddProjectWithProperties(t *testing.T) {
 	require.True(t, ok, "casting project instance")
 
 	intFetchProp := fetchedProj.QueryProperties().Where(property.HasTypeWith(propertytype.Name("int_prop"))).OnlyX(ctx)
-	require.Equal(t, intFetchProp.IntVal, *intProp.IntValue, "Comparing properties: int value")
+	require.Equal(t, pointer.GetInt(intFetchProp.IntVal), pointer.GetInt(intProp.IntValue), "Comparing properties: int value")
 	require.Equal(t, intFetchProp.QueryType().OnlyXID(ctx), intProp.PropertyTypeID, "Comparing properties: PropertyType value")
 
 	strFetchProp := fetchedProj.QueryProperties().Where(property.HasTypeWith(propertytype.Name("str_prop"))).OnlyX(ctx)
-	require.Equal(t, strFetchProp.StringVal, *strProp.StringValue, "Comparing properties: string value")
+	require.Equal(t, pointer.GetString(strFetchProp.StringVal), pointer.GetString(strProp.StringValue), "Comparing properties: string value")
 	require.Equal(t, strFetchProp.QueryType().OnlyXID(ctx), strProp.PropertyTypeID, "Comparing properties: PropertyType value")
 
 	fixedStrFetchProp := fetchedProj.QueryProperties().Where(property.HasTypeWith(propertytype.Name("str_fixed_prop"))).OnlyX(ctx)
-	require.Equal(t, fixedStrFetchProp.StringVal, *strFixedProp.StringValue, "Comparing properties: fixed string value")
+	require.Equal(t, pointer.GetString(fixedStrFetchProp.StringVal), pointer.GetString(strFixedProp.StringValue), "Comparing properties: fixed string value")
 	require.Equal(t, fixedStrFetchProp.QueryType().OnlyXID(ctx), strFixedProp.PropertyTypeID, "Comparing properties: PropertyType value")
 
 	rngFetchProp := fetchedProj.QueryProperties().Where(property.HasTypeWith(propertytype.Name("rng_prop"))).OnlyX(ctx)
-	require.Equal(t, rngFetchProp.RangeFromVal, *rngProp.RangeFromValue, "Comparing properties: range value")
-	require.Equal(t, rngFetchProp.RangeToVal, *rngProp.RangeToValue, "Comparing properties: range value")
+	require.Equal(t, pointer.GetFloat64(rngFetchProp.RangeFromVal), pointer.GetFloat64(rngProp.RangeFromValue), "Comparing properties: range value")
+	require.Equal(t, pointer.GetFloat64(rngFetchProp.RangeToVal), pointer.GetFloat64(rngProp.RangeToValue), "Comparing properties: range value")
 	require.Equal(t, rngFetchProp.QueryType().OnlyXID(ctx), rngProp.PropertyTypeID, "Comparing properties: PropertyType value")
 
 	fetchedProps, err := pr.Properties(ctx, fetchedProj)
@@ -447,14 +469,14 @@ func TestAddProjectWithProperties(t *testing.T) {
 	require.Equal(t, len(propInputs), len(fetchedProps), "number of properties should remain he same")
 
 	updatedProp := updatedProj.QueryProperties().Where(property.HasTypeWith(propertytype.Name("str_prop"))).OnlyX(ctx)
-	require.Equal(t, updatedProp.StringVal, *prop.StringValue, "Comparing updated properties: string value")
+	require.Equal(t, pointer.GetString(updatedProp.StringVal), pointer.GetString(prop.StringValue), "Comparing updated properties: string value")
 	require.Equal(t, updatedProp.QueryType().OnlyXID(ctx), prop.PropertyTypeID, "Comparing updated properties: PropertyType value")
 }
 
 func TestEditProjectType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	pType, err := mr.CreateProjectType(ctx, models.AddProjectTypeInput{Name: "example_type_name"})
@@ -488,8 +510,8 @@ func TestEditProjectType(t *testing.T) {
 
 func TestProjectWithWorkOrdersAndProperties(t *testing.T) {
 	resolver := newTestResolver(t)
-	defer resolver.drv.Close()
-	ctx := viewertest.NewContext(resolver.client)
+	defer resolver.Close()
+	ctx := viewertest.NewContext(context.Background(), resolver.client)
 	mutation := resolver.Mutation()
 
 	strPropType := models.PropertyTypeInput{

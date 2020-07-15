@@ -6,7 +6,7 @@
 
  /**
  * @flow
- * @relayHash a3ba071347652d502ce9e983045fccc1
+ * @relayHash 4026b94af0f2e45545a6603ec8d4bea8
  */
 
 /* eslint-disable */
@@ -16,9 +16,9 @@
 /*::
 import type { ConcreteRequest } from 'relay-runtime';
 type ServicesView_service$ref = any;
-export type FilterOperator = "CONTAINS" | "DATE_GREATER_THAN" | "DATE_LESS_THAN" | "IS" | "IS_NOT_ONE_OF" | "IS_ONE_OF" | "%future added value";
-export type PropertyKind = "bool" | "date" | "datetime_local" | "email" | "enum" | "equipment" | "float" | "gps_location" | "int" | "location" | "range" | "service" | "string" | "%future added value";
-export type ServiceFilterType = "EQUIPMENT_IN_SERVICE" | "LOCATION_INST" | "PROPERTY" | "SERVICE_INST_CUSTOMER_NAME" | "SERVICE_INST_EXTERNAL_ID" | "SERVICE_INST_NAME" | "SERVICE_STATUS" | "SERVICE_TYPE" | "%future added value";
+export type FilterOperator = "CONTAINS" | "DATE_GREATER_OR_EQUAL_THAN" | "DATE_GREATER_THAN" | "DATE_LESS_OR_EQUAL_THAN" | "DATE_LESS_THAN" | "IS" | "IS_NOT_ONE_OF" | "IS_ONE_OF" | "%future added value";
+export type PropertyKind = "bool" | "date" | "datetime_local" | "email" | "enum" | "float" | "gps_location" | "int" | "node" | "range" | "string" | "%future added value";
+export type ServiceFilterType = "EQUIPMENT_IN_SERVICE" | "LOCATION_INST" | "LOCATION_INST_EXTERNAL_ID" | "PROPERTY" | "SERVICE_DISCOVERY_METHOD" | "SERVICE_INST_CUSTOMER_NAME" | "SERVICE_INST_EXTERNAL_ID" | "SERVICE_INST_NAME" | "SERVICE_STATUS" | "SERVICE_TYPE" | "%future added value";
 export type ServiceFilterInput = {|
   filterType: ServiceFilterType,
   operator: FilterOperator,
@@ -30,8 +30,10 @@ export type ServiceFilterInput = {|
 |};
 export type PropertyTypeInput = {|
   id?: ?string,
+  externalId?: ?string,
   name: string,
   type: PropertyKind,
+  nodeType?: ?string,
   index?: ?number,
   category?: ?string,
   stringValue?: ?string,
@@ -52,11 +54,13 @@ export type ServiceComparisonViewQueryRendererSearchQueryVariables = {|
   filters: $ReadOnlyArray<ServiceFilterInput>,
 |};
 export type ServiceComparisonViewQueryRendererSearchQueryResponse = {|
-  +serviceSearch: {|
-    +services: $ReadOnlyArray<?{|
-      +$fragmentRefs: ServicesView_service$ref
+  +services: {|
+    +edges: $ReadOnlyArray<{|
+      +node: ?{|
+        +$fragmentRefs: ServicesView_service$ref
+      |}
     |}>,
-    +count: number,
+    +totalCount: number,
   |}
 |};
 export type ServiceComparisonViewQueryRendererSearchQuery = {|
@@ -71,12 +75,14 @@ query ServiceComparisonViewQueryRendererSearchQuery(
   $limit: Int
   $filters: [ServiceFilterInput!]!
 ) {
-  serviceSearch(limit: $limit, filters: $filters) {
-    services {
-      ...ServicesView_service
-      id
+  services(first: $limit, filterBy: $filters) {
+    edges {
+      node {
+        ...ServicesView_service
+        id
+      }
     }
-    count
+    totalCount
   }
 }
 
@@ -94,6 +100,7 @@ fragment DynamicPropertiesGrid_propertyTypes on PropertyType {
   index
   isInstanceProperty
   type
+  nodeType
   stringValue
   intValue
   booleanValue
@@ -110,10 +117,21 @@ fragment PropertyFormField_property on Property {
     id
     name
     type
-    isEditable
-    isMandatory
-    isInstanceProperty
+    nodeType
+    index
     stringValue
+    intValue
+    booleanValue
+    floatValue
+    latitudeValue
+    longitudeValue
+    rangeFromValue
+    rangeToValue
+    isEditable
+    isInstanceProperty
+    isMandatory
+    category
+    isDeleted
   }
   stringValue
   intValue
@@ -123,15 +141,8 @@ fragment PropertyFormField_property on Property {
   longitudeValue
   rangeFromValue
   rangeToValue
-  equipmentValue {
-    id
-    name
-  }
-  locationValue {
-    id
-    name
-  }
-  serviceValue {
+  nodeValue {
+    __typename
     id
     name
   }
@@ -141,6 +152,7 @@ fragment PropertyTypeFormField_propertyType on PropertyType {
   id
   name
   type
+  nodeType
   index
   stringValue
   intValue
@@ -153,6 +165,8 @@ fragment PropertyTypeFormField_propertyType on PropertyType {
   isEditable
   isInstanceProperty
   isMandatory
+  category
+  isDeleted
 }
 
 fragment ServicesView_service on Service {
@@ -167,6 +181,7 @@ fragment ServicesView_service on Service {
   serviceType {
     id
     name
+    discoveryMethod
     propertyTypes {
       ...PropertyTypeFormField_propertyType
       ...DynamicPropertiesGrid_propertyTypes
@@ -199,19 +214,19 @@ var v0 = [
 v1 = [
   {
     "kind": "Variable",
-    "name": "filters",
+    "name": "filterBy",
     "variableName": "filters"
   },
   {
     "kind": "Variable",
-    "name": "limit",
+    "name": "first",
     "variableName": "limit"
   }
 ],
 v2 = {
   "kind": "ScalarField",
   "alias": null,
-  "name": "count",
+  "name": "totalCount",
   "args": null,
   "storageKey": null
 },
@@ -229,101 +244,130 @@ v4 = {
   "args": null,
   "storageKey": null
 },
-v5 = [
-  (v3/*: any*/),
-  (v4/*: any*/)
-],
-v6 = {
-  "kind": "ScalarField",
-  "alias": null,
-  "name": "type",
-  "args": null,
-  "storageKey": null
-},
-v7 = {
-  "kind": "ScalarField",
-  "alias": null,
-  "name": "index",
-  "args": null,
-  "storageKey": null
-},
-v8 = {
+v5 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "stringValue",
   "args": null,
   "storageKey": null
 },
-v9 = {
+v6 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "intValue",
   "args": null,
   "storageKey": null
 },
-v10 = {
+v7 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "booleanValue",
   "args": null,
   "storageKey": null
 },
-v11 = {
+v8 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "floatValue",
   "args": null,
   "storageKey": null
 },
-v12 = {
+v9 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "latitudeValue",
   "args": null,
   "storageKey": null
 },
-v13 = {
+v10 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "longitudeValue",
   "args": null,
   "storageKey": null
 },
-v14 = {
+v11 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "rangeFromValue",
   "args": null,
   "storageKey": null
 },
-v15 = {
+v12 = {
   "kind": "ScalarField",
   "alias": null,
   "name": "rangeToValue",
   "args": null,
   "storageKey": null
 },
-v16 = {
-  "kind": "ScalarField",
-  "alias": null,
-  "name": "isEditable",
-  "args": null,
-  "storageKey": null
-},
-v17 = {
-  "kind": "ScalarField",
-  "alias": null,
-  "name": "isInstanceProperty",
-  "args": null,
-  "storageKey": null
-},
-v18 = {
-  "kind": "ScalarField",
-  "alias": null,
-  "name": "isMandatory",
-  "args": null,
-  "storageKey": null
-};
+v13 = [
+  (v3/*: any*/),
+  (v4/*: any*/),
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "type",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "nodeType",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "index",
+    "args": null,
+    "storageKey": null
+  },
+  (v5/*: any*/),
+  (v6/*: any*/),
+  (v7/*: any*/),
+  (v8/*: any*/),
+  (v9/*: any*/),
+  (v10/*: any*/),
+  (v11/*: any*/),
+  (v12/*: any*/),
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "isEditable",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "isInstanceProperty",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "isMandatory",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "category",
+    "args": null,
+    "storageKey": null
+  },
+  {
+    "kind": "ScalarField",
+    "alias": null,
+    "name": "isDeleted",
+    "args": null,
+    "storageKey": null
+  }
+];
 return {
   "kind": "Request",
   "fragment": {
@@ -336,25 +380,36 @@ return {
       {
         "kind": "LinkedField",
         "alias": null,
-        "name": "serviceSearch",
+        "name": "services",
         "storageKey": null,
         "args": (v1/*: any*/),
-        "concreteType": "ServiceSearchResult",
+        "concreteType": "ServiceConnection",
         "plural": false,
         "selections": [
           {
             "kind": "LinkedField",
             "alias": null,
-            "name": "services",
+            "name": "edges",
             "storageKey": null,
             "args": null,
-            "concreteType": "Service",
+            "concreteType": "ServiceEdge",
             "plural": true,
             "selections": [
               {
-                "kind": "FragmentSpread",
-                "name": "ServicesView_service",
-                "args": null
+                "kind": "LinkedField",
+                "alias": null,
+                "name": "node",
+                "storageKey": null,
+                "args": null,
+                "concreteType": "Service",
+                "plural": false,
+                "selections": [
+                  {
+                    "kind": "FragmentSpread",
+                    "name": "ServicesView_service",
+                    "args": null
+                  }
+                ]
               }
             ]
           },
@@ -371,152 +426,138 @@ return {
       {
         "kind": "LinkedField",
         "alias": null,
-        "name": "serviceSearch",
+        "name": "services",
         "storageKey": null,
         "args": (v1/*: any*/),
-        "concreteType": "ServiceSearchResult",
+        "concreteType": "ServiceConnection",
         "plural": false,
         "selections": [
           {
             "kind": "LinkedField",
             "alias": null,
-            "name": "services",
+            "name": "edges",
             "storageKey": null,
             "args": null,
-            "concreteType": "Service",
+            "concreteType": "ServiceEdge",
             "plural": true,
             "selections": [
-              (v3/*: any*/),
-              (v4/*: any*/),
-              {
-                "kind": "ScalarField",
-                "alias": null,
-                "name": "externalId",
-                "args": null,
-                "storageKey": null
-              },
-              {
-                "kind": "ScalarField",
-                "alias": null,
-                "name": "status",
-                "args": null,
-                "storageKey": null
-              },
               {
                 "kind": "LinkedField",
                 "alias": null,
-                "name": "customer",
+                "name": "node",
                 "storageKey": null,
                 "args": null,
-                "concreteType": "Customer",
-                "plural": false,
-                "selections": (v5/*: any*/)
-              },
-              {
-                "kind": "LinkedField",
-                "alias": null,
-                "name": "serviceType",
-                "storageKey": null,
-                "args": null,
-                "concreteType": "ServiceType",
+                "concreteType": "Service",
                 "plural": false,
                 "selections": [
                   (v3/*: any*/),
                   (v4/*: any*/),
                   {
+                    "kind": "ScalarField",
+                    "alias": null,
+                    "name": "externalId",
+                    "args": null,
+                    "storageKey": null
+                  },
+                  {
+                    "kind": "ScalarField",
+                    "alias": null,
+                    "name": "status",
+                    "args": null,
+                    "storageKey": null
+                  },
+                  {
                     "kind": "LinkedField",
                     "alias": null,
-                    "name": "propertyTypes",
+                    "name": "customer",
                     "storageKey": null,
                     "args": null,
-                    "concreteType": "PropertyType",
-                    "plural": true,
+                    "concreteType": "Customer",
+                    "plural": false,
+                    "selections": [
+                      (v3/*: any*/),
+                      (v4/*: any*/)
+                    ]
+                  },
+                  {
+                    "kind": "LinkedField",
+                    "alias": null,
+                    "name": "serviceType",
+                    "storageKey": null,
+                    "args": null,
+                    "concreteType": "ServiceType",
+                    "plural": false,
                     "selections": [
                       (v3/*: any*/),
                       (v4/*: any*/),
+                      {
+                        "kind": "ScalarField",
+                        "alias": null,
+                        "name": "discoveryMethod",
+                        "args": null,
+                        "storageKey": null
+                      },
+                      {
+                        "kind": "LinkedField",
+                        "alias": null,
+                        "name": "propertyTypes",
+                        "storageKey": null,
+                        "args": null,
+                        "concreteType": "PropertyType",
+                        "plural": true,
+                        "selections": (v13/*: any*/)
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "LinkedField",
+                    "alias": null,
+                    "name": "properties",
+                    "storageKey": null,
+                    "args": null,
+                    "concreteType": "Property",
+                    "plural": true,
+                    "selections": [
+                      (v3/*: any*/),
+                      {
+                        "kind": "LinkedField",
+                        "alias": null,
+                        "name": "propertyType",
+                        "storageKey": null,
+                        "args": null,
+                        "concreteType": "PropertyType",
+                        "plural": false,
+                        "selections": (v13/*: any*/)
+                      },
+                      (v5/*: any*/),
                       (v6/*: any*/),
-                      (v7/*: any*/),
                       (v8/*: any*/),
+                      (v7/*: any*/),
                       (v9/*: any*/),
                       (v10/*: any*/),
                       (v11/*: any*/),
                       (v12/*: any*/),
-                      (v13/*: any*/),
-                      (v14/*: any*/),
-                      (v15/*: any*/),
-                      (v16/*: any*/),
-                      (v17/*: any*/),
-                      (v18/*: any*/)
+                      {
+                        "kind": "LinkedField",
+                        "alias": null,
+                        "name": "nodeValue",
+                        "storageKey": null,
+                        "args": null,
+                        "concreteType": null,
+                        "plural": false,
+                        "selections": [
+                          {
+                            "kind": "ScalarField",
+                            "alias": null,
+                            "name": "__typename",
+                            "args": null,
+                            "storageKey": null
+                          },
+                          (v3/*: any*/),
+                          (v4/*: any*/)
+                        ]
+                      }
                     ]
-                  }
-                ]
-              },
-              {
-                "kind": "LinkedField",
-                "alias": null,
-                "name": "properties",
-                "storageKey": null,
-                "args": null,
-                "concreteType": "Property",
-                "plural": true,
-                "selections": [
-                  (v3/*: any*/),
-                  {
-                    "kind": "LinkedField",
-                    "alias": null,
-                    "name": "propertyType",
-                    "storageKey": null,
-                    "args": null,
-                    "concreteType": "PropertyType",
-                    "plural": false,
-                    "selections": [
-                      (v3/*: any*/),
-                      (v4/*: any*/),
-                      (v6/*: any*/),
-                      (v16/*: any*/),
-                      (v18/*: any*/),
-                      (v17/*: any*/),
-                      (v8/*: any*/),
-                      (v7/*: any*/)
-                    ]
-                  },
-                  (v8/*: any*/),
-                  (v9/*: any*/),
-                  (v11/*: any*/),
-                  (v10/*: any*/),
-                  (v12/*: any*/),
-                  (v13/*: any*/),
-                  (v14/*: any*/),
-                  (v15/*: any*/),
-                  {
-                    "kind": "LinkedField",
-                    "alias": null,
-                    "name": "equipmentValue",
-                    "storageKey": null,
-                    "args": null,
-                    "concreteType": "Equipment",
-                    "plural": false,
-                    "selections": (v5/*: any*/)
-                  },
-                  {
-                    "kind": "LinkedField",
-                    "alias": null,
-                    "name": "locationValue",
-                    "storageKey": null,
-                    "args": null,
-                    "concreteType": "Location",
-                    "plural": false,
-                    "selections": (v5/*: any*/)
-                  },
-                  {
-                    "kind": "LinkedField",
-                    "alias": null,
-                    "name": "serviceValue",
-                    "storageKey": null,
-                    "args": null,
-                    "concreteType": "Service",
-                    "plural": false,
-                    "selections": (v5/*: any*/)
                   }
                 ]
               }
@@ -531,11 +572,11 @@ return {
     "operationKind": "query",
     "name": "ServiceComparisonViewQueryRendererSearchQuery",
     "id": null,
-    "text": "query ServiceComparisonViewQueryRendererSearchQuery(\n  $limit: Int\n  $filters: [ServiceFilterInput!]!\n) {\n  serviceSearch(limit: $limit, filters: $filters) {\n    services {\n      ...ServicesView_service\n      id\n    }\n    count\n  }\n}\n\nfragment DynamicPropertiesGrid_properties on Property {\n  ...PropertyFormField_property\n  propertyType {\n    id\n    index\n  }\n}\n\nfragment DynamicPropertiesGrid_propertyTypes on PropertyType {\n  id\n  name\n  index\n  isInstanceProperty\n  type\n  stringValue\n  intValue\n  booleanValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  floatValue\n}\n\nfragment PropertyFormField_property on Property {\n  id\n  propertyType {\n    id\n    name\n    type\n    isEditable\n    isMandatory\n    isInstanceProperty\n    stringValue\n  }\n  stringValue\n  intValue\n  floatValue\n  booleanValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  equipmentValue {\n    id\n    name\n  }\n  locationValue {\n    id\n    name\n  }\n  serviceValue {\n    id\n    name\n  }\n}\n\nfragment PropertyTypeFormField_propertyType on PropertyType {\n  id\n  name\n  type\n  index\n  stringValue\n  intValue\n  booleanValue\n  floatValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  isEditable\n  isInstanceProperty\n  isMandatory\n}\n\nfragment ServicesView_service on Service {\n  id\n  name\n  externalId\n  status\n  customer {\n    id\n    name\n  }\n  serviceType {\n    id\n    name\n    propertyTypes {\n      ...PropertyTypeFormField_propertyType\n      ...DynamicPropertiesGrid_propertyTypes\n      id\n    }\n  }\n  properties {\n    ...PropertyFormField_property\n    ...DynamicPropertiesGrid_properties\n    id\n  }\n}\n",
+    "text": "query ServiceComparisonViewQueryRendererSearchQuery(\n  $limit: Int\n  $filters: [ServiceFilterInput!]!\n) {\n  services(first: $limit, filterBy: $filters) {\n    edges {\n      node {\n        ...ServicesView_service\n        id\n      }\n    }\n    totalCount\n  }\n}\n\nfragment DynamicPropertiesGrid_properties on Property {\n  ...PropertyFormField_property\n  propertyType {\n    id\n    index\n  }\n}\n\nfragment DynamicPropertiesGrid_propertyTypes on PropertyType {\n  id\n  name\n  index\n  isInstanceProperty\n  type\n  nodeType\n  stringValue\n  intValue\n  booleanValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  floatValue\n}\n\nfragment PropertyFormField_property on Property {\n  id\n  propertyType {\n    id\n    name\n    type\n    nodeType\n    index\n    stringValue\n    intValue\n    booleanValue\n    floatValue\n    latitudeValue\n    longitudeValue\n    rangeFromValue\n    rangeToValue\n    isEditable\n    isInstanceProperty\n    isMandatory\n    category\n    isDeleted\n  }\n  stringValue\n  intValue\n  floatValue\n  booleanValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  nodeValue {\n    __typename\n    id\n    name\n  }\n}\n\nfragment PropertyTypeFormField_propertyType on PropertyType {\n  id\n  name\n  type\n  nodeType\n  index\n  stringValue\n  intValue\n  booleanValue\n  floatValue\n  latitudeValue\n  longitudeValue\n  rangeFromValue\n  rangeToValue\n  isEditable\n  isInstanceProperty\n  isMandatory\n  category\n  isDeleted\n}\n\nfragment ServicesView_service on Service {\n  id\n  name\n  externalId\n  status\n  customer {\n    id\n    name\n  }\n  serviceType {\n    id\n    name\n    discoveryMethod\n    propertyTypes {\n      ...PropertyTypeFormField_propertyType\n      ...DynamicPropertiesGrid_propertyTypes\n      id\n    }\n  }\n  properties {\n    ...PropertyFormField_property\n    ...DynamicPropertiesGrid_properties\n    id\n  }\n}\n",
     "metadata": {}
   }
 };
 })();
 // prettier-ignore
-(node/*: any*/).hash = 'ed58dc0dacf235000888b2776b58fd08';
+(node/*: any*/).hash = '8045c18bb9bb4d07d66151a829bde59b';
 module.exports = node;

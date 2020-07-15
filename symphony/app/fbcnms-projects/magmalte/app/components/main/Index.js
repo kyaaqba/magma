@@ -10,7 +10,7 @@
 
 import type {Theme} from '@material-ui/core';
 
-import AppContent from '@fbcnms/ui/components/layout/AppContent';
+import AppContent from '../layout/AppContent';
 import AppContext from '@fbcnms/ui/context/AppContext';
 import AppSideBar from '@fbcnms/ui/components/layout/AppSideBar';
 import NetworkContext from '../context/NetworkContext';
@@ -20,7 +20,7 @@ import SectionLinks from '../layout/SectionLinks';
 import SectionRoutes from '../layout/SectionRoutes';
 import VersionTooltip from '../VersionTooltip';
 
-import {getProjectLinks} from '../../common/projects';
+import {getProjectLinks} from '@fbcnms/projects/projects';
 import {makeStyles} from '@material-ui/styles';
 import {shouldShowSettings} from '../Settings';
 import {useRouter} from '@fbcnms/ui/hooks';

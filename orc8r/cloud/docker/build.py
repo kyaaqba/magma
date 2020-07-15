@@ -53,16 +53,9 @@ def main() -> None:
     args = _parse_args()
 
     # Create build context only if we're not mounting
-    # If we're building, we always need to build controller first because proxy
-    # copies metricsd binary and plugins from controller
     files_args = _get_docker_files_command_args(args)
     _create_build_context_if_necessary(args)
     _build_cache_if_necessary(args)
-    _build_controller_if_necessary(args)
-
-    # Return early if only building controller image
-    if args.controller:
-        return
 
     if args.mount:
         _run_docker(['up', '-d', 'postgres_test'])
@@ -135,27 +128,18 @@ def _build_cache_if_necessary(args: argparse.Namespace) -> None:
         _run_docker(['-f', 'docker-compose.cache.yml', 'build'])
 
 
-def _build_controller_if_necessary(args: argparse.Namespace) -> None:
-    # We don't build the controller container if we're running tests or
-    # generating code or just creating noncore containers
-    if args.mount or args.generate or args.tests or args.noncore:
-        return
-
-    # controller will always only use docker-compose.yml and override so we
-    # don't need to worry about file args (-f)
-    if args.nocache:
-        _run_docker(['build', 'controller'])
-    else:
-        _run_docker(['build', '--build-arg', 'baseImage=orc8r_cache',
-                     'controller'])
-
-
 def _get_docker_build_args(args: argparse.Namespace) -> List[str]:
-    # noncore containers don't need the orc8r cache
+    # Noncore containers don't need the orc8r cache
     if args.noncore or args.nocache:
-        return ['build']
+        ret = ['build']
     else:
-        return ['build', '--build-arg', 'baseImage=orc8r_cache']
+        ret = ['build', '--build-arg', 'baseImage=orc8r_cache']
+        # Build only the controller container
+        if args.controller:
+            ret.append('controller')
+    if args.parallel:
+        ret.append('--parallel')
+    return ret
 
 
 def _run_docker(cmd: List[str]) -> None:
@@ -168,15 +152,17 @@ def _run_docker(cmd: List[str]) -> None:
 
 
 def _copy_module(module: MagmaModule) -> None:
-    """ Copy the module dir into the build context  """
+    """ Copy module directory into the build context  """
     module_dest = _get_module_destination(module)
     dst = os.path.join(BUILD_CONTEXT, module_dest)
 
-    # Copy relevant parts of the module to the build context
+    # Copy cloud/
     shutil.copytree(
         os.path.join(module.host_path, 'cloud'),
         os.path.join(dst, 'cloud'),
     )
+
+    # Handle orc8r lib/ and gateway/go/
     if module.name == 'orc8r':
         shutil.copytree(
             os.path.join(module.host_path, 'lib'),
@@ -187,12 +173,14 @@ def _copy_module(module: MagmaModule) -> None:
             os.path.join(dst, 'gateway', 'go'),
         )
 
+    # Optionally copy tools/
     if os.path.isdir(os.path.join(module.host_path, 'tools')):
         shutil.copytree(
             os.path.join(module.host_path, 'tools'),
             os.path.join(dst, 'tools'),
         )
 
+    # Optionally copy cloud/configs/
     if os.path.isdir(os.path.join(module.host_path, 'cloud', 'configs')):
         shutil.copytree(
             os.path.join(module.host_path, 'cloud', 'configs'),
@@ -231,12 +219,14 @@ def _get_modules() -> List[MagmaModule]:
     with open(filename) as file:
         conf = yaml.safe_load(file)
         for module in conf['native_modules']:
-            mod_path = os.path.abspath(os.path.join(HOST_MAGMA_ROOT, module))
+            module_abspath = os.path.abspath(
+                os.path.join(HOST_MAGMA_ROOT, module)
+            )
             modules.append(
                 MagmaModule(
                     is_external=False,
-                    host_path=mod_path,
-                    name=os.path.basename(mod_path),
+                    host_path=module_abspath,
+                    name=os.path.basename(module_abspath),
                 ),
             )
         for ext_module in conf['external_modules']:
@@ -295,8 +285,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument('--noncore', '-nc', action='store_true',
                         help='Build only non-core containers '
                              '(i.e. no proxy, controller images)')
+    parser.add_argument('--parallel', '-p', action='store_true',
+                        help='Build containers in parallel')
     parser.add_argument('--controller', '-c', action='store_true',
-                        help='Build only the controller image')
+                        help='Build only the controller supercontainer')
     args = parser.parse_args()
     return args
 

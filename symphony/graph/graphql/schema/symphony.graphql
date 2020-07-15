@@ -1,3 +1,7 @@
+# Copyright (c) 2004-present Facebook All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
 #  After making changes to this schema file, be sure to regenerate
 #  any code that relies on this schema.
 #  Inventory Front-End:
@@ -21,25 +25,24 @@ directive @deprecatedInput(
 ) on INPUT_FIELD_DEFINITION
 
 enum UserStatus
-  @goModel(
-    model: "github.com/facebookincubator/symphony/graph/ent/user.Status"
-  ) {
+  @goModel(model: "github.com/facebookincubator/symphony/pkg/ent/user.Status") {
   ACTIVE
   DEACTIVATED
 }
 
 enum UserRole
-  @goModel(model: "github.com/facebookincubator/symphony/graph/ent/user.Role") {
+  @goModel(model: "github.com/facebookincubator/symphony/pkg/ent/user.Role") {
   USER
   ADMIN
   OWNER
 }
 
-type User implements Node {
+type User implements Node & NamedNode {
   id: ID!
   authID: String!
   firstName: String!
   lastName: String!
+  name: String!
   email: String!
   status: UserStatus!
   role: UserRole!
@@ -49,7 +52,7 @@ type User implements Node {
 
 enum UsersGroupStatus
   @goModel(
-    model: "github.com/facebookincubator/symphony/graph/ent/usersgroup.Status"
+    model: "github.com/facebookincubator/symphony/pkg/ent/usersgroup.Status"
   ) {
   ACTIVE
   DEACTIVATED
@@ -61,26 +64,224 @@ type UsersGroup implements Node {
   description: String
   status: UsersGroupStatus!
   members: [User!]!
+  policies: [PermissionsPolicy!]!
 }
 
-type AdministrativePolicy {
-  canRead: Boolean!
-}
-
-type PermissionSettings {
+type PermissionSettings
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.PermissionSettings"
+  ) {
   canWrite: Boolean!
   adminPolicy: AdministrativePolicy!
+  inventoryPolicy: InventoryPolicy!
+  workforcePolicy: WorkforcePolicy!
+}
+
+enum PermissionValue
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.PermissionValue"
+  ) {
+  YES
+  NO
+  BY_CONDITION
+}
+
+type BasicPermissionRule
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.BasicPermissionRule"
+  ) {
+  isAllowed: PermissionValue!
+}
+
+type LocationPermissionRule
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.LocationPermissionRule"
+  ) {
+  isAllowed: PermissionValue!
+  locationTypeIds: [ID!]
+}
+
+type WorkforcePermissionRule
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.WorkforcePermissionRule"
+  ) {
+  isAllowed: PermissionValue!
+  projectTypeIds: [ID!]
+  workOrderTypeIds: [ID!]
+}
+
+input BasicPermissionRuleInput
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.BasicPermissionRuleInput"
+  ) {
+  isAllowed: PermissionValue!
+}
+
+input LocationPermissionRuleInput
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.LocationPermissionRuleInput"
+  ) {
+  isAllowed: PermissionValue!
+  locationTypeIds: [ID!]
+}
+
+input WorkforcePermissionRuleInput
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.WorkforcePermissionRuleInput"
+  ) {
+  isAllowed: PermissionValue!
+  projectTypeIds: [ID!]
+  workOrderTypeIds: [ID!]
+}
+
+type CUD
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.Cud"
+  ) {
+  create: BasicPermissionRule!
+  update: BasicPermissionRule!
+  delete: BasicPermissionRule!
+}
+
+type LocationCUD
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.LocationCud"
+  ) {
+  create: LocationPermissionRule!
+  update: LocationPermissionRule!
+  delete: LocationPermissionRule!
+}
+
+input BasicCUDInput
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.BasicCUDInput"
+  ) {
+  create: BasicPermissionRuleInput
+  update: BasicPermissionRuleInput
+  delete: BasicPermissionRuleInput
+}
+
+input LocationCUDInput
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.LocationCUDInput"
+  ) {
+  create: BasicPermissionRuleInput
+  update: LocationPermissionRuleInput
+  delete: BasicPermissionRuleInput
+}
+
+type AdministrativePolicy
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.AdministrativePolicy"
+  ) {
+  access: BasicPermissionRule!
+}
+
+type InventoryPolicy
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.InventoryPolicy"
+  ) {
+  read: BasicPermissionRule!
+  location: LocationCUD!
+  equipment: CUD!
+  equipmentType: CUD!
+  locationType: CUD!
+  portType: CUD!
+  serviceType: CUD!
+}
+
+input InventoryPolicyInput
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.InventoryPolicyInput"
+  ) {
+  read: BasicPermissionRuleInput
+  location: LocationCUDInput
+  equipment: BasicCUDInput
+  equipmentType: BasicCUDInput
+  locationType: BasicCUDInput
+  portType: BasicCUDInput
+  serviceType: BasicCUDInput
+}
+
+type WorkforceCUD
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.WorkforceCud"
+  ) {
+  create: WorkforcePermissionRule!
+  update: WorkforcePermissionRule!
+  delete: WorkforcePermissionRule!
+  assign: WorkforcePermissionRule!
+  transferOwnership: WorkforcePermissionRule!
+}
+
+input WorkforceCUDInput
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.WorkforceCUDInput"
+  ) {
+  create: BasicPermissionRuleInput
+  update: BasicPermissionRuleInput
+  delete: BasicPermissionRuleInput
+  assign: BasicPermissionRuleInput
+  transferOwnership: BasicPermissionRuleInput
+}
+
+type WorkforcePolicy
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.WorkforcePolicy"
+  ) {
+  read: WorkforcePermissionRule!
+  data: WorkforceCUD!
+  templates: CUD!
+}
+
+input WorkforcePolicyInput
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.WorkforcePolicyInput"
+  ) {
+  read: WorkforcePermissionRuleInput
+  data: WorkforceCUDInput
+  templates: BasicCUDInput
+}
+
+union SystemPolicy
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/authz/models.SystemPolicy"
+  ) =
+    InventoryPolicy
+  | WorkforcePolicy
+
+type PermissionsPolicy implements Node {
+  id: ID!
+  name: String!
+  description: String
+  isGlobal: Boolean!
+  policy: SystemPolicy!
+  groups: [UsersGroup!]!
+}
+
+input AddPermissionsPolicyInput {
+  name: String!
+  description: String
+  isGlobal: Boolean
+  inventoryInput: InventoryPolicyInput
+  workforceInput: WorkforcePolicyInput
+  groups: [ID!]
+}
+
+input EditPermissionsPolicyInput {
+  id: ID!
+  name: String
+  description: String
+  isGlobal: Boolean
+  inventoryInput: InventoryPolicyInput
+  workforceInput: WorkforcePolicyInput
+  groups: [ID!]
 }
 
 type Viewer
-  @goModel(model: "github.com/facebookincubator/symphony/graph/viewer.Viewer") {
+  @goModel(model: "github.com/facebookincubator/symphony/pkg/viewer.Viewer") {
   tenant: String!
-  email: String!
-    @goField(name: "user")
-    @deprecated(
-      reason: "Use `Viewer.user.email` instead. Will be removed on 2020-05-01"
-    )
-  user: User!
+  user: User
   permissions: PermissionSettings!
 }
 
@@ -88,11 +289,22 @@ type Viewer
 An object with an ID
 """
 interface Node
-  @goModel(model: "github.com/facebookincubator/symphony/graph/ent.Noder") {
+  @goModel(model: "github.com/facebookincubator/symphony/pkg/ent.Noder") {
   """
   The id of the object.
   """
   id: ID!
+}
+
+interface NamedNode {
+  """
+  The id of the object.
+  """
+  id: ID!
+  """
+  The name of the object.
+  """
+  name: String!
 }
 
 type Field {
@@ -108,28 +320,20 @@ type Edge {
 }
 
 type Vertex
-  @goModel(model: "github.com/facebookincubator/symphony/graph/ent.Node") {
+  @goModel(model: "github.com/facebookincubator/symphony/pkg/ent.Node") {
   id: ID!
   type: String!
   fields: [Field!]!
   edges: [Edge!]!
 }
 
-"""
-Represents a technician
-"""
-type Technician {
-  name: String!
-  email: String!
-}
-
-input TechnicianInput {
-  name: String!
-  email: String!
+type Coordinates {
+  latitude: Float!
+  longitude: Float!
 }
 
 # location or site: e.g. building at specific address.
-type Location implements Node {
+type Location implements Node & NamedNode {
   id: ID!
   externalId: String
   name: String!
@@ -139,12 +343,13 @@ type Location implements Node {
   numChildren: Int!
   latitude: Float!
   longitude: Float!
+  parentCoords: Coordinates
   equipments: [Equipment]!
   properties: [Property]!
   images: [File]!
   files: [File]!
   siteSurveyNeeded: Boolean!
-  topology(depth: Int = 3): NetworkTopology!
+  topology(depth: Int! = 3 @numberValue(min: 0, max: 10)): NetworkTopology!
   locationHierarchy: [Location!]!
   surveys: [Survey]!
   wifiData: [SurveyWiFiScan]!
@@ -162,9 +367,17 @@ input EditUserInput {
   role: UserRole
 }
 
+input UpdateUserGroupsInput {
+  id: ID!
+  addGroupIds: [ID!]!
+  removeGroupIds: [ID!]!
+}
+
 input AddUsersGroupInput {
   name: String!
   description: String
+  members: [ID!]
+  policies: [ID!]
 }
 
 input EditUsersGroupInput {
@@ -172,6 +385,8 @@ input EditUsersGroupInput {
   name: String
   description: String
   status: UsersGroupStatus
+  members: [ID!]
+  policies: [ID!]
 }
 
 input AddLocationInput {
@@ -244,7 +459,8 @@ type TopologyLink {
 
 scalar Time
 
-enum FileType {
+enum FileType
+  @goModel(model: "github.com/facebookincubator/symphony/pkg/ent/file.Type") {
   IMAGE
   FILE
 }
@@ -259,6 +475,7 @@ type File implements Node {
   mimeType: String
   storeKey: String
   category: String
+  annotation: String
 }
 
 type Hyperlink implements Node {
@@ -286,14 +503,11 @@ input AddImageInput {
   modified: Time!
   contentType: String!
   category: String
+  annotation: String
 }
 
 type Comment implements Node {
   id: ID!
-  authorName: String!
-    @deprecated(
-      reason: "Use `Comment.author.email` instead. Will be removed on 2020-05-01"
-    )
   author: User!
   text: String!
   createTime: Time!
@@ -305,8 +519,32 @@ input CommentInput {
   text: String!
 }
 
+enum ActivityField
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/ent/activity.ChangedField"
+  ) {
+  STATUS
+  PRIORITY
+  ASSIGNEE
+  CREATION_DATE
+  OWNER
+}
+
+type Activity implements Node {
+  id: ID!
+  author: User
+  isCreate: Boolean!
+  changedField: ActivityField!
+  newRelatedNode: Node
+  oldRelatedNode: Node
+  oldValue: String
+  newValue: String
+  createTime: Time!
+  workOrder: WorkOrder!
+}
+
 # specific equipment instance: e.g. Wifi Access Point X at Location Y.
-type Equipment implements Node {
+type Equipment implements Node & NamedNode {
   id: ID!
   externalId: String
   name: String!
@@ -320,6 +558,7 @@ type Equipment implements Node {
   futureState: FutureState
   workOrder: WorkOrder
   locationHierarchy: [Location!]!
+  firstLocation: Location!
   positionHierarchy: [EquipmentPosition!]!
   device: Device
   services: [Service]!
@@ -424,9 +663,7 @@ input AddWorkOrderTypeInput {
   description: String
   properties: [PropertyTypeInput]
     @uniqueField(typ: "property type", field: "Name")
-  checkList: [CheckListDefinitionInput]
-    @uniqueField(typ: "check list definition", field: "Name")
-  checkListCategories: [CheckListCategoryInput!]
+  checkListCategories: [CheckListCategoryDefinitionInput!]
 }
 
 input EditWorkOrderTypeInput {
@@ -435,9 +672,7 @@ input EditWorkOrderTypeInput {
   description: String
   properties: [PropertyTypeInput]
     @uniqueField(typ: "property type", field: "Name")
-  checkList: [CheckListDefinitionInput]
-    @uniqueField(typ: "check list definition", field: "Name")
-  checkListCategories: [CheckListCategoryInput!]
+  checkListCategories: [CheckListCategoryDefinitionInput!]
 }
 
 input AddWorkOrderInput {
@@ -448,20 +683,8 @@ input AddWorkOrderInput {
   projectId: ID
   properties: [PropertyInput!]
   checkList: [CheckListItemInput!]
-  ownerName: String
-    @deprecatedInput(
-      newField: "ownerId"
-      name: "AddWorkOrderInput.ownerName"
-      duplicateError: "Use `AddWorkOrderInput.ownerId` instead. Will be removed on 2020-05-01. You cannot use `AddWorkOrderInput.ownerName` and `AddWorkOrderInput.ownerId` together"
-    )
   ownerId: ID
   checkListCategories: [CheckListCategoryInput!]
-  assignee: String
-    @deprecatedInput(
-      newField: "assigneeId"
-      name: "AddWorkOrderInput.assignee"
-      duplicateError: "Use `AddWorkOrderInput.assigneeId` instead. Will be removed on 2020-05-01. You cannot use `AddWorkOrderInput.assignee` and `AddWorkOrderInput.assigneeId` together"
-    )
   assigneeId: ID
   index: Int
   status: WorkOrderStatus
@@ -472,24 +695,12 @@ input EditWorkOrderInput {
   id: ID!
   name: String!
   description: String
-  ownerName: String
-    @deprecatedInput(
-      newField: "ownerId"
-      name: "EditWorkOrderInput.ownerName"
-      duplicateError: "Use `EditWorkOrderInput.ownerId` instead. Will be removed on 2020-05-01. You cannot use `EditWorkOrderInput.ownerName` and `EditWorkOrderInput.ownerId` together"
-    )
   ownerId: ID
   installDate: Time
-  assignee: String
-    @deprecatedInput(
-      newField: "assigneeId"
-      name: "EditWorkOrderInput.assignee"
-      duplicateError: "Use `EditWorkOrderInput.assigneeId` instead. Will be removed on 2020-05-01. You cannot use `EditWorkOrderInput.assignee` and `EditWorkOrderInput.assigneeId` together"
-    )
   assigneeId: ID
   index: Int
-  status: WorkOrderStatus!
-  priority: WorkOrderPriority!
+  status: WorkOrderStatus
+  priority: WorkOrderPriority
   projectId: ID
   properties: [PropertyInput!]
   checkList: [CheckListItemInput!]
@@ -503,6 +714,9 @@ input TechnicianCheckListItemInput {
   stringValue: String
   checked: Boolean
   yesNoResponse: YesNoResponse
+  wifiData: [SurveyWiFiScanData!]
+  cellData: [SurveyCellScanData!]
+  filesData: [FileInput!]
 }
 
 input TechnicianWorkOrderUploadInput {
@@ -571,39 +785,11 @@ type SearchEntry {
 }
 
 """
-A connection to a list of search entries.
-"""
-type SearchEntriesConnection {
-  """
-  A list of search entry edges.
-  """
-  edges: [SearchEntryEdge!]
-  """
-  Information to aid in pagination.
-  """
-  pageInfo: PageInfo!
-}
-
-"""
-A search entry edge in a connection.
-"""
-type SearchEntryEdge {
-  """
-  The search entry at the end of the edge.
-  """
-  node: SearchEntry
-  """
-  A cursor for use in pagination.
-  """
-  cursor: Cursor!
-}
-
-"""
-A search entry edge in a connection.
+A search node edge in a connection.
 """
 type SearchNodeEdge {
   """
-  The search entry at the end of the edge.
+  The search node at the end of the edge.
   """
   node: Node
   """
@@ -613,11 +799,15 @@ type SearchNodeEdge {
 }
 
 """
-A connection to a list of search entries.
+A connection to a list of search nodes.
 """
 type SearchNodesConnection {
   """
-  A list of search entry edges.
+  Total count of search nodes in all pages.
+  """
+  totalCount: Int!
+  """
+  A list of search node edges.
   """
   edges: [SearchNodeEdge!]
   """
@@ -630,6 +820,10 @@ type SearchNodesConnection {
 A connection to a list of equipment port types.
 """
 type EquipmentPortTypeConnection {
+  """
+  Total count of equipment port types in all pages.
+  """
+  totalCount: Int!
   """
   A list of equipment port type edges.
   """
@@ -659,6 +853,10 @@ A connection to a list of equipment port definitions.
 """
 type EquipmentPortDefinitionConnection {
   """
+  Total count of equipment port definitions in all pages.
+  """
+  totalCount: Int!
+  """
   A list of equipment port definition edges.
   """
   edges: [EquipmentPortDefinitionEdge!]!
@@ -683,9 +881,45 @@ type EquipmentPortDefinitionEdge {
 }
 
 """
+A connection to a list of equipment ports.
+"""
+type EquipmentPortConnection {
+  """
+  Total count of equipment ports in all pages.
+  """
+  totalCount: Int!
+  """
+  A list of equipment port edges.
+  """
+  edges: [EquipmentPortEdge!]!
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+}
+
+"""
+An equipment port edge in a connection.
+"""
+type EquipmentPortEdge {
+  """
+  The equipment port at the end of the edge.
+  """
+  node: EquipmentPort
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+
+"""
 A connection to a list of equipment types.
 """
 type EquipmentTypeConnection {
+  """
+  Total count of equipment types in all pages.
+  """
+  totalCount: Int!
   """
   A list of equipment type edges.
   """
@@ -711,9 +945,45 @@ type EquipmentTypeEdge {
 }
 
 """
+A connection to a list of equipments.
+"""
+type EquipmentConnection {
+  """
+  Total count of equipment in all pages.
+  """
+  totalCount: Int!
+  """
+  A list of equipment edges.
+  """
+  edges: [EquipmentEdge!]!
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+}
+
+"""
+An equipment edge in a connection.
+"""
+type EquipmentEdge {
+  """
+  The equipment at the end of the edge.
+  """
+  node: Equipment
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+
+"""
 A connection to a list of location types.
 """
 type LocationTypeConnection {
+  """
+  Total count of location types in all pages.
+  """
+  totalCount: Int!
   """
   A list of location type edges.
   """
@@ -743,6 +1013,10 @@ A connection to a list of locations.
 """
 type LocationConnection {
   """
+  Total count of locations in all pages.
+  """
+  totalCount: Int!
+  """
   A list of location edges.
   """
   edges: [LocationEdge!]!
@@ -760,6 +1034,70 @@ type LocationEdge {
   The location at the end of the edge.
   """
   node: Location
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+
+"""
+A connection to a list of links.
+"""
+type LinkConnection {
+  """
+  Total count of links in all pages.
+  """
+  totalCount: Int!
+  """
+  A list of link edges.
+  """
+  edges: [LinkEdge!]!
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+}
+
+"""
+A link edge in a connection.
+"""
+type LinkEdge {
+  """
+  The link at the end of the edge.
+  """
+  node: Link
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+
+"""
+A connection to a list of services.
+"""
+type ServiceConnection {
+  """
+  Total count of services in all pages.
+  """
+  totalCount: Int!
+  """
+  A list of service edges.
+  """
+  edges: [ServiceEdge!]!
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+}
+
+"""
+A service edge in a connection.
+"""
+type ServiceEdge {
+  """
+  The service at the end of the edge.
+  """
+  node: Service
   """
   A cursor for use in pagination.
   """
@@ -801,9 +1139,28 @@ type PageInfo {
 }
 
 """
+Possible directions in which to order a list of items when provided an `orderBy` argument.
+"""
+enum OrderDirection {
+  """
+  Specifies an ascending order for a given `orderBy` argument.
+  """
+  ASC
+
+  """
+  Specifies a descending order for a given `orderBy` argument.
+  """
+  DESC
+}
+
+"""
 A connection to a list of service types.
 """
 type ServiceTypeConnection {
+  """
+  Total count of service types in all pages.
+  """
+  totalCount: Int!
   """
   A list of service type edges.
   """
@@ -828,7 +1185,10 @@ type ServiceTypeEdge {
   cursor: Cursor!
 }
 
-enum PropertyKind {
+enum PropertyKind
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/ent/propertytype.Type"
+  ) {
   string
   int
   bool
@@ -838,18 +1198,19 @@ enum PropertyKind {
   range
   email
   gps_location
-  equipment
-  location
-  service
   datetime_local
+  node
 }
 
 type PropertyType implements Node {
   id: ID!
+  externalId: String
   name: String!
   type: PropertyKind!
+  nodeType: String
   index: Int
   category: String
+  rawValue: String
   stringValue: String
   intValue: Int
   booleanValue: Boolean
@@ -866,8 +1227,10 @@ type PropertyType implements Node {
 
 input PropertyTypeInput {
   id: ID
+  externalId: String
   name: String!
   type: PropertyKind!
+  nodeType: String
   index: Int
   category: String
   stringValue: String
@@ -895,9 +1258,8 @@ type Property implements Node {
   longitudeValue: Float
   rangeFromValue: Float
   rangeToValue: Float
-  equipmentValue: Equipment
-  locationValue: Location
-  serviceValue: Service
+  nodeValue: NamedNode
+  rawValue: String
 }
 
 input PropertyInput {
@@ -911,9 +1273,7 @@ input PropertyInput {
   longitudeValue: Float
   rangeFromValue: Float
   rangeToValue: Float
-  equipmentIDValue: ID
-  locationIDValue: ID
-  serviceIDValue: ID
+  nodeIDValue: ID
   isEditable: Boolean
   isInstanceProperty: Boolean
 }
@@ -921,7 +1281,10 @@ input PropertyInput {
 """
 Work Order priority
 """
-enum WorkOrderPriority {
+enum WorkOrderPriority
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/ent/workorder.Priority"
+  ) {
   URGENT
   HIGH
   MEDIUM
@@ -932,7 +1295,10 @@ enum WorkOrderPriority {
 """
 Work Order status
 """
-enum WorkOrderStatus {
+enum WorkOrderStatus
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/ent/workorder.Status"
+  ) {
   PENDING
   PLANNED
   DONE
@@ -993,7 +1359,7 @@ input LinkSide {
 }
 
 input AddLinkInput {
-  sides: [LinkSide!]! @length(min: 2, max: 2)
+  sides: [LinkSide!]! @list(minItems: 2, maxItems: 2)
   workOrder: ID
   properties: [PropertyInput!]
   serviceIds: [ID!]
@@ -1028,11 +1394,23 @@ enum CheckListItemType {
   enum
   files
   yes_no
+  cell_scan
+  wifi_scan
 }
 
-enum CheckListItemEnumSelectionMode {
+enum CheckListItemEnumSelectionMode
+  @goModel(
+    model: "github.com/facebookincubator/symphony/pkg/ent/checklistitem.EnumSelectionModeValue"
+  ) {
   single
   multiple
+}
+
+type CheckListCategoryDefinition {
+  id: ID!
+  title: String!
+  description: String
+  checklistItemDefinitions: [CheckListItemDefinition!]!
 }
 
 type CheckListItemDefinition {
@@ -1041,6 +1419,7 @@ type CheckListItemDefinition {
   type: CheckListItemType!
   index: Int
   enumValues: String
+  enumSelectionMode: CheckListItemEnumSelectionMode
   helpText: String
 }
 
@@ -1050,7 +1429,15 @@ input CheckListDefinitionInput {
   type: CheckListItemType!
   index: Int
   enumValues: String
+  enumSelectionMode: CheckListItemEnumSelectionMode
   helpText: String
+}
+
+input CheckListCategoryDefinitionInput {
+  id: ID
+  title: String!
+  description: String
+  checkList: [CheckListDefinitionInput!]!
 }
 
 type CheckListCategory implements Node {
@@ -1071,8 +1458,10 @@ type CheckListItem implements Node {
   selectedEnumValues: String
   stringValue: String
   checked: Boolean
-  files: [File!]!
+  files: [File!]
   yesNoResponse: YesNoResponse
+  wifiData: [SurveyWiFiScan!]
+  cellData: [SurveyCellScan!]
 }
 
 input CheckListCategoryInput {
@@ -1146,6 +1535,13 @@ input ReportFilterInput {
   filters: [GeneralFilterInput]
 }
 
+type WorkOrderTemplate {
+  name: String!
+  description: String
+  propertyTypes: [PropertyType]!
+  checkListCategoryDefinitions: [CheckListCategoryDefinition!]!
+}
+
 """
 Work Order type schema: e.g. construction work.
 """
@@ -1155,29 +1551,21 @@ type WorkOrderType implements Node {
   description: String
   propertyTypes: [PropertyType]!
   numberOfWorkOrders: Int!
-  checkListDefinitions: [CheckListItemDefinition]!
-  checkListCategories: [CheckListCategory!]!
+  checkListCategoryDefinitions: [CheckListCategoryDefinition!]!
 }
 
 """
 Work Order instance - capturing information about a change in the network
 """
-type WorkOrder implements Node {
+type WorkOrder implements Node & NamedNode {
   id: ID!
   workOrderType: WorkOrderType!
+  workOrderTemplate: WorkOrderTemplate
   name: String!
   description: String
-  ownerName: String!
-    @deprecated(
-      reason: "Use `WorkOrder.owner.email` instead. Will be removed on 2020-05-01"
-    )
   owner: User!
   creationDate: Time!
   installDate: Time
-  assignee: String
-    @deprecated(
-      reason: "Use `WorkOrder.assignedTo.email` instead. Will be removed on 2020-05-01"
-    )
   assignedTo: User
   index: Int!
   status: WorkOrderStatus!
@@ -1189,10 +1577,10 @@ type WorkOrder implements Node {
   images: [File]!
   files: [File]!
   comments: [Comment]!
+  activities: [Activity!]!
   location: Location
   properties: [Property]!
   project: Project
-  checkList: [CheckListItem]!
   checkListCategories: [CheckListCategory!]!
   hyperlinks: [Hyperlink!]!
   closeDate: Time
@@ -1202,6 +1590,10 @@ type WorkOrder implements Node {
 A connection to a list of users.
 """
 type UserConnection {
+  """
+  Total count of users in all pages.
+  """
+  totalCount: Int!
   """
   A list of user type edges.
   """
@@ -1213,9 +1605,31 @@ type UserConnection {
 }
 
 """
+A connection to a list of permissions policies.
+"""
+type PermissionsPolicyConnection {
+  """
+  Total count of permission policies in all pages.
+  """
+  totalCount: Int!
+  """
+  A list of permissions policies type edges.
+  """
+  edges: [PermissionsPolicyEdge!]!
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+}
+
+"""
 A connection to a list of users groups.
 """
 type UsersGroupConnection {
+  """
+  Total count of user groups in all pages.
+  """
+  totalCount: Int!
   """
   A list of users group type edges.
   """
@@ -1241,6 +1655,20 @@ type UserEdge {
 }
 
 """
+A permission policy type edge in a connection.
+"""
+type PermissionsPolicyEdge {
+  """
+  The permission policy type at the end of the edge.
+  """
+  node: PermissionsPolicy
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+
+"""
 A work order type edge in a connection.
 """
 type UsersGroupEdge {
@@ -1258,6 +1686,10 @@ type UsersGroupEdge {
 A connection to a list of work order types.
 """
 type WorkOrderTypeConnection {
+  """
+  Total count of work order types in all pages.
+  """
+  totalCount: Int!
   """
   A list of work order type edges.
   """
@@ -1287,6 +1719,10 @@ A connection to a list of work orders.
 """
 type WorkOrderConnection {
   """
+  Total count of work orders in all pages.
+  """
+  totalCount: Int!
+  """
   A list of work order edges.
   """
   edges: [WorkOrderEdge!]!
@@ -1310,21 +1746,179 @@ type WorkOrderEdge {
   cursor: Cursor!
 }
 
-# enforces length constraint
-directive @length(
-  min: Int!
-  max: Int
+"""
+Ordering options for work order connections.
+"""
+input WorkOrderOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+
+  """
+  The field to order work orders by.
+  """
+  field: WorkOrderOrderField!
+}
+
+"""
+Properties by which work order connections can be ordered.
+"""
+enum WorkOrderOrderField {
+  """
+  Order work orders by creation time.
+  """
+  CREATED_AT
+
+  """
+  Order work orders by update time.
+  """
+  UPDATED_AT
+
+  """
+  Order work orders by closure time.
+  """
+  CLOSED_AT
+}
+
+"""
+@numberValue directive is used to describe possible numeric values.
+"""
+directive @numberValue(
+  """
+  The value of multipleOf MUST be a number, strictly greater than 0.
+  A numeric instance is valid only if division by this constraint's
+  value results in an integer.
+  """
+  multipleOf: Float
+
+  """
+  The value of max MUST be a number, representing an inclusive upper
+  limit for a numeric instance. A numeric instance is valid only if
+  the instance is less than or exactly equal to max.
+  """
+  max: Float
+
+  """
+  The value of min MUST be a number, representing an inclusive
+  upper limit for a numeric instance. A numeric instance is
+  valid only if the instance is greater than or exactly equal to min.
+  """
+  min: Float
+
+  """
+  The value of exclusiveMax MUST be a number, representing an exclusive
+  upper limit for a numeric instance. A numeric instance is valid only if
+  it is strictly less than (not equal to) exclusiveMax.
+  """
+  exclusiveMax: Float
+
+  """
+  The value of exclusiveMin MUST be a number, representing an exclusive
+  upper limit for a numeric instance. A numeric instance is valid only
+  if it has a value strictly greater than (not equal to) exclusiveMin.
+  """
+  exclusiveMin: Float
+
+  """
+  The value of this argument MUST be an array. This array SHOULD
+  have at least one element. Elements in the array SHOULD be unique.
+  An instance is valid only if its value is equal to one of the elements
+  in this constraint's array value.
+  """
+  oneOf: [Float!]
+
+  """
+  A numeric instance is valid only if its value is equal to
+  the value of the constrain.
+  """
+  equals: Float
 ) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION
 
-# enforces range constraint on numeric value
-directive @range(
-  min: Float
-  max: Float
+"""
+@stringValue directive is used to describe possible string values.
+"""
+directive @stringValue(
+  """
+  The value of this constraint MUST be a non-negative integer. A string instance
+  is valid against this constraint if its length is less than, or equal to maxLength.
+  The length of a string instance is defined as the number of its characters.
+  """
+  maxLength: Int
+
+  """
+  The value of this constraint MUST be a non-negative integer. A string instance
+  is valid against this constraint if its length is greater than, or equal to minLength.
+  The length of a string instance is defined as the number of its characters.
+  """
+  minLength: Int
+
+  """
+  The value of this constraint MUST be a string.
+  An instance is valid if it begins with the characters of the constraint's string.
+  """
+  startsWith: String
+
+  """
+  The value of this constraint MUST be a string.
+  An instance is valid if it ends with the characters of the constraint's string.
+  """
+  endsWith: String
+
+  """
+  The value of this constraint MUST be a string. An instance is valid if
+  constraint's value may be found within the instance string.
+  """
+  includes: String
+
+  """
+  The value of this constraint MUST be a string. This string SHOULD be a valid regular expression.
+  An instance is valid if the regular expression matches the instance successfully.
+  """
+  regex: String
+
+  """
+  The value of this argument MUST be an array. This array SHOULD
+  have at least one element. Elements in the array SHOULD be unique.
+  An instance is valid only if its value is equal to one of the elements
+  in this constraint's array value.
+  """
+  oneOf: [String!]
+
+  """
+  A value is valid only if its equal to the value of the constrain.
+  """
+  equals: String
+) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION
+
+"""
+@list directive is used to describe list values.
+"""
+directive @list(
+  """
+  The value of this constraint MUST be a non-negative integer.
+  An instance is valid if only its size is less than, or equal to,
+  the value of this directive.
+  """
+  maxItems: Int
+  """
+  The value of this constraint MUST be a non-negative integer.
+  An instance is valid against minItems if its size is greater than,
+  or equal to, the value of this constraint.
+  Omitting this constraint has the same behavior as a value of 0.
+  """
+  minItems: Int
+  """
+  The value of this constraint MUST be a boolean.
+  If it has boolean value true, the instance is valid
+  if all of its elements are unique.
+  """
+  uniqueItems: Boolean
 ) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION
 
 type ProjectType implements Node {
   id: ID!
-  name: String! @length(min: 1)
+  name: String! @stringValue(minLength: 1)
   description: String
   projects: [Project!]!
   numberOfProjects: Int!
@@ -1333,7 +1927,7 @@ type ProjectType implements Node {
 }
 
 input AddProjectTypeInput {
-  name: String! @length(min: 1)
+  name: String! @stringValue(minLength: 1)
   description: String
   properties: [PropertyTypeInput!]
     @uniqueField(typ: "property type", field: "Name")
@@ -1342,7 +1936,7 @@ input AddProjectTypeInput {
 
 input EditProjectTypeInput {
   id: ID!
-  name: String! @length(min: 1)
+  name: String! @stringValue(minLength: 1)
   description: String
   properties: [PropertyTypeInput!]
     @uniqueField(typ: "property type", field: "Name")
@@ -1350,7 +1944,7 @@ input EditProjectTypeInput {
 }
 
 input AddCustomerInput {
-  name: String! @length(min: 1)
+  name: String! @stringValue(minLength: 1)
   externalId: String
 }
 
@@ -1365,6 +1959,10 @@ directive @goField(
 A connection to a list of project types.
 """
 type ProjectTypeConnection {
+  """
+  Total count of project types in all pages.
+  """
+  totalCount: Int!
   """
   A list of project type edges.
   """
@@ -1389,14 +1987,42 @@ type ProjectTypeEdge {
   cursor: Cursor!
 }
 
+"""
+A connection to a list of projects.
+"""
+type ProjectConnection {
+  """
+  Total count of projects in all pages.
+  """
+  totalCount: Int!
+  """
+  A list of project edges.
+  """
+  edges: [ProjectEdge!]!
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+}
+
+"""
+A project edge in a connection.
+"""
+type ProjectEdge {
+  """
+  The project at the end of the edge.
+  """
+  node: Project
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+
 type Project implements Node {
   id: ID!
-  name: String! @length(min: 1)
+  name: String! @stringValue(minLength: 1)
   description: String
-  creator: String
-    @deprecated(
-      reason: "Use `Project.createdBy.email` instead. Will be removed on 2020-05-01"
-    )
   createdBy: User
   type: ProjectType!
   location: Location
@@ -1407,14 +2033,8 @@ type Project implements Node {
 }
 
 input AddProjectInput {
-  name: String! @length(min: 1)
+  name: String! @stringValue(minLength: 1)
   description: String
-  creator: String
-    @deprecatedInput(
-      newField: "creatorId"
-      name: "AddProjectInput.creator"
-      duplicateError: "Use `AddProjectInput.creatorId` instead. Will be removed on 2020-05-01. You cannot use `AddProjectInput.creator` and `AddProjectInput.creatorId` together"
-    )
   creatorId: ID
   type: ID!
   location: ID
@@ -1423,14 +2043,8 @@ input AddProjectInput {
 
 input EditProjectInput {
   id: ID!
-  name: String! @length(min: 1)
+  name: String! @stringValue(minLength: 1)
   description: String
-  creator: String
-    @deprecatedInput(
-      newField: "creatorId"
-      name: "EditProjectInput.creator"
-      duplicateError: "Use `EditProjectInput.creatorId` instead. Will be removed on 2020-05-01. You cannot use `EditProjectInput.creator` and `EditProjectInput.creatorId` together"
-    )
   creatorId: ID
   type: ID!
   location: ID
@@ -1447,6 +2061,8 @@ enum FilterOperator {
   IS_NOT_ONE_OF
   DATE_GREATER_THAN
   DATE_LESS_THAN
+  DATE_GREATER_OR_EQUAL_THAN
+  DATE_LESS_OR_EQUAL_THAN
 }
 
 """
@@ -1457,6 +2073,7 @@ enum EquipmentFilterType {
   EQUIP_INST_EXTERNAL_ID
   PROPERTY
   LOCATION_INST
+  LOCATION_INST_EXTERNAL_ID
   EQUIPMENT_TYPE
 }
 
@@ -1500,6 +2117,16 @@ type WorkOrderSearchResult {
   count: Int!
 }
 
+type PermissionsPolicySearchResult {
+  permissionsPolicies: [PermissionsPolicy]!
+  count: Int!
+}
+
+type UsersGroupSearchResult {
+  usersGroups: [UsersGroup]!
+  count: Int!
+}
+
 """
 what filters should we apply on ports
 """
@@ -1508,6 +2135,7 @@ enum PortFilterType {
   PORT_INST_HAS_LINK
   PORT_INST_EQUIPMENT
   LOCATION_INST
+  LOCATION_INST_EXTERNAL_ID
   PROPERTY
   SERVICE_INST
 }
@@ -1519,6 +2147,7 @@ enum LinkFilterType {
   LINK_FUTURE_STATUS
   EQUIPMENT_TYPE
   LOCATION_INST
+  LOCATION_INST_EXTERNAL_ID
   PROPERTY
   SERVICE_INST
   EQUIPMENT_INST
@@ -1529,6 +2158,8 @@ what filters should we apply on locations
 """
 enum LocationFilterType {
   LOCATION_INST
+  LOCATION_INST_NAME
+  LOCATION_INST_EXTERNAL_ID
   LOCATION_TYPE
   LOCATION_INST_HAS_EQUIPMENT
   PROPERTY
@@ -1540,11 +2171,13 @@ what filters should we apply on services
 enum ServiceFilterType {
   SERVICE_INST_NAME
   SERVICE_STATUS
+  SERVICE_DISCOVERY_METHOD
   SERVICE_TYPE
   SERVICE_INST_EXTERNAL_ID
   SERVICE_INST_CUSTOMER_NAME
   PROPERTY
   LOCATION_INST
+  LOCATION_INST_EXTERNAL_ID
   EQUIPMENT_IN_SERVICE
 }
 
@@ -1553,6 +2186,21 @@ what filters should we apply on users
 """
 enum UserFilterType {
   USER_NAME
+  USER_STATUS
+}
+
+"""
+what filters should we apply on permissionsPolicy
+"""
+enum PermissionsPolicyFilterType {
+  PERMISSIONS_POLICY_NAME
+}
+
+"""
+what filters should we apply on usersGroups
+"""
+enum UsersGroupFilterType {
+  GROUP_NAME
 }
 
 input PortFilterInput {
@@ -1602,8 +2250,23 @@ input UserFilterInput {
   operator: FilterOperator!
   stringValue: String
   propertyValue: PropertyTypeInput
+  statusValue: UserStatus
   idSet: [ID!]
   stringSet: [String!]
+  maxDepth: Int = 5
+}
+
+input PermissionsPolicyFilterInput {
+  filterType: PermissionsPolicyFilterType!
+  operator: FilterOperator!
+  stringValue: String
+  maxDepth: Int = 5
+}
+
+input UsersGroupFilterInput {
+  filterType: UsersGroupFilterType!
+  operator: FilterOperator!
+  stringValue: String
   maxDepth: Int = 5
 }
 
@@ -1613,22 +2276,15 @@ what type of work order we filter about
 enum WorkOrderFilterType {
   WORK_ORDER_NAME
   WORK_ORDER_STATUS
-  WORK_ORDER_OWNER
-    @deprecated(
-      reason: "Use `WorkOrderFilterType.WORK_ORDER_OWNED_BY` instead. Will be removed on 2020-05-01"
-    )
   WORK_ORDER_OWNED_BY
   WORK_ORDER_TYPE
   WORK_ORDER_CREATION_DATE
-  WORK_ORDER_INSTALL_DATE
-  WORK_ORDER_ASSIGNEE
-    @deprecated(
-      reason: "Use `WorkOrderFilterType.WORK_ORDER_ASSIGNED_TO` instead. Will be removed on 2020-05-01"
-    )
+  WORK_ORDER_CLOSE_DATE
   WORK_ORDER_ASSIGNED_TO
   WORK_ORDER_LOCATION_INST
   WORK_ORDER_PRIORITY
   LOCATION_INST
+  LOCATION_INST_EXTERNAL_ID
 }
 
 input WorkOrderFilterInput {
@@ -1638,6 +2294,7 @@ input WorkOrderFilterInput {
   idSet: [ID!]
   stringSet: [String!]
   propertyValue: PropertyTypeInput
+  timeValue: Time
   maxDepth: Int = 5
 }
 
@@ -1655,6 +2312,10 @@ input ProjectFilterInput {
 A connection to a list of customers.
 """
 type CustomerConnection {
+  """
+  Total count of customers in all pages.
+  """
+  totalCount: Int!
   """
   A list of customer edges.
   """
@@ -1685,22 +2346,18 @@ type Customer implements Node {
   externalId: String
 }
 
-enum ServiceEndpointRole {
-  CONSUMER
-  PROVIDER
-}
-
 type ServiceEndpoint implements Node {
   id: ID!
-  port: EquipmentPort!
-  role: ServiceEndpointRole!
+  port: EquipmentPort
+  equipment: Equipment!
   service: Service!
+  definition: ServiceEndpointDefinition!
 }
 
 """
 Modeling a specific service: e.g. a L2 VPN instance.
 """
-type Service implements Node {
+type Service implements Node & NamedNode {
   id: ID!
   name: String!
   externalId: String
@@ -1715,16 +2372,29 @@ type Service implements Node {
   topology: NetworkTopology!
 }
 
+type ServiceEndpointDefinition implements Node {
+  id: ID!
+  index: Int!
+  role: String
+  name: String!
+  endpoints: [ServiceEndpoint]!
+  equipmentType: EquipmentType!
+  serviceType: ServiceType!
+}
+
 """
 Service type schema: e.g. L2 VPN.
 """
 type ServiceType implements Node {
   id: ID!
   name: String!
+  isDeleted: Boolean!
   hasCustomer: Boolean!
   propertyTypes: [PropertyType]!
   services: [Service]!
   numberOfServices: Int!
+  endpointDefinitions: [ServiceEndpointDefinition!]!
+  discoveryMethod: DiscoveryMethod!
 }
 
 directive @uniqueField(
@@ -1737,11 +2407,18 @@ input LocationTypeIndex {
   index: Int!
 }
 
+enum DiscoveryMethod {
+  MANUAL
+  INVENTORY
+}
+
 input ServiceTypeCreateData {
   name: String!
   hasCustomer: Boolean!
   properties: [PropertyTypeInput]
     @uniqueField(typ: "property type", field: "Name")
+  endpoints: [ServiceEndpointDefinitionInput]
+  discoveryMethod: DiscoveryMethod
 }
 
 input ServiceTypeEditData {
@@ -1750,6 +2427,7 @@ input ServiceTypeEditData {
   hasCustomer: Boolean!
   properties: [PropertyTypeInput]
     @uniqueField(typ: "property type", field: "Name")
+  endpoints: [ServiceEndpointDefinitionInput]
 }
 
 input ServiceCreateData {
@@ -1774,8 +2452,17 @@ input ServiceEditData {
 
 input AddServiceEndpointInput {
   id: ID!
-  portId: ID!
-  role: ServiceEndpointRole!
+  portId: ID
+  equipmentID: ID!
+  definition: ID!
+}
+
+input ServiceEndpointDefinitionInput {
+  id: ID
+  name: String!
+  role: String
+  index: Int!
+  equipmentTypeID: ID!
 }
 
 input SurveyCreateData {
@@ -1853,6 +2540,7 @@ input FileInput {
   fileType: FileType
   mimeType: String
   storeKey: String!
+  annotation: String
 }
 
 input SurveyTemplateQuestionInput {
@@ -1906,6 +2594,7 @@ input SurveyQuestionResponse {
   photoData: FileInput
   wifiData: [SurveyWiFiScanData!]
   cellData: [SurveyCellScanData!]
+  imagesData: [FileInput!]
 }
 
 type SurveyQuestion implements Node {
@@ -1930,6 +2619,7 @@ type SurveyQuestion implements Node {
   photoData: File
   wifiData: [SurveyWiFiScan]
   cellData: [SurveyCellScan]
+  images: [File!]
 }
 
 enum SurveyQuestionType {
@@ -2190,15 +2880,11 @@ type Query {
     id: ID!
   ): Node
   user(authID: String!): User
-  location(id: ID!): Location
-    @deprecated(reason: "Use `node` instead. Will be removed on 2020-04-01")
-  locationType(id: ID!): LocationType
-    @deprecated(reason: "Use `node` instead. Will be removed on 2020-04-01")
   locationTypes(
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
   ): LocationTypeConnection
   locations(
     onlyTopLevel: Boolean
@@ -2206,130 +2892,226 @@ type Query {
     name: String
     needsSiteSurvey: Boolean
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
+    filterBy: [LocationFilterInput!]
   ): LocationConnection
-  equipment(id: ID!): Equipment
-    @deprecated(reason: "Use `node` instead. Will be removed on 2020-04-01")
-  equipmentType(id: ID!): EquipmentType
-    @deprecated(reason: "Use `node` instead. Will be removed on 2020-04-01")
   equipmentPortTypes(
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
   ): EquipmentPortTypeConnection!
   equipmentPortDefinitions(
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
   ): EquipmentPortDefinitionConnection!
+  equipmentPorts(
+    after: Cursor
+    first: Int @numberValue(min: 0)
+    before: Cursor
+    last: Int @numberValue(min: 0)
+    filterBy: [PortFilterInput!]
+  ): EquipmentPortConnection!
   equipmentTypes(
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
   ): EquipmentTypeConnection!
-  service(id: ID!): Service
-    @deprecated(reason: "Use `node` instead. Will be removed on 2020-04-01")
-  serviceType(id: ID!): ServiceType
-    @deprecated(reason: "Use `node` instead. Will be removed on 2020-04-01")
+  equipments(
+    after: Cursor
+    first: Int @numberValue(min: 0)
+    before: Cursor
+    last: Int @numberValue(min: 0)
+    filterBy: [EquipmentFilterInput!]
+  ): EquipmentConnection!
   serviceTypes(
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
   ): ServiceTypeConnection
-  workOrder(id: ID!): WorkOrder
-    @deprecated(reason: "Use `node` instead. Will be removed on 2020-04-01")
+
+  """
+  A list of work orders.
+  """
   workOrders(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
     after: Cursor
-    first: Int
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int @numberValue(min: 0)
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
     before: Cursor
-    last: Int
-    showCompleted: Boolean
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int @numberValue(min: 0)
+
+    """
+    Ordering options for the returned work orders.
+    """
+    orderBy: WorkOrderOrder
+
+    """
+    Filtering options for the returned work orders.
+    """
+    filterBy: [WorkOrderFilterInput!]
   ): WorkOrderConnection!
   workOrderTypes(
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
   ): WorkOrderTypeConnection
-  users(after: Cursor, first: Int, before: Cursor, last: Int): UserConnection
+  links(
+    after: Cursor
+    first: Int @numberValue(min: 0)
+    before: Cursor
+    last: Int @numberValue(min: 0)
+    filterBy: [LinkFilterInput!]
+  ): LinkConnection!
+  services(
+    after: Cursor
+    first: Int @numberValue(min: 0)
+    before: Cursor
+    last: Int @numberValue(min: 0)
+    filterBy: [ServiceFilterInput!]
+  ): ServiceConnection!
+  users(
+    after: Cursor
+    first: Int @numberValue(min: 0)
+    before: Cursor
+    last: Int @numberValue(min: 0)
+    filterBy: [UserFilterInput!]
+  ): UserConnection
   usersGroups(
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
+    filterBy: [UsersGroupFilterInput!]
   ): UsersGroupConnection
-  searchForEntity(
-    name: String!
+  permissionsPolicies(
     after: Cursor
-    first: Int = 10
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
-  ): SearchEntriesConnection!
-    @deprecated(
-      reason: "Use `searchForNode` instead. Will be removed on 2020-05-01"
-    )
+    last: Int @numberValue(min: 0)
+    filterBy: [PermissionsPolicyFilterInput!]
+  ): PermissionsPolicyConnection
   searchForNode(
     name: String!
     after: Cursor
-    first: Int = 10
+    first: Int = 10 @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
   ): SearchNodesConnection!
   equipmentSearch(
     filters: [EquipmentFilterInput!]!
-    limit: Int = 500
+    limit: Int = 500 @numberValue(min: 0)
   ): EquipmentSearchResult!
+    @deprecated(
+      reason: "Use `equipments` instead. Will be removed on 2020-09-01"
+    )
   workOrderSearch(
     filters: [WorkOrderFilterInput!]!
-    limit: Int = 500
+    limit: Int = 500 @numberValue(min: 0)
   ): WorkOrderSearchResult!
-  linkSearch(filters: [LinkFilterInput!]!, limit: Int = 500): LinkSearchResult!
-  portSearch(filters: [PortFilterInput!]!, limit: Int = 500): PortSearchResult!
+    @deprecated(
+      reason: "Use `workOrders` instead. Will be removed on 2020-09-01"
+    )
+  linkSearch(
+    filters: [LinkFilterInput!]!
+    limit: Int = 500 @numberValue(min: 0)
+  ): LinkSearchResult!
+    @deprecated(reason: "Use `links` instead. Will be removed on 2020-09-01")
+  portSearch(
+    filters: [PortFilterInput!]!
+    limit: Int = 500 @numberValue(min: 0)
+  ): PortSearchResult!
+    @deprecated(
+      reason: "Use `equipmentPorts` instead. Will be removed on 2020-09-01"
+    )
   locationSearch(
     filters: [LocationFilterInput!]!
-    limit: Int = 500
+    limit: Int = 500 @numberValue(min: 0)
   ): LocationSearchResult!
+    @deprecated(
+      reason: "Use `locations` instead. Will be removed on 2020-09-01"
+    )
   projectSearch(
-    """
-    array of the work order filters to be applied
-    """
     filters: [ProjectFilterInput!]!
-    limit: Int = 500
+    limit: Int = 500 @numberValue(min: 0)
   ): [Project]!
-  customerSearch(limit: Int = 500): [Customer]!
+    @deprecated(reason: "Use `projects` instead. Will be removed on 2020-09-01")
+  customerSearch(limit: Int = 500 @numberValue(min: 0)): [Customer]!
+    @deprecated(
+      reason: "Use `customers` instead. Will be removed on 2020-09-01"
+    )
   serviceSearch(
     filters: [ServiceFilterInput!]!
-    limit: Int = 500
+    limit: Int = 500 @numberValue(min: 0)
   ): ServiceSearchResult!
-  userSearch(filters: [UserFilterInput!]!, limit: Int = 500): UserSearchResult!
+    @deprecated(reason: "Use `services` instead. Will be removed on 2020-09-01")
+  userSearch(
+    filters: [UserFilterInput!]!
+    limit: Int = 500 @numberValue(min: 0)
+  ): UserSearchResult!
+    @deprecated(reason: "Use `users` instead. Will be removed on 2020-09-01")
+  permissionsPolicySearch(
+    filters: [PermissionsPolicyFilterInput!]!
+    limit: Int = 500 @numberValue(min: 0)
+  ): PermissionsPolicySearchResult!
+    @deprecated(
+      reason: "Use `permissionsPolicies` instead. Will be removed on 2020-09-01"
+    )
+  usersGroupSearch(
+    filters: [UsersGroupFilterInput!]!
+    limit: Int = 500 @numberValue(min: 0)
+  ): UsersGroupSearchResult!
+    @deprecated(
+      reason: "Use `usersGroups` instead. Will be removed on 2020-09-01"
+    )
   possibleProperties(entityType: PropertyEntity!): [PropertyType!]!
   surveys: [Survey!]!
   latestPythonPackage: LatestPythonPackageResult
+  pythonPackages: [PythonPackage!]!
   nearestSites(
-    latitude: Float!
-    longitude: Float!
-    first: Int! = 10
+    latitude: Float! @numberValue(min: -90, max: 90)
+    longitude: Float! @numberValue(min: -180, max: 180)
+    first: Int! = 10 @numberValue(min: 0)
   ): [Location!]!
   vertex(id: ID!): Vertex
-  projectType(id: ID!): ProjectType
-    @deprecated(reason: "Use `node` instead. Will be removed on 2020-04-01")
   projectTypes(
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
   ): ProjectTypeConnection
+  projects(
+    after: Cursor
+    first: Int @numberValue(min: 0)
+    before: Cursor
+    last: Int @numberValue(min: 0)
+    filterBy: [ProjectFilterInput!]
+  ): ProjectConnection
   customers(
     after: Cursor
-    first: Int
+    first: Int @numberValue(min: 0)
     before: Cursor
-    last: Int
+    last: Int @numberValue(min: 0)
   ): CustomerConnection
   actionsRules: ActionsRulesSearchResult
   actionsTriggers: ActionsTriggersSearchResult
@@ -2340,6 +3122,8 @@ type Mutation {
   editUser(input: EditUserInput!): User!
   addUsersGroup(input: AddUsersGroupInput!): UsersGroup!
   editUsersGroup(input: EditUsersGroupInput!): UsersGroup!
+  updateUserGroups(input: UpdateUserGroupsInput!): User!
+  deleteUsersGroup(id: ID!): Boolean!
   createSurvey(data: SurveyCreateData!): ID!
   addLocation(input: AddLocationInput!): Location!
   editLocation(input: EditLocationInput!): Location!
@@ -2377,6 +3161,7 @@ type Mutation {
   removeServiceEndpoint(serviceEndpointId: ID!): Service!
   addServiceType(
     """
+    AddServiceEndpointInput
     data to edit service type
     """
     data: ServiceTypeCreateData!
@@ -2449,7 +3234,6 @@ type Mutation {
     surveyTemplateCategories: [SurveyTemplateCategoryInput!]!
   ): [SurveyTemplateCategory!]
   editEquipmentPort(input: EditEquipmentPortInput!): EquipmentPort!
-  markLocationPropertyAsExternalID(propertyName: String!): String!
   removeSiteSurvey(id: ID!): ID!
   addWiFiScans(
     """
@@ -2489,7 +3273,6 @@ type Mutation {
     """
     locationTypesIndex: [LocationTypeIndex]!
   ): [LocationType]
-  addTechnician(input: TechnicianInput!): Technician!
   addWorkOrder(input: AddWorkOrderInput!): WorkOrder!
   editWorkOrder(input: EditWorkOrderInput!): WorkOrder!
   addWorkOrderType(input: AddWorkOrderTypeInput!): WorkOrderType!
@@ -2514,6 +3297,9 @@ type Mutation {
   addReportFilter(input: ReportFilterInput!): ReportFilter!
   editReportFilter(input: EditReportFilterInput!): ReportFilter!
   deleteReportFilter(id: ID!): Boolean!
+  addPermissionsPolicy(input: AddPermissionsPolicyInput!): PermissionsPolicy!
+  editPermissionsPolicy(input: EditPermissionsPolicyInput!): PermissionsPolicy!
+  deletePermissionsPolicy(id: ID!): Boolean!
 }
 
 type Subscription {

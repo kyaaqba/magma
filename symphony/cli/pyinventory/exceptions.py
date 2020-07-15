@@ -5,7 +5,17 @@
 
 from typing import Optional
 
-from .consts import Entity
+from requests.models import Response
+
+from .common.data_enum import Entity
+
+
+def assert_ok(resp: Response) -> None:
+    if not resp.ok:
+        error_message = resp.json().get("error", None)
+        if error_message is not None:
+            raise AssertionError(error_message)
+        raise AssertionError()
 
 
 class CustomException(Exception):
@@ -79,14 +89,6 @@ class LocationIsNotUniqueException(CustomException):
         msg = get_location_id_msg(location_name, location_type, external_id)
         msg = msg + " has more than one result in inventory"
         super(LocationIsNotUniqueException, self).__init__(msg)
-
-
-class EquipmentTypeNotFoundException(CustomException):
-    def __init__(self, equipment_type_name: str) -> None:
-        self.equipmentTypeName: str = equipment_type_name
-        super(EquipmentTypeNotFoundException, self).__init__(
-            f"Equipment type {equipment_type_name} does not exist in inventory"
-        )
 
 
 class EquipmentNotFoundException(CustomException):

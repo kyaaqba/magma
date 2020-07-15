@@ -6,7 +6,7 @@
 
  /**
  * @flow
- * @relayHash fc42bcb206d58bef38c3623a600052e5
+ * @relayHash 20694d2e138114c652f15b438b8aace0
  */
 
 /* eslint-disable */
@@ -15,22 +15,26 @@
 
 /*::
 import type { ConcreteRequest } from 'relay-runtime';
-export type FilterOperator = "CONTAINS" | "DATE_GREATER_THAN" | "DATE_LESS_THAN" | "IS" | "IS_NOT_ONE_OF" | "IS_ONE_OF" | "%future added value";
-export type PropertyKind = "bool" | "date" | "datetime_local" | "email" | "enum" | "equipment" | "float" | "gps_location" | "int" | "location" | "range" | "service" | "string" | "%future added value";
-export type UserFilterType = "USER_NAME" | "%future added value";
+export type FilterOperator = "CONTAINS" | "DATE_GREATER_OR_EQUAL_THAN" | "DATE_GREATER_THAN" | "DATE_LESS_OR_EQUAL_THAN" | "DATE_LESS_THAN" | "IS" | "IS_NOT_ONE_OF" | "IS_ONE_OF" | "%future added value";
+export type PropertyKind = "bool" | "date" | "datetime_local" | "email" | "enum" | "float" | "gps_location" | "int" | "node" | "range" | "string" | "%future added value";
+export type UserFilterType = "USER_NAME" | "USER_STATUS" | "%future added value";
+export type UserStatus = "ACTIVE" | "DEACTIVATED" | "%future added value";
 export type UserFilterInput = {|
   filterType: UserFilterType,
   operator: FilterOperator,
   stringValue?: ?string,
   propertyValue?: ?PropertyTypeInput,
+  statusValue?: ?UserStatus,
   idSet?: ?$ReadOnlyArray<string>,
   stringSet?: ?$ReadOnlyArray<string>,
   maxDepth?: ?number,
 |};
 export type PropertyTypeInput = {|
   id?: ?string,
+  externalId?: ?string,
   name: string,
   type: PropertyKind,
+  nodeType?: ?string,
   index?: ?number,
   category?: ?string,
   stringValue?: ?string,
@@ -50,10 +54,12 @@ export type PowerSearchWorkOrderGeneralUserFilter_userQueryVariables = {|
   filters: $ReadOnlyArray<UserFilterInput>
 |};
 export type PowerSearchWorkOrderGeneralUserFilter_userQueryResponse = {|
-  +userSearch: {|
-    +users: $ReadOnlyArray<?{|
-      +id: string,
-      +email: string,
+  +users: ?{|
+    +edges: $ReadOnlyArray<{|
+      +node: ?{|
+        +id: string,
+        +email: string,
+      |}
     |}>
   |}
 |};
@@ -68,10 +74,12 @@ export type PowerSearchWorkOrderGeneralUserFilter_userQuery = {|
 query PowerSearchWorkOrderGeneralUserFilter_userQuery(
   $filters: [UserFilterInput!]!
 ) {
-  userSearch(limit: 10, filters: $filters) {
-    users {
-      id
-      email
+  users(first: 10, filterBy: $filters) {
+    edges {
+      node {
+        id
+        email
+      }
     }
   }
 }
@@ -90,45 +98,56 @@ v1 = [
   {
     "kind": "LinkedField",
     "alias": null,
-    "name": "userSearch",
+    "name": "users",
     "storageKey": null,
     "args": [
       {
         "kind": "Variable",
-        "name": "filters",
+        "name": "filterBy",
         "variableName": "filters"
       },
       {
         "kind": "Literal",
-        "name": "limit",
+        "name": "first",
         "value": 10
       }
     ],
-    "concreteType": "UserSearchResult",
+    "concreteType": "UserConnection",
     "plural": false,
     "selections": [
       {
         "kind": "LinkedField",
         "alias": null,
-        "name": "users",
+        "name": "edges",
         "storageKey": null,
         "args": null,
-        "concreteType": "User",
+        "concreteType": "UserEdge",
         "plural": true,
         "selections": [
           {
-            "kind": "ScalarField",
+            "kind": "LinkedField",
             "alias": null,
-            "name": "id",
+            "name": "node",
+            "storageKey": null,
             "args": null,
-            "storageKey": null
-          },
-          {
-            "kind": "ScalarField",
-            "alias": null,
-            "name": "email",
-            "args": null,
-            "storageKey": null
+            "concreteType": "User",
+            "plural": false,
+            "selections": [
+              {
+                "kind": "ScalarField",
+                "alias": null,
+                "name": "id",
+                "args": null,
+                "storageKey": null
+              },
+              {
+                "kind": "ScalarField",
+                "alias": null,
+                "name": "email",
+                "args": null,
+                "storageKey": null
+              }
+            ]
           }
         ]
       }
@@ -155,11 +174,11 @@ return {
     "operationKind": "query",
     "name": "PowerSearchWorkOrderGeneralUserFilter_userQuery",
     "id": null,
-    "text": "query PowerSearchWorkOrderGeneralUserFilter_userQuery(\n  $filters: [UserFilterInput!]!\n) {\n  userSearch(limit: 10, filters: $filters) {\n    users {\n      id\n      email\n    }\n  }\n}\n",
+    "text": "query PowerSearchWorkOrderGeneralUserFilter_userQuery(\n  $filters: [UserFilterInput!]!\n) {\n  users(first: 10, filterBy: $filters) {\n    edges {\n      node {\n        id\n        email\n      }\n    }\n  }\n}\n",
     "metadata": {}
   }
 };
 })();
 // prettier-ignore
-(node/*: any*/).hash = 'b13e2c314465152f9bd6e17750487648';
+(node/*: any*/).hash = '32481b562d44f21de3acd5b2b9325a8a';
 module.exports = node;

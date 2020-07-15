@@ -5,29 +5,25 @@
 
 from typing import Dict, List, Optional
 
-from gql.gql.client import OperationException
-from gql.gql.reporter import FailedOperationException
+from pysymphony import SymphonyClient
 
-from .._utils import format_property_definitions, get_graphql_property_type_inputs
-from ..client import SymphonyClient
-from ..consts import Entity, EquipmentPortType, PropertyDefinition, PropertyValue
+from .._utils import get_graphql_property_type_inputs
+from ..common.cache import PORT_TYPES
+from ..common.data_class import EquipmentPortType, PropertyDefinition, PropertyValue
+from ..common.data_enum import Entity
+from ..common.data_format import (
+    format_to_property_definitions,
+    format_to_property_type_inputs,
+)
 from ..exceptions import EntityNotFoundError
-from ..graphql.add_equipment_port_type_mutation import (
-    AddEquipmentPortTypeInput,
-    AddEquipmentPortTypeMutation,
-)
-from ..graphql.edit_equipment_port_type_mutation import (
-    EditEquipmentPortTypeInput,
-    EditEquipmentPortTypeMutation,
-)
-from ..graphql.equipment_port_type_query import EquipmentPortTypeQuery
-from ..graphql.remove_equipment_port_type_mutation import (
+from ..graphql.input.add_equipment_port_type import AddEquipmentPortTypeInput
+from ..graphql.input.edit_equipment_port_type import EditEquipmentPortTypeInput
+from ..graphql.mutation.add_equipment_port_type import AddEquipmentPortTypeMutation
+from ..graphql.mutation.edit_equipment_port_type import EditEquipmentPortTypeMutation
+from ..graphql.mutation.remove_equipment_port_type import (
     RemoveEquipmentPortTypeMutation,
 )
-
-
-ADD_EQUIPMENT_PORT_TYPE_MUTATION_NAME = "addEquipmentPortType"
-EDIT_EQUIPMENT_PORT_TYPE_MUTATION_NAME = "editEquipmentPortType"
+from ..graphql.query.equipment_port_type import EquipmentPortTypeQuery
 
 
 def add_equipment_port_type(
@@ -38,65 +34,64 @@ def add_equipment_port_type(
 ) -> EquipmentPortType:
     """This function creates an equipment port type.
 
-        Args:
-            name (str): 
-            properties: (List[PropertyDefinition]): list of PropertyDefinitions
-            link_properties: (List[PropertyDefinition]): list of PropertyDefinitions
+        :param name: Equipment port type name
+        :type name: str
+        :param properties: List of property definitions
+        :type properties: List[ :class:`~pyinventory.common.data_class.PropertyDefinition` ])
+        :param link_properties: List of property definitions
+        :type link_properties: List[ :class:`~pyinventory.common.data_class.PropertyDefinition` ])
 
-        Returns: 
-            EquipmentPortType object
+        :raises:
+            FailedOperationException: Internal inventory error
 
-        Raises: 
-            FailedOperationException
+        :return: EquipmentPortType object
+        :rtype: :class:`~pyinventory.common.data_class.EquipmentPortType`
 
-        Example:
-        ```
-        from pyinventory.consts import PropertyDefinition
-        from pyinventory.graphql.property_kind_enum import PropertyKind
-        port_type1 = client.add_equipment_port_type(
-            "port type 1",
-            [PropertyDefinition("port property", PropertyKind.string, None, True)],
-            [PropertyDefinition("link port property", PropertyKind.string, None, True)],
-        )
-        ```
+        **Example**
+
+        .. code-block:: python
+
+            from pyinventory.common.data_class import PropertyDefinition
+            from pyinventory.graphql.enum.property_kind import PropertyKind
+            port_type1 = client.add_equipment_port_type(
+                name="port type 1",
+                properties=[
+                    PropertyDefinition(
+                        property_name="port property",
+                        property_kind=PropertyKind.string,
+                        default_raw_value=None,
+                        is_fixed=True
+                    )
+                ],
+                link_properties=[
+                    PropertyDefinition(
+                        property_name="link port property",
+                        property_kind=PropertyKind.string,
+                        default_raw_value=None,
+                        is_fixed=True
+                    )
+                ],
+            )
     """
 
-    formated_property_types = format_property_definitions(properties)
-    formated_link_property_types = format_property_definitions(link_properties)
-    add_equipment_port_type_input = {
-        "name": name,
-        "properties": formated_property_types,
-        "linkProperties": formated_link_property_types,
-    }
-
-    try:
-        result = AddEquipmentPortTypeMutation.execute(
-            client,
-            AddEquipmentPortTypeInput(
-                name=name,
-                properties=formated_property_types,
-                linkProperties=formated_link_property_types,
-            ),
-        ).__dict__[ADD_EQUIPMENT_PORT_TYPE_MUTATION_NAME]
-        client.reporter.log_successful_operation(
-            ADD_EQUIPMENT_PORT_TYPE_MUTATION_NAME, add_equipment_port_type_input
-        )
-    except OperationException as e:
-        raise FailedOperationException(
-            client.reporter,
-            e.err_msg,
-            e.err_id,
-            ADD_EQUIPMENT_PORT_TYPE_MUTATION_NAME,
-            add_equipment_port_type_input,
-        )
+    formated_property_types = format_to_property_type_inputs(data=properties)
+    formated_link_property_types = format_to_property_type_inputs(data=link_properties)
+    result = AddEquipmentPortTypeMutation.execute(
+        client,
+        AddEquipmentPortTypeInput(
+            name=name,
+            properties=formated_property_types,
+            linkProperties=formated_link_property_types,
+        ),
+    )
 
     added = EquipmentPortType(
         id=result.id,
         name=result.name,
-        property_types=result.propertyTypes,
-        link_property_types=result.linkPropertyTypes,
+        property_types=format_to_property_definitions(result.propertyTypes),
+        link_property_types=format_to_property_definitions(result.linkPropertyTypes),
     )
-    client.portTypes[added.name] = added
+    PORT_TYPES[added.name] = added
     return added
 
 
@@ -106,21 +101,22 @@ def get_equipment_port_type(
     """This function returns an equipment port type.
         It can get only the requested equipment port type ID
 
-        Args:
-            equipment_port_type_id (str): equipment port type ID
+        :param equipment_port_type_id: Equipment port type ID
+        :type equipment_port_type_id: str
 
-        Returns: 
-            pyinventory.consts.EquipmentPortType object
+        :raises:
+            :class:`~pyinventory.exceptions.EntityNotFoundError`: Equipment port type does not found
 
-        Raises: 
-            EntityNotFoundError for not found entity
+        :return: EquipmentPortType object
+        :rtype: :class:`~pyinventory.common.data_class.EquipmentPortType`
 
-        Example:
-        ```
-        port_type = client.get_equipment_port_type(self.port_type1.id)
-        ```
+        **Example**
+
+        .. code-block:: python
+
+            port_type = client.get_equipment_port_type(equipment_port_type_id=port_type1.id)
     """
-    result = EquipmentPortTypeQuery.execute(client, id=equipment_port_type_id).port_type
+    result = EquipmentPortTypeQuery.execute(client, id=equipment_port_type_id)
     if not result:
         raise EntityNotFoundError(
             entity=Entity.EquipmentPortType, entity_id=equipment_port_type_id
@@ -129,8 +125,8 @@ def get_equipment_port_type(
     return EquipmentPortType(
         id=result.id,
         name=result.name,
-        property_types=result.propertyTypes,
-        link_property_types=result.linkPropertyTypes,
+        property_types=format_to_property_definitions(result.propertyTypes),
+        link_property_types=format_to_property_definitions(result.linkPropertyTypes),
     )
 
 
@@ -143,77 +139,70 @@ def edit_equipment_port_type(
 ) -> EquipmentPortType:
     """This function edits an existing equipment port type.
 
-        Args:
-            port_type (EquipmentPortType object): existing eqipment port type object
-            new_name (str): new name
-            new_properties: (Dict[str, PropertyValue]): list of tuples, where
-                str - property type name
-                PropertyValue - new value of the same type for this property
-            new_link_properties: (Dict[str, PropertyValue]): list of tuples, where
-                str - link property type name
-                PropertyValue - new value of the same type for this link property
-        Returns: 
-            EquipmentPortType object
+        :param port_type: Existing eqipment port type object
+        :type port_type: :class:`~pyinventory.common.data_class.EquipmentPortType`
+        :param new_name: New name
+        :type new_name: str
+        :param new_properties: Dictionary of property name to property value
 
-        Raises: 
-            FailedOperationException
+            * str - property name
+            * PropertyValue - new value of the same type for this property
 
-        Example:
-            port_type1 = self.client.edit_equipment_port_type(
-                equipment_port_type,
-                "new port type name",
-                {"existing property name": "new value"},
-                {"existing link property name": "new value"},
+        :type new_properties: Dict[str, PropertyValue], optional
+        :param new_link_properties: Dictionary of property name to property value
+
+            * str - property name
+            * PropertyValue - new value of the same type for this property
+
+        :type new_link_properties: Dict[str, PropertyValue], optional
+
+        :raises:
+            FailedOperationException: Internal inventory error
+
+        :return: EquipmentPortType object
+        :rtype: :class:`~pyinventory.common.data_class.EquipmentPortType`
+
+        **Example**
+
+        .. code-block:: python
+
+            port_type1 = client.edit_equipment_port_type(
+                port_type=equipment_port_type,
+                new_name="new port type name",
+                new_properties={"existing property name": "new value"},
+                new_link_properties={"existing link property name": "new value"},
             )
     """
     new_name = port_type.name if new_name is None else new_name
 
     new_property_type_inputs = []
     if new_properties:
-        property_types = client.portTypes[port_type.name].property_types
+        property_types = PORT_TYPES[port_type.name].property_types
         new_property_type_inputs = get_graphql_property_type_inputs(
             property_types, new_properties
         )
 
     new_link_property_type_inputs = []
     if new_link_properties:
-        link_property_types = client.portTypes[port_type.name].link_property_types
+        link_property_types = PORT_TYPES[port_type.name].link_property_types
         new_link_property_type_inputs = get_graphql_property_type_inputs(
             link_property_types, new_link_properties
         )
 
-    edit_equipment_port_type_input = {
-        "name": new_name,
-        "properties": new_property_type_inputs,
-        "linkProperties": new_link_properties,
-    }
-
-    try:
-        result = EditEquipmentPortTypeMutation.execute(
-            client,
-            EditEquipmentPortTypeInput(
-                id=port_type.id,
-                name=new_name,
-                properties=new_property_type_inputs,
-                linkProperties=new_link_property_type_inputs,
-            ),
-        ).__dict__[EDIT_EQUIPMENT_PORT_TYPE_MUTATION_NAME]
-        client.reporter.log_successful_operation(
-            EDIT_EQUIPMENT_PORT_TYPE_MUTATION_NAME, edit_equipment_port_type_input
-        )
-    except OperationException as e:
-        raise FailedOperationException(
-            client.reporter,
-            e.err_msg,
-            e.err_id,
-            EDIT_EQUIPMENT_PORT_TYPE_MUTATION_NAME,
-            edit_equipment_port_type_input,
-        )
+    result = EditEquipmentPortTypeMutation.execute(
+        client,
+        EditEquipmentPortTypeInput(
+            id=port_type.id,
+            name=new_name,
+            properties=new_property_type_inputs,
+            linkProperties=new_link_property_type_inputs,
+        ),
+    )
     return EquipmentPortType(
         id=result.id,
         name=result.name,
-        property_types=result.propertyTypes,
-        link_property_types=result.linkPropertyTypes,
+        property_types=format_to_property_definitions(result.propertyTypes),
+        link_property_types=format_to_property_definitions(result.linkPropertyTypes),
     )
 
 
@@ -223,12 +212,15 @@ def delete_equipment_port_type(
     """This function deletes an equipment port type.
         It can get only the requested equipment port type ID
 
-        Args:
-            equipment_port_type_id (str): equipment port type ID
+        :param equipment_port_type_id: Equipment port type ID
+        :type equipment_port_type_id: str
 
-        Example:
-        ```
-        client.delete_equipment_port_type(self.port_type1.id)
-        ```
+        :rtype: None
+
+        **Example**
+
+        .. code-block:: python
+
+            client.delete_equipment_port_type(equipment_port_type_id=port_type1.id)
     """
     RemoveEquipmentPortTypeMutation.execute(client, id=equipment_port_type_id)

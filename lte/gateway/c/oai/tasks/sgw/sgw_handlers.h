@@ -34,6 +34,9 @@
 #include "ip_forward_messages_types.h"
 #include "s11_messages_types.h"
 #include "spgw_state.h"
+#include "intertask_interface.h"
+
+extern task_zmq_ctx_t spgw_app_task_zmq_ctx;
 
 int sgw_handle_s11_create_session_request(
   spgw_state_t* state,
@@ -42,13 +45,9 @@ int sgw_handle_s11_create_session_request(
 int sgw_handle_sgi_endpoint_updated(
   const itti_sgi_update_end_point_response_t *const resp_p,
   imsi64_t imsi64);
-int sgw_handle_gtpv1uCreateTunnelResp(
-  spgw_state_t* state,
-  const Gtpv1uCreateTunnelResp *const endpoint_created_p, imsi64_t imsi64);
-int sgw_handle_gtpv1uUpdateTunnelResp(
-  const Gtpv1uUpdateTunnelResp *const endpoint_updated_p, imsi64_t imsi64);
-int sgw_handle_gtpv1uDeleteTunnelResp(
-  const Gtpv1uDeleteTunnelResp *const endpoint_deleted_p);
+int sgw_handle_sgi_endpoint_deleted(
+    const itti_sgi_delete_end_point_request_t *const resp_pP,
+    imsi64_t imsi64);
 int sgw_handle_modify_bearer_request(
   spgw_state_t* state,
   const itti_s11_modify_bearer_request_t *const modify_bearer_p,
@@ -63,14 +62,6 @@ int sgw_handle_release_access_bearers_request(
 int sgw_handle_suspend_notification(
   const itti_s11_suspend_notification_t *const suspend_notification_pP,
   imsi64_t imsi64);
-int sgw_no_pcef_create_dedicated_bearer(
-  spgw_state_t* state,
-  s_plus_p_gw_eps_bearer_context_information_t*
-    s_plus_p_gw_eps_bearer_ctxt_info_p,
-  s11_teid_t teid,
-  imsi64_t imsi64);
-int sgw_handle_create_bearer_response(
-  const itti_s11_create_bearer_response_t *const create_bearer_response_pP);
 int sgw_handle_nw_initiated_actv_bearer_rsp(
   const itti_s11_nw_init_actv_bearer_rsp_t* const s11_actv_bearer_rsp,
   imsi64_t imsi64);

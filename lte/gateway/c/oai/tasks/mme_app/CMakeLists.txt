@@ -2,16 +2,22 @@ set(S1AP_C_DIR ${PROJECT_BINARY_DIR}/s1ap/r10.5)
 
 # compile the needed protos
 set(MMEAPP_STATE_CPP_PROTOS mme_nas_state nas_state spgw_state common_types
-  3gpp_types)
+  std_3gpp_types)
 list(APPEND PROTO_SRCS "")
 list(APPEND PROTO_HDRS "")
 
-set(LTE_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/lte/gateway/c/oai/protos")
+set(LTE_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/lte/protos/oai")
 generate_cpp_protos("${MMEAPP_STATE_CPP_PROTOS}" "${PROTO_SRCS}"
   "${PROTO_HDRS}" ${STATE_PROTO_DIR} ${LTE_OUT_DIR})
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${LTE_OUT_DIR})
+
+set(MAGMA_LIB_DIR $ENV{C_BUILD}/magma_common)
+link_directories(
+        ${MAGMA_LIB_DIR}/async_grpc
+        ${MAGMA_LIB_DIR}/eventd
+)
 
 add_library(TASK_MME_APP
     mme_app_capabilities.c
@@ -52,6 +58,7 @@ add_library(TASK_MME_APP
     mme_app_state_converter.cpp
     mme_app_state_manager.cpp
     mme_app_state.cpp
+    mme_events.cpp
     ${PROTO_SRCS}
     ${PROTO_HDRS}
     )
@@ -64,9 +71,9 @@ target_compile_definitions(TASK_MME_APP PRIVATE
 target_link_libraries(TASK_MME_APP
   ${CONFIG_LIBRARIES}
   COMMON
-  LIB_BSTR LIB_HASHTABLE LIB_DIRECTORYD LIB_SECU
+  LIB_BSTR LIB_HASHTABLE LIB_DIRECTORYD LIB_SECU LIB_EVENT_CLIENT
   TASK_NAS TASK_S1AP TASK_SGW TASK_SERVICE303 TASK_SCTP_SERVER
-  TASK_S6A TASK_SGS protobuf cpp_redis
+  TASK_S6A TASK_SGS protobuf cpp_redis redis_utils
     )
 target_include_directories(TASK_MME_APP PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}

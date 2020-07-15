@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  */
+#pragma once
+
 #include <memory>
 #include <utility>
 
@@ -17,7 +19,6 @@
 using grpc::Status;
 
 namespace magma {
-using namespace orc8r;
 
 /**
  * AsyncEventdClient sends asynchronous calls to eventd
@@ -25,17 +26,20 @@ using namespace orc8r;
  */
 class AsyncEventdClient : public GRPCReceiver {
  public:
-  AsyncEventdClient();
-  explicit AsyncEventdClient(std::shared_ptr<grpc::Channel> channel);
+  AsyncEventdClient(AsyncEventdClient const &) = delete;
+  void operator=(AsyncEventdClient const &) = delete;
+
+  static AsyncEventdClient &getInstance();
 
   // Logs an event
   void log_event(
-      const Event& request,
-      std::function<void(Status status, Void)> callback);
+      const orc8r::Event& request,
+      std::function<void(Status status, orc8r::Void)> callback);
 
  private:
+  AsyncEventdClient();
   static const uint32_t RESPONSE_TIMEOUT = 6;  // seconds
-  std::unique_ptr<EventService::Stub> stub_{};
+  std::unique_ptr<orc8r::EventService::Stub> stub_{};
 };
 
 }  // namespace magma

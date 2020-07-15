@@ -7,18 +7,26 @@
 from pyinventory.api.equipment_type import _populate_equipment_port_types
 from pyinventory.api.port_type import (
     add_equipment_port_type,
-    delete_equipment_port_type,
     edit_equipment_port_type,
     get_equipment_port_type,
 )
-from pyinventory.consts import PropertyDefinition
-from pyinventory.graphql.property_kind_enum import PropertyKind
+from pyinventory.common.cache import PORT_TYPES
+from pyinventory.common.data_class import PropertyDefinition
+from pyinventory.graphql.enum.property_kind import PropertyKind
+from pysymphony import SymphonyClient
 
-from .utils.base_test import BaseTest
+from ..utils.base_test import BaseTest
+from ..utils.grpc.rpc_pb2_grpc import TenantServiceStub
 
 
 class TestEquipmentPortType(BaseTest):
+    def __init__(
+        self, test_name: str, client: SymphonyClient, stub: TenantServiceStub
+    ) -> None:
+        super().__init__(test_name, client, stub)
+
     def setUp(self) -> None:
+        super().setUp()
         self.port_type1 = add_equipment_port_type(
             self.client,
             name="port type 1",
@@ -26,7 +34,7 @@ class TestEquipmentPortType(BaseTest):
                 PropertyDefinition(
                     property_name="port property",
                     property_kind=PropertyKind.string,
-                    default_value="port property value",
+                    default_raw_value="port property value",
                     is_fixed=False,
                 )
             ],
@@ -34,22 +42,17 @@ class TestEquipmentPortType(BaseTest):
                 PropertyDefinition(
                     property_name="link property",
                     property_kind=PropertyKind.string,
-                    default_value="link property value",
+                    default_raw_value="link property value",
                     is_fixed=False,
                 )
             ],
         )
 
-    def tearDown(self) -> None:
-        delete_equipment_port_type(
-            client=self.client, equipment_port_type_id=self.port_type1.id
-        )
-
     def test_equipment_port_type_populated(self) -> None:
-        self.assertEqual(len(self.client.portTypes), 1)
-        self.client.portTypes = {}
+        self.assertEqual(len(PORT_TYPES), 1)
+        PORT_TYPES.clear()
         _populate_equipment_port_types(client=self.client)
-        self.assertEqual(len(self.client.portTypes), 1)
+        self.assertEqual(len(PORT_TYPES), 1)
 
     def test_equipment_port_type_created(self) -> None:
         fetched_port_type = get_equipment_port_type(
@@ -71,10 +74,11 @@ class TestEquipmentPortType(BaseTest):
         self.assertEqual(fetched_port_type.name, edited_port_type.name)
         self.assertEqual(len(fetched_port_type.property_types), 1)
         self.assertEqual(
-            fetched_port_type.property_types[0].stringValue, "new port property value"
+            fetched_port_type.property_types[0].default_raw_value,
+            "new port property value",
         )
         self.assertEqual(len(fetched_port_type.link_property_types), 1)
         self.assertEqual(
-            fetched_port_type.link_property_types[0].stringValue,
+            fetched_port_type.link_property_types[0].default_raw_value,
             "new link property value",
         )

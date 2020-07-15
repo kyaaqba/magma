@@ -16,9 +16,9 @@ import {AppContextProvider} from '@fbcnms/ui/context/AppContext';
 import {act, renderHook} from '@testing-library/react-hooks';
 jest.mock('@fbcnms/magma-api');
 jest.mock('mapbox-gl', () => {});
-jest.mock('../../MapView', () => {});
+jest.mock('@fbcnms/ui/insights/map/MapView', () => {});
 
-import {AllNetworkTypes} from '@fbcnms/types/network';
+import {AllNetworkTypes, CWF, XWFM} from '@fbcnms/types/network';
 
 global.CONFIG = {
   appData: {
@@ -79,13 +79,20 @@ const testCases: {[string]: TestCase} = {
     default: 'gateways',
     sections: ['gateways', 'configure', 'metrics'],
   },
+  xwfm: {
+    default: 'gateways',
+    sections: ['gateways', 'configure', 'metrics'],
+  },
 };
 
 AllNetworkTypes.forEach(networkType => {
   const testCase = testCases[networkType];
+  // XWF-M network selection in NMS creates a CWF network on the API just with
+  // different config defaults
+  const apiNetworkType = networkType === XWFM ? CWF : networkType;
   test('Should render ' + networkType, async () => {
     MagmaAPIBindings.getNetworksByNetworkIdType.mockResolvedValueOnce(
-      networkType,
+      apiNetworkType,
     );
 
     const {result, waitForNextUpdate} = renderHook(() => useSections(), {

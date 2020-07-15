@@ -69,6 +69,11 @@ const styles = theme => ({
 class LocationTypeItem extends React.Component<Props> {
   render() {
     const {classes, locationType, onEdit, position} = this.props;
+
+    if (locationType == null) {
+      return null;
+    }
+
     return (
       <div>
         <DraggableTableRow
@@ -84,6 +89,7 @@ class LocationTypeItem extends React.Component<Props> {
               className={classes.row}
               expandIcon={<ExpandMoreIcon />}>
               <ConfigureExpansionPanel
+                entityName="locationType"
                 icon={<div>{position + 1}</div>}
                 name={locationType.name}
                 instanceCount={locationType.numberOfLocations}

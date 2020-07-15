@@ -10,18 +10,18 @@ import (
 
 	"github.com/AlekSi/pointer"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/customer"
-	"github.com/facebookincubator/symphony/graph/ent/equipment"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentposition"
-	"github.com/facebookincubator/symphony/graph/ent/equipmenttype"
-	"github.com/facebookincubator/symphony/graph/ent/location"
-	"github.com/facebookincubator/symphony/graph/ent/locationtype"
-	"github.com/facebookincubator/symphony/graph/ent/service"
-	"github.com/facebookincubator/symphony/graph/ent/servicetype"
 	"github.com/facebookincubator/symphony/graph/graphql/generated"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/customer"
+	"github.com/facebookincubator/symphony/pkg/ent/equipment"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentposition"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmenttype"
+	"github.com/facebookincubator/symphony/pkg/ent/location"
+	"github.com/facebookincubator/symphony/pkg/ent/locationtype"
+	"github.com/facebookincubator/symphony/pkg/ent/service"
+	"github.com/facebookincubator/symphony/pkg/ent/servicetype"
+	"github.com/facebookincubator/symphony/pkg/viewer"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -31,7 +31,11 @@ func pointerToServiceStatus(status models.ServiceStatus) *models.ServiceStatus {
 	return &status
 }
 
-func (m *importer) getOrCreateEquipmentType(ctx context.Context, name string, positionsCount int, positionPrefix string, portsCount int, props []*models.PropertyTypeInput) *ent.EquipmentType {
+func (m *importer) getOrCreateEquipmentType(
+	ctx context.Context, name string, positionsCount int,
+	positionPrefix string, portsCount int,
+	props []*models.PropertyTypeInput,
+) *ent.EquipmentType {
 	log := m.logger.For(ctx)
 	client := m.ClientFrom(ctx)
 
@@ -47,7 +51,7 @@ func (m *importer) getOrCreateEquipmentType(ctx context.Context, name string, po
 		propEnt := client.PropertyType.
 			Create().
 			SetName(input.Name).
-			SetType(input.Type.String()).
+			SetType(input.Type).
 			SetNillableStringVal(input.StringValue).
 			SetNillableIntVal(input.IntValue).
 			SetNillableBoolVal(input.BooleanValue).

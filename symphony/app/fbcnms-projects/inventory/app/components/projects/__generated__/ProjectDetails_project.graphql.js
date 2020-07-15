@@ -14,10 +14,10 @@
 
 /*::
 import type { ReaderFragment } from 'relay-runtime';
-type CommentsBox_comments$ref = any;
+type CommentsActivitiesBox_comments$ref = any;
 type LocationBreadcrumbsTitle_locationDetails$ref = any;
 type ProjectWorkOrdersList_workOrders$ref = any;
-export type PropertyKind = "bool" | "date" | "datetime_local" | "email" | "enum" | "equipment" | "float" | "gps_location" | "int" | "location" | "range" | "service" | "string" | "%future added value";
+export type PropertyKind = "bool" | "date" | "datetime_local" | "email" | "enum" | "float" | "gps_location" | "int" | "node" | "range" | "string" | "%future added value";
 import type { FragmentReference } from "relay-runtime";
 declare export opaque type ProjectDetails_project$ref: FragmentReference;
 declare export opaque type ProjectDetails_project$fragmentType: ProjectDetails_project$ref;
@@ -54,11 +54,7 @@ export type ProjectDetails_project = {|
     +longitudeValue: ?number,
     +rangeFromValue: ?number,
     +rangeToValue: ?number,
-    +equipmentValue: ?{|
-      +id: string,
-      +name: string,
-    |},
-    +locationValue: ?{|
+    +nodeValue: ?{|
       +id: string,
       +name: string,
     |},
@@ -66,6 +62,7 @@ export type ProjectDetails_project = {|
       +id: string,
       +name: string,
       +type: PropertyKind,
+      +nodeType: ?string,
       +isEditable: ?boolean,
       +isMandatory: ?boolean,
       +isInstanceProperty: ?boolean,
@@ -83,7 +80,7 @@ export type ProjectDetails_project = {|
     +$fragmentRefs: ProjectWorkOrdersList_workOrders$ref
   |}>,
   +comments: $ReadOnlyArray<?{|
-    +$fragmentRefs: CommentsBox_comments$ref
+    +$fragmentRefs: CommentsActivitiesBox_comments$ref
   |}>,
   +$refType: ProjectDetails_project$ref,
 |};
@@ -166,11 +163,7 @@ v9 = {
   "name": "rangeToValue",
   "args": null,
   "storageKey": null
-},
-v10 = [
-  (v0/*: any*/),
-  (v1/*: any*/)
-];
+};
 return {
   "kind": "Fragment",
   "name": "ProjectDetails_project",
@@ -297,22 +290,15 @@ return {
         {
           "kind": "LinkedField",
           "alias": null,
-          "name": "equipmentValue",
+          "name": "nodeValue",
           "storageKey": null,
           "args": null,
-          "concreteType": "Equipment",
+          "concreteType": null,
           "plural": false,
-          "selections": (v10/*: any*/)
-        },
-        {
-          "kind": "LinkedField",
-          "alias": null,
-          "name": "locationValue",
-          "storageKey": null,
-          "args": null,
-          "concreteType": "Location",
-          "plural": false,
-          "selections": (v10/*: any*/)
+          "selections": [
+            (v0/*: any*/),
+            (v1/*: any*/)
+          ]
         },
         {
           "kind": "LinkedField",
@@ -329,6 +315,13 @@ return {
               "kind": "ScalarField",
               "alias": null,
               "name": "type",
+              "args": null,
+              "storageKey": null
+            },
+            {
+              "kind": "ScalarField",
+              "alias": null,
+              "name": "nodeType",
               "args": null,
               "storageKey": null
             },
@@ -392,7 +385,7 @@ return {
       "selections": [
         {
           "kind": "FragmentSpread",
-          "name": "CommentsBox_comments",
+          "name": "CommentsActivitiesBox_comments",
           "args": null
         }
       ]
@@ -401,5 +394,5 @@ return {
 };
 })();
 // prettier-ignore
-(node/*: any*/).hash = '2a38176060d3152cfcaaa0fbef645fcc';
+(node/*: any*/).hash = '6d59e4e433fadca289abe047e9f15d3c';
 module.exports = node;

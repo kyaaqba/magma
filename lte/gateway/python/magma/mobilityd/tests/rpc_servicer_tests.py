@@ -17,6 +17,7 @@ from lte.protos.mobilityd_pb2 import AllocateIPRequest, IPAddress, IPBlock, \
     ListAddedIPBlocksResponse, ListAllocatedIPsResponse, ReleaseIPRequest, \
     RemoveIPBlockRequest, RemoveIPBlockResponse, SubscriberIPTableEntry, \
     IPLookupRequest
+from lte.protos.mconfig.mconfigs_pb2 import MobilityD
 from lte.protos.mobilityd_pb2_grpc import MobilityServiceStub
 from magma.mobilityd.rpc_servicer import IPVersionNotSupportedError, \
     MobilityServiceRpcServicer
@@ -38,9 +39,12 @@ class RpcTests(unittest.TestCase):
         # Create a mock "mconfig" for the servicer to use
         mconfig = unittest.mock.Mock()
         mconfig.ip_block = None
+        mconfig.ip_allocator_type = MobilityD.IP_POOL
 
         # Add the servicer
-        config = {'persist_to_redis': False, 'redis_port': None}
+        config = {'persist_to_redis': False,
+                  'redis_port': None,
+                  'allocator_type': "ip_pool"}
         self._servicer = MobilityServiceRpcServicer(mconfig, config)
         self._servicer.add_to_server(self._rpc_server)
         self._rpc_server.start()
@@ -200,7 +204,7 @@ class RpcTests(unittest.TestCase):
     def test_run_out_of_ip(self):
         """ should raise RESOURCE_EXHAUSTED when running out of IP """
         #  The subnet is provisioned with 16 addresses
-        #  Inside ip_allocator.py 11 addresses are reserved,
+        #  Inside ip_address_man.py 11 addresses are reserved,
         #  2 addresses are not usable (all zeros and all ones)
         #  Thus, we have a usable pool of 3 IP addresses;
         #  first three allocations should succeed, while the fourth

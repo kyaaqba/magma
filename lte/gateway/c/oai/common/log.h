@@ -120,7 +120,6 @@ extern int fd_g_debug_lvl;
 #define LOG_CONFIG_STRING_SECU_LOG_LEVEL "SECU_LOG_LEVEL"
 #define LOG_CONFIG_STRING_SCTP_LOG_LEVEL "SCTP_LOG_LEVEL"
 #define LOG_CONFIG_STRING_SPGW_APP_LOG_LEVEL "SPGW_APP_LOG_LEVEL"
-#define LOG_CONFIG_STRING_PGW_APP_LOG_LEVEL "PGW_APP_LOG_LEVEL"
 #define LOG_CONFIG_STRING_OUTPUT_SYSLOG "SYSLOG"
 #define LOG_CONFIG_STRING_OUTPUT_THREAD_SAFE "THREAD_SAFE"
 #define LOG_CONFIG_STRING_UDP_LOG_LEVEL "UDP_LOG_LEVEL"
@@ -153,7 +152,6 @@ typedef enum {
   LOG_NAS_EMM,
   LOG_NAS_ESM,
   LOG_SPGW_APP,
-  LOG_PGW_APP,
   LOG_S11,
   LOG_S6A,
   LOG_SECU,
@@ -222,8 +220,6 @@ typedef struct log_config_s {
   log_level_t
     spgw_app_log_level; /*!< \brief SP-GW ITTI task log level starting from OAILOG_LEVEL_EMERGENCY up to MAX_LOG_LEVEL (no log) */
   log_level_t
-    pgw_app_log_level; /*!< \brief PGW ITTI task log level starting from OAILOG_LEVEL_EMERGENCY up to MAX_LOG_LEVEL (no log) */
-  log_level_t
     s11_log_level; /*!< \brief S11 ITTI task log level starting from OAILOG_LEVEL_EMERGENCY up to MAX_LOG_LEVEL (no log) */
   log_level_t
     s6a_log_level; /*!< \brief S6a layer log level starting from OAILOG_LEVEL_EMERGENCY up to MAX_LOG_LEVEL (no log) */
@@ -277,7 +273,6 @@ struct shared_log_queue_item_s;
 
 void log_flush_message(struct shared_log_queue_item_s *item_p)
   __attribute__((hot));
-void log_exit(void);
 
 void log_stream_hex(
   const log_level_t log_levelP,
@@ -340,6 +335,47 @@ void log_message(
   const char *format,
   ...) __attribute__((format(printf, 6, 7)));
 
+void log_message_prefix_id(
+    log_level_t log_levelP,
+    log_proto_t protoP,
+    const char* source_fileP,
+    unsigned int line_numP,
+    uint64_t prefix_id,
+    const char* format, ...)
+    __attribute__((format(printf, 6, 7)));
+
+void log_message_int(
+    log_thread_ctxt_t *const thread_ctxtP,
+    const log_level_t log_levelP,
+    const log_proto_t protoP,
+    void **contextP, // Out parameter
+    const char *const source_fileP,
+    const unsigned int line_numP,
+    const char *format,
+    va_list args);
+
+void log_message_int_prefix_id(
+    const log_level_t log_levelP,
+    const log_proto_t protoP,
+    void **contextP, // Out parameter
+    const char *const source_fileP,
+    const unsigned int line_numP,
+    const uint64_t prefix_id,
+    const char *format,
+    va_list args);
+
+int append_log_ctx_info(
+    bstring bstr, const log_level_t* log_levelP, const log_proto_t* protoP,
+    const unsigned int line_numP, size_t filename_length,
+    const log_thread_ctxt_t* thread_ctxt, time_t* cur_time,
+    const char* short_source_fileP);
+
+int append_log_ctx_info_prefix_id(
+    const uint64_t prefix_id, bstring bstr, const log_level_t* log_levelP, const log_proto_t* protoP,
+    const unsigned int line_numP, size_t filename_length,
+    const log_thread_ctxt_t* thread_ctxt, time_t* cur_time,
+    const char* short_source_fileP);
+
 const char *const get_short_file_name(
   const char *const source_file_nameP);
 
@@ -348,7 +384,6 @@ const char *const get_short_file_name(
 #define OAILOG_LEVEL_INT2STR log_level_int2str
 #define OAILOG_INIT log_init
 #define OAILOG_ITTI_CONNECT log_itti_connect
-#define OAILOG_EXIT() log_exit()
 #define OAILOG_SPEC(pRoTo, ...)                                                \
   do {                                                                         \
     log_message(                                                               \
@@ -431,6 +466,11 @@ const char *const get_short_file_name(
     log_message(                                                               \
       NULL, OAILOG_LEVEL_DEBUG, pRoTo, __FILE__, __LINE__, ##__VA_ARGS__);     \
   } while (0) /*!< \brief debug informations */
+#define OAILOG_DEBUG_UE(pRoTo, ue_id, ...)                                     \
+  do {                                                                         \
+    log_message_prefix_id(                                                     \
+        OAILOG_LEVEL_DEBUG, pRoTo, __FILE__, __LINE__, ue_id, ##__VA_ARGS__);  \
+  } while (0) /*!< \brief debug informations */
 #if TRACE_IS_ON
 #define OAILOG_EXTERNAL(lOgLeVeL, pRoTo, ...)                                  \
   do {                                                                         \
@@ -440,7 +480,12 @@ const char *const get_short_file_name(
   do {                                                                         \
     log_message(                                                               \
       NULL, OAILOG_LEVEL_TRACE, pRoTo, __FILE__, __LINE__, ##__VA_ARGS__);     \
-  } while (0) /*!< \brief most detailled informations, struct dumps */
+  } while (0) /*!< \brief most detailed information, struct dumps */
+#define OAILOG_TRACE_UE(pRoTo, ue_id, ...)                                     \
+  do {                                                                         \
+    log_message_prefix_id(                                                     \
+        OAILOG_LEVEL_TRACE, pRoTo, __FILE__, __LINE__, ue_id, ##__VA_ARGS__);  \
+  } while (0) /*!< \brief most detailed information, struct dumps */
 #define OAILOG_FUNC_IN(pRoTo)                                                  \
   do {                                                                         \
     log_func(true, pRoTo, __FILE__, __LINE__, __FUNCTION__);                   \
@@ -515,4 +560,37 @@ const char *const get_short_file_name(
     fflush(stderr);                                                            \
   } while (0)
 #endif
+
+#define OAILOG_ALERT_UE(pRoTo, ue_id, ...)                                     \
+  do {                                                                         \
+    log_message_prefix_id(                                                     \
+        OAILOG_LEVEL_ALERT, pRoTo, __FILE__, __LINE__, ue_id, ##__VA_ARGS__);  \
+  } while (0) /*!< \brief action must be taken immediately */
+#define OAILOG_CRITICAL_UE(pRoTo, ue_id, ...)                                  \
+  do {                                                                         \
+    log_message_prefix_id(                                                     \
+        OAILOG_LEVEL_CRITICAL, pRoTo, __FILE__, __LINE__, ue_id,               \
+        ##__VA_ARGS__);                                                        \
+  } while (0) /*!< \brief critical conditions */
+#define OAILOG_ERROR_UE(pRoTo, ue_id, ...)                                     \
+  do {                                                                         \
+    log_message_prefix_id(                                                     \
+        OAILOG_LEVEL_ERROR, pRoTo, __FILE__, __LINE__, ue_id, ##__VA_ARGS__);  \
+  } while (0) /*!< \brief error conditions */
+#define OAILOG_WARNING_UE(pRoTo, ue_id, ...)                                   \
+  do {                                                                         \
+    log_message_prefix_id(                                                     \
+        OAILOG_LEVEL_WARNING, pRoTo, __FILE__, __LINE__, ue_id,                \
+        ##__VA_ARGS__);                                                        \
+  } while (0) /*!< \brief warning conditions */
+#define OAILOG_NOTICE_UE(pRoTo, ue_id, ...)                                    \
+  do {                                                                         \
+    log_message_prefix_id(                                                     \
+        OAILOG_LEVEL_NOTICE, pRoTo, __FILE__, __LINE__, ue_id, ##__VA_ARGS__); \
+  } while (0) /*!< \brief normal but significant condition */
+#define OAILOG_INFO_UE(pRoTo, ue_id, ...)                                      \
+  do {                                                                         \
+    log_message_prefix_id(                                                     \
+        OAILOG_LEVEL_INFO, pRoTo, __FILE__, __LINE__, ue_id, ##__VA_ARGS__);   \
+  } while (0) /*!< \brief informational */
 #endif /* FILE_LOG_SEEN */

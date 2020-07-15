@@ -93,7 +93,7 @@ static void mme_app_send_sgs_eps_detach_indication(
 
   SGSAP_EPS_DETACH_IND(message_p).eps_detach_type = detach_type;
 
-  itti_send_msg_to_task(TASK_SGS, INSTANCE_DEFAULT, message_p);
+  send_msg_to_task(&mme_app_task_zmq_ctx, TASK_SGS, message_p);
 
   nas_itti_timer_arg_t timer_callback_fun = {0};
   timer_callback_fun.nas_timer_callback_arg =
@@ -157,12 +157,18 @@ static void mme_app_send_sgs_eps_detach_indication(
     // Stop  and reset SGS Location Update Request timer if running
     if (
       ue_context_p->sgs_context->ts6_1_timer.id != MME_APP_TIMER_INACTIVE_ID) {
-      if (timer_remove(ue_context_p->sgs_context->ts6_1_timer.id, NULL)) {
+      nas_itti_timer_arg_t* timer_argP = NULL;
+      if (timer_remove(
+              ue_context_p->sgs_context->ts6_1_timer.id,
+              (void**) &timer_argP)) {
         OAILOG_ERROR(
           LOG_MME_APP,
           "Failed to stop SGS Location Update Request timer for ue_id "
           MME_UE_S1AP_ID_FMT "\n",
           ue_context_p->mme_ue_s1ap_id);
+      }
+      if (timer_argP) {
+        free_wrapper((void**) &timer_argP);
       }
       ue_context_p->sgs_context->ts6_1_timer.id = MME_APP_TIMER_INACTIVE_ID;
     }
@@ -316,7 +322,7 @@ void mme_app_send_sgs_imsi_detach_indication(
     (uint8_t) strlen(SGSAP_IMSI_DETACH_IND(message_p).imsi);
   SGSAP_IMSI_DETACH_IND(message_p).noneps_detach_type = detach_type;
 
-  itti_send_msg_to_task(TASK_SGS, INSTANCE_DEFAULT, message_p);
+  send_msg_to_task(&mme_app_task_zmq_ctx, TASK_SGS, message_p);
   nas_itti_timer_arg_t timer_callback_fun = {0};
   timer_callback_fun.nas_timer_callback_arg =
     (void *) &(ue_context_p->mme_ue_s1ap_id);
@@ -376,11 +382,17 @@ void mme_app_send_sgs_imsi_detach_indication(
     // Stop and reset SGS Location Update Request timer if running
     if (
       ue_context_p->sgs_context->ts6_1_timer.id != MME_APP_TIMER_INACTIVE_ID) {
-      if (timer_remove(ue_context_p->sgs_context->ts6_1_timer.id, NULL)) {
+      nas_itti_timer_arg_t* timer_argP = NULL;
+      if (timer_remove(
+              ue_context_p->sgs_context->ts6_1_timer.id,
+              (void**) &timer_argP)) {
         OAILOG_ERROR(
           LOG_MME_APP,
           "Failed to stop SGS Location Update Request timer for UE id %d \n",
           ue_context_p->mme_ue_s1ap_id);
+      }
+      if (timer_argP) {
+        free_wrapper((void**) &timer_argP);
       }
       ue_context_p->sgs_context->ts6_1_timer.id = MME_APP_TIMER_INACTIVE_ID;
     }
@@ -425,8 +437,8 @@ void mme_app_handle_sgs_imsi_detach_timer_expiry(void* args)
     ue_context_p->sgs_context->ts9_retransmission_count <
     IMSI_DETACH_RETRANSMISSION_COUNTER_MAX) {
     /* Send the Detach Accept to Ue after the Ts9 timer expired and maximum retransmission */
-    itti_send_msg_to_task(
-      TASK_S1AP, INSTANCE_DEFAULT, ue_context_p->sgs_context->message_p);
+    send_msg_to_task(&mme_app_task_zmq_ctx,
+      TASK_S1AP, ue_context_p->sgs_context->message_p);
     ue_context_p->sgs_context->message_p = NULL;
     /*
      Notify S1AP to send UE Context Release Command to eNB or free s1 context locally,
@@ -635,24 +647,33 @@ int mme_app_handle_sgs_eps_detach_ack(
     OAILOG_FUNC_RETURN(LOG_MME_APP, RETURNerror);
   }
   if (ue_context_p->sgs_context) {
+    nas_itti_timer_arg_t* timer_argP = NULL;
     // Stop SGS EPS Detach timer, after recieving the SGS EPS Detach Ack,if running
     if (ue_context_p->sgs_context->ts8_timer.id != MME_APP_TIMER_INACTIVE_ID) {
-      if (timer_remove(ue_context_p->sgs_context->ts8_timer.id, NULL)) {
+      if (timer_remove(
+              ue_context_p->sgs_context->ts8_timer.id, (void**) &timer_argP)) {
         OAILOG_ERROR(
           LOG_MME_APP,
           "Failed to stop SGS EPS Detach Indication timer for UE id %d \n",
           ue_context_p->mme_ue_s1ap_id);
       }
+      if (timer_argP) {
+        free_wrapper((void**) &timer_argP);
+      }
       ue_context_p->sgs_context->ts8_timer.id = MME_APP_TIMER_INACTIVE_ID;
       OAILOG_INFO(LOG_MME_APP, "Stopped Ts8 timer \n");
     } else if (
       ue_context_p->sgs_context->ts13_timer.id != MME_APP_TIMER_INACTIVE_ID) {
-      if (timer_remove(ue_context_p->sgs_context->ts13_timer.id, NULL)) {
+      if (timer_remove(
+              ue_context_p->sgs_context->ts13_timer.id, (void**) &timer_argP)) {
         OAILOG_ERROR(
           LOG_MME_APP,
           "Failed to stop SGS Implicit IMSI Detach Indication timer for UE id "
           "%d \n",
           ue_context_p->mme_ue_s1ap_id);
+      }
+      if (timer_argP) {
+        free_wrapper((void**) &timer_argP);
       }
       ue_context_p->sgs_context->ts13_timer.id = MME_APP_TIMER_INACTIVE_ID;
       OAILOG_INFO(LOG_MME_APP, "Stopped Ts13 timer \n");
@@ -706,12 +727,17 @@ int mme_app_handle_sgs_imsi_detach_ack(
   if (ue_context_p->sgs_context) {
     // Stop SGS IMSI Detach timer, after recieving the SGS EPS Detach Ack,if running
     if (ue_context_p->sgs_context->ts9_timer.id != MME_APP_TIMER_INACTIVE_ID) {
-      if (timer_remove(ue_context_p->sgs_context->ts9_timer.id, NULL)) {
+      nas_itti_timer_arg_t* timer_argP = NULL;
+      if (timer_remove(
+              ue_context_p->sgs_context->ts9_timer.id, (void**) &timer_argP)) {
         OAILOG_ERROR(
           LOG_MME_APP,
           "Failed to stop SGS IMSI Detach Indication timer for UE id"
           MME_UE_S1AP_ID_FMT "\n",
           ue_context_p->mme_ue_s1ap_id);
+      }
+      if (timer_argP) {
+        free_wrapper((void**) &timer_argP);
       }
       ue_context_p->sgs_context->ts9_timer.id = MME_APP_TIMER_INACTIVE_ID;
     }
@@ -732,8 +758,8 @@ int mme_app_handle_sgs_imsi_detach_ack(
           ue_context_p->mme_ue_s1ap_id);
         OAILOG_FUNC_RETURN(LOG_MME_APP, RETURNok);
       } else {
-        rc = itti_send_msg_to_task(
-          TASK_S1AP, INSTANCE_DEFAULT, ue_context_p->sgs_context->message_p);
+        rc = send_msg_to_task(&mme_app_task_zmq_ctx,
+          TASK_S1AP, ue_context_p->sgs_context->message_p);
         ue_context_p->sgs_context->message_p = NULL;
       }
       /*

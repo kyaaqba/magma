@@ -8,11 +8,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
 
-	"github.com/facebookincubator/symphony/graph/ent"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/require"
@@ -25,7 +25,6 @@ type locationSearchDataModels struct {
 	locType2 *ent.LocationType
 }
 
-// nolint: errcheck
 func prepareLocationData(ctx context.Context, r *TestResolver) locationSearchDataModels {
 	mr := r.Mutation()
 	locType1, _ := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -33,11 +32,11 @@ func prepareLocationData(ctx context.Context, r *TestResolver) locationSearchDat
 		Properties: []*models.PropertyTypeInput{
 			{
 				Name: "date_established",
-				Type: models.PropertyKindDate,
+				Type: propertytype.TypeDate,
 			},
 			{
 				Name: "stringProp",
-				Type: models.PropertyKindString,
+				Type: propertytype.TypeString,
 			},
 		},
 	})
@@ -45,8 +44,9 @@ func prepareLocationData(ctx context.Context, r *TestResolver) locationSearchDat
 	strPropDef := locType1.QueryPropertyTypes().Where(propertytype.Name("stringProp")).OnlyX(ctx)
 
 	loc1, _ := mr.AddLocation(ctx, models.AddLocationInput{
-		Name: "loc_inst1",
-		Type: locType1.ID,
+		Name:       "loc_inst1",
+		Type:       locType1.ID,
+		ExternalID: pointer.ToString("12345"),
 		Properties: []*models.PropertyInput{
 			{
 				PropertyTypeID: datePropDef.ID,
@@ -89,8 +89,8 @@ func prepareLocationData(ctx context.Context, r *TestResolver) locationSearchDat
 
 func TestSearchLocationAncestors(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := prepareLocationData(ctx, r)
 	/*
@@ -129,10 +129,82 @@ func TestSearchLocationAncestors(t *testing.T) {
 	require.Equal(t, res.Count, 1)
 }
 
+func TestSearchLocationByExternalID(t *testing.T) {
+	r := newTestResolver(t)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
+
+	data := prepareLocationData(ctx, r)
+	/*
+		helper: data now is of type:
+		 loc1 (loc_type1):
+			eq_inst (eq_type)
+			loc2 (loc_type2)
+	*/
+	qr := r.Query()
+	resAll, err := qr.LocationSearch(ctx, []*models.LocationFilterInput{}, pointer.ToInt(100))
+	require.NoError(t, err)
+	require.Len(t, resAll.Locations, 2)
+	require.Equal(t, resAll.Count, 2)
+
+	f1 := models.LocationFilterInput{
+		FilterType:  models.LocationFilterTypeLocationInstExternalID,
+		Operator:    models.FilterOperatorContains,
+		StringValue: &data.loc1.ExternalID,
+	}
+
+	res, err := qr.LocationSearch(ctx, []*models.LocationFilterInput{&f1}, pointer.ToInt(100))
+	require.NoError(t, err)
+	require.Len(t, res.Locations, 1)
+	require.Equal(t, res.Count, 1)
+
+	// same filter - with 'IS" operator
+	f2 := models.LocationFilterInput{
+		FilterType:  models.LocationFilterTypeLocationInstExternalID,
+		Operator:    models.FilterOperatorIs,
+		StringValue: &data.loc1.ExternalID,
+	}
+
+	res, err = qr.LocationSearch(ctx, []*models.LocationFilterInput{&f2}, pointer.ToInt(100))
+	require.NoError(t, err)
+	require.Len(t, res.Locations, 1)
+	require.Equal(t, res.Count, 1)
+}
+
+func TestSearchLocationByName(t *testing.T) {
+	r := newTestResolver(t)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
+
+	data := prepareLocationData(ctx, r)
+	/*
+		helper: data now is of type:
+		 loc1 (loc_type1):
+			eq_inst (eq_type)
+			loc2 (loc_type2)
+	*/
+	qr := r.Query()
+
+	f1 := models.LocationFilterInput{
+		FilterType:  models.LocationFilterTypeLocationInstName,
+		Operator:    models.FilterOperatorIs,
+		StringValue: &data.loc2.Name,
+	}
+	resAll, err := qr.LocationSearch(ctx, []*models.LocationFilterInput{}, pointer.ToInt(100))
+	require.NoError(t, err)
+	require.Len(t, resAll.Locations, 2)
+	require.Equal(t, resAll.Count, 2)
+
+	res, err := qr.LocationSearch(ctx, []*models.LocationFilterInput{&f1}, pointer.ToInt(100))
+	require.NoError(t, err)
+	require.Len(t, res.Locations, 1)
+	require.Equal(t, res.Count, 1)
+}
+
 func TestSearchLocationByType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := prepareLocationData(ctx, r)
 	/*
@@ -155,8 +227,8 @@ func TestSearchLocationByType(t *testing.T) {
 
 func TestSearchLocationHasEquipment(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	prepareLocationData(ctx, r)
 	/*
@@ -189,8 +261,8 @@ func TestSearchLocationHasEquipment(t *testing.T) {
 
 func TestSearchMultipleFilters(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	data := prepareLocationData(ctx, r)
 	/*
@@ -224,8 +296,8 @@ func TestSearchMultipleFilters(t *testing.T) {
 
 func TestSearchLocationProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	prepareLocationData(ctx, r)
 	/*
@@ -239,7 +311,7 @@ func TestSearchLocationProperties(t *testing.T) {
 		FilterType: models.LocationFilterTypeProperty,
 		Operator:   models.FilterOperatorDateLessThan,
 		PropertyValue: &models.PropertyTypeInput{
-			Type:        models.PropertyKindDate,
+			Type:        propertytype.TypeDate,
 			Name:        "date_established",
 			StringValue: pointer.ToString("2019-11-15"),
 		},
@@ -254,7 +326,7 @@ func TestSearchLocationProperties(t *testing.T) {
 		FilterType: models.LocationFilterTypeProperty,
 		Operator:   models.FilterOperatorIs,
 		PropertyValue: &models.PropertyTypeInput{
-			Type:        models.PropertyKindString,
+			Type:        propertytype.TypeString,
 			Name:        "stringProp",
 			StringValue: pointer.ToString("testProp"),
 		},

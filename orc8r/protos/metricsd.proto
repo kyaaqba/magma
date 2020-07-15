@@ -7,10 +7,11 @@
 
 syntax = "proto3";
 
-import "orc8r/protos/common.proto";
-import "metrics.proto";
-
 package magma.orc8r;
+
+import "metrics.proto";
+import "orc8r/protos/common.proto";
+
 option go_package = "magma/orc8r/lib/go/protos";
 
 // For each metric name tracked, we use an enum

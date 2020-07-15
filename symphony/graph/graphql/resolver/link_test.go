@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// nolint: goconst, ineffassign
 package resolver
 
 import (
+	"context"
 	"testing"
 
 	"github.com/AlekSi/pointer"
-	"github.com/facebookincubator/symphony/graph/ent"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
 
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,8 +21,8 @@ import (
 
 func TestAddLink(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr, pr, lr, eqr := r.Mutation(), r.Query(), r.EquipmentPort(), r.Link(), r.Equipment()
 	locationType, _ := mr.AddLocationType(ctx, models.AddLocationTypeInput{Name: "location_type"})
@@ -69,8 +70,14 @@ func TestAddLink(t *testing.T) {
 		},
 	})
 	assert.Nil(t, err)
-	fetchedEquipmentA, _ := qr.Equipment(ctx, equipmentA.ID)
-	fetchedEquipmentB, _ := qr.Equipment(ctx, equipmentB.ID)
+	nodeA, err := qr.Node(ctx, equipmentA.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentA, ok := nodeA.(*ent.Equipment)
+	assert.True(t, ok)
+	nodeB, err := qr.Node(ctx, equipmentB.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentB, ok := nodeB.(*ent.Equipment)
+	assert.True(t, ok)
 	fetchedPortA := fetchedEquipmentA.QueryPorts().OnlyX(ctx)
 	fetchedPortB := fetchedEquipmentB.QueryPorts().OnlyX(ctx)
 
@@ -97,8 +104,8 @@ func TestAddLink(t *testing.T) {
 
 func TestAddLinkWithProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr, pr, lr := r.Mutation(), r.Query(), r.EquipmentPort(), r.Link()
 	locationType, _ := mr.AddLocationType(ctx, models.AddLocationTypeInput{Name: "location_type"})
@@ -111,7 +118,7 @@ func TestAddLinkWithProperties(t *testing.T) {
 	linkStrValue := "Foo"
 	linkStrPropType := models.PropertyTypeInput{
 		Name:        "link_str_prop",
-		Type:        models.PropertyKindString,
+		Type:        propertytype.TypeString,
 		StringValue: &linkStrValue,
 	}
 	linkPropTypeInput := []*models.PropertyTypeInput{&linkStrPropType}
@@ -161,8 +168,14 @@ func TestAddLinkWithProperties(t *testing.T) {
 		Properties: propInput,
 	})
 	assert.Nil(t, err)
-	fetchedEquipmentA, _ := qr.Equipment(ctx, equipmentA.ID)
-	fetchedEquipmentB, _ := qr.Equipment(ctx, equipmentB.ID)
+	fetchedNodeA, err := qr.Node(ctx, equipmentA.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentA, ok := fetchedNodeA.(*ent.Equipment)
+	assert.True(t, ok)
+	fetchedNodeB, err := qr.Node(ctx, equipmentB.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentB, ok := fetchedNodeB.(*ent.Equipment)
+	assert.True(t, ok)
 	fetchedPortA := fetchedEquipmentA.QueryPorts().OnlyX(ctx)
 	fetchedPortB := fetchedEquipmentB.QueryPorts().OnlyX(ctx)
 
@@ -185,14 +198,14 @@ func TestAddLinkWithProperties(t *testing.T) {
 	propA := linkA.QueryProperties().FirstX(ctx)
 	propZ := linkB.QueryProperties().FirstX(ctx)
 
-	assert.Equal(t, propA.StringVal, linkVal)
-	assert.Equal(t, propZ.StringVal, linkVal)
+	assert.Equal(t, pointer.GetString(propA.StringVal), linkVal)
+	assert.Equal(t, pointer.GetString(propZ.StringVal), linkVal)
 }
 
 func TestEditLinkWithProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr, pr, lr := r.Mutation(), r.Query(), r.EquipmentPort(), r.Link()
 	locationType, _ := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -207,7 +220,7 @@ func TestEditLinkWithProperties(t *testing.T) {
 	linkStrValue := "Foo"
 	linkStrPropType := models.PropertyTypeInput{
 		Name:        "link_str_prop",
-		Type:        models.PropertyKindString,
+		Type:        propertytype.TypeString,
 		StringValue: &linkStrValue,
 	}
 	linkPropTypeInput := []*models.PropertyTypeInput{&linkStrPropType}
@@ -272,8 +285,14 @@ func TestEditLinkWithProperties(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, editedLink.ID, createdLink.ID)
 
-	fetchedEquipmentA, _ := qr.Equipment(ctx, equipmentA.ID)
-	fetchedEquipmentB, _ := qr.Equipment(ctx, equipmentB.ID)
+	fetchedNodeA, err := qr.Node(ctx, equipmentA.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentA, ok := fetchedNodeA.(*ent.Equipment)
+	assert.True(t, ok)
+	fetchedNodeB, err := qr.Node(ctx, equipmentB.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentB, ok := fetchedNodeB.(*ent.Equipment)
+	assert.True(t, ok)
 	fetchedPortA := fetchedEquipmentA.QueryPorts().OnlyX(ctx)
 	fetchedPortB := fetchedEquipmentB.QueryPorts().OnlyX(ctx)
 
@@ -296,14 +315,14 @@ func TestEditLinkWithProperties(t *testing.T) {
 	propA := linkA.QueryProperties().FirstX(ctx)
 	propZ := linkB.QueryProperties().FirstX(ctx)
 
-	assert.Equal(t, propA.StringVal, editedLinkVal)
-	assert.Equal(t, propZ.StringVal, editedLinkVal)
+	assert.Equal(t, pointer.GetString(propA.StringVal), editedLinkVal)
+	assert.Equal(t, pointer.GetString(propZ.StringVal), editedLinkVal)
 }
 
 func TestRemoveLink(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr, pr := r.Mutation(), r.Query(), r.EquipmentPort()
 	locationType, _ := mr.AddLocationType(ctx, models.AddLocationTypeInput{
@@ -349,8 +368,14 @@ func TestRemoveLink(t *testing.T) {
 
 	_, _ = mr.RemoveLink(ctx, link.ID, nil)
 
-	fetchedEquipmentA, _ := qr.Equipment(ctx, equipmentA.ID)
-	fetchedEquipmentB, _ := qr.Equipment(ctx, equipmentB.ID)
+	fetchedNodeA, err := qr.Node(ctx, equipmentA.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentA, ok := fetchedNodeA.(*ent.Equipment)
+	assert.True(t, ok)
+	fetchedNodeB, err := qr.Node(ctx, equipmentB.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentB, ok := fetchedNodeB.(*ent.Equipment)
+	assert.True(t, ok)
 	fetchedPortA := fetchedEquipmentA.QueryPorts().OnlyX(ctx)
 	fetchedPortB := fetchedEquipmentB.QueryPorts().OnlyX(ctx)
 
@@ -363,8 +388,8 @@ func TestRemoveLink(t *testing.T) {
 
 func TestAddLinkWithWorkOrder(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr, pr, wor := r.Mutation(), r.Query(), r.EquipmentPort(), r.WorkOrder()
 
@@ -403,8 +428,14 @@ func TestAddLinkWithWorkOrder(t *testing.T) {
 		WorkOrder: &workOrder.ID,
 	})
 	assert.NoError(t, err)
-	fetchedEquipmentA, _ := qr.Equipment(ctx, equipmentA.ID)
-	fetchedEquipmentB, _ := qr.Equipment(ctx, equipmentB.ID)
+	fetchedNodeA, err := qr.Node(ctx, equipmentA.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentA, ok := fetchedNodeA.(*ent.Equipment)
+	assert.True(t, ok)
+	fetchedNodeB, err := qr.Node(ctx, equipmentB.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentB, ok := fetchedNodeB.(*ent.Equipment)
+	assert.True(t, ok)
 	fetchedPortA := fetchedEquipmentA.QueryPorts().OnlyX(ctx)
 	fetchedPortB := fetchedEquipmentB.QueryPorts().OnlyX(ctx)
 
@@ -434,8 +465,8 @@ func TestAddLinkWithWorkOrder(t *testing.T) {
 
 func TestRemoveLinkWithWorkOrder(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr, pr, wor := r.Mutation(), r.Query(), r.EquipmentPort(), r.WorkOrder()
 
@@ -477,8 +508,14 @@ func TestRemoveLinkWithWorkOrder(t *testing.T) {
 
 	_, _ = mr.RemoveLink(ctx, link.ID, &workOrder.ID)
 
-	fetchedEquipmentA, _ := qr.Equipment(ctx, equipmentA.ID)
-	fetchedEquipmentB, _ := qr.Equipment(ctx, equipmentB.ID)
+	fetchedNodeA, err := qr.Node(ctx, equipmentA.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentA, ok := fetchedNodeA.(*ent.Equipment)
+	assert.True(t, ok)
+	fetchedNodeB, err := qr.Node(ctx, equipmentB.ID)
+	assert.NoError(t, err)
+	fetchedEquipmentB, ok := fetchedNodeB.(*ent.Equipment)
+	assert.True(t, ok)
 	fetchedPortA := fetchedEquipmentA.QueryPorts().OnlyX(ctx)
 	fetchedPortB := fetchedEquipmentB.QueryPorts().OnlyX(ctx)
 

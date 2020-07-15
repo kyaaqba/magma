@@ -14,7 +14,7 @@ export async function uploadFile(
   id: string,
   file: File,
   onUpload: (File, string) => void,
-  onProgress?: (fileId: string, progress: number) => void,
+  onProgress?: (fileId: string, file: File, progress: number) => void,
 ) {
   const signingResponse = await axios.get('/store/put', {
     params: {
@@ -26,11 +26,11 @@ export async function uploadFile(
     headers: {
       'Content-Type': file.type,
     },
-    onUploadProgress: function(progressEvent) {
+    onUploadProgress: function (progressEvent) {
       const percentCompleted = Math.round(
         (progressEvent.loaded * 100) / progressEvent.total,
       );
-      onProgress && onProgress(id, percentCompleted);
+      onProgress && onProgress(id, file, percentCompleted);
     },
   };
   await axios.put(signingResponse.data.URL, file, config);

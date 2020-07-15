@@ -10,6 +10,7 @@
 
 import type {EntityConfig} from '../comparison_view/ComparisonViewTypes';
 
+import PowerSearchExternalIDFilter from '../comparison_view/PowerSearchExternalIDFilter';
 import PowerSearchWorkOrderAssigneeFilter from './PowerSearchWorkOrderAssigneeFilter';
 import PowerSearchWorkOrderNameFilter from './PowerSearchWorkOrderNameFilter';
 import PowerSearchWorkOrderOwnerFilter from './PowerSearchWorkOrderOwnerFilter';
@@ -73,10 +74,28 @@ const WorkOrderSearchConfig: Array<EntityConfig> = [
     ],
   },
   {
-    type: 'location_by_types',
+    type: 'locations',
     label: 'Location',
-    filters: [],
+    filters: [
+      {
+        key: 'location_inst_external_id',
+        name: 'location_inst_external_id',
+        entityType: 'locations',
+        label: 'Location External ID',
+        component: PowerSearchExternalIDFilter,
+        defaultOperator: 'contains',
+      },
+    ],
   },
 ];
 
-export {WorkOrderSearchConfig};
+const WORK_ORDER_FILTERS = Object.freeze({
+  NAME: 'work_order_name',
+  STATUS: 'work_order_status',
+  OWNER: 'work_order_owner',
+  TYPE: 'work_order_type',
+  PRIORITY: 'work_order_priority',
+  ASSIGNEE: 'work_order_assignee',
+});
+
+export {WorkOrderSearchConfig, WORK_ORDER_FILTERS};

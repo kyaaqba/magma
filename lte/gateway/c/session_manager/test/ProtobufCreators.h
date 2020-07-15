@@ -8,6 +8,7 @@
  */
 #pragma once
 
+#include <lte/protos/mconfig/mconfigs.pb.h>
 #include <lte/protos/session_manager.grpc.pb.h>
 #include <lte/protos/pipelined.grpc.pb.h>
 
@@ -21,7 +22,14 @@ void create_rule_record(
   uint64_t bytes_tx,
   RuleRecord* rule_record);
 
-void create_charging_credit(uint64_t volume, ChargingCredit* credit);
+void create_charging_credit(
+  uint64_t volume, bool is_final, ChargingCredit* credit);
+
+void create_credit_update_response(
+    const std::string& imsi,
+    uint32_t charging_key,
+    CreditLimitType limit_type,
+    CreditUpdateResponse* response);
 
 void create_credit_update_response(
   const std::string& imsi,
@@ -88,9 +96,20 @@ void create_subscriber_quota_update(
   const SubscriberQuotaUpdate_Type state,
   SubscriberQuotaUpdate* update);
 
-void create_cwf_session_create_response(
+void create_session_create_response(
   const std::string& imsi,
   const std::string& monitoring_key,
   std::vector<std::string>& static_rules,
   CreateSessionResponse* response);
+
+void create_policy_rule(
+  const std::string &rule_id,
+  const std::string &m_key,
+  uint32_t rating_group,
+  PolicyRule* rule);
+
+void create_granted_units(
+  uint64_t* total, uint64_t* tx, uint64_t* rx, GrantedUnits* gsu);
+
+magma::mconfig::SessionD get_default_mconfig();
 } // namespace magma

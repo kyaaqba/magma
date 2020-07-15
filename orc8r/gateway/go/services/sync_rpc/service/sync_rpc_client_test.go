@@ -1,20 +1,28 @@
+/*
+Copyright (c) Facebook, Inc. and its affiliates.
+All rights reserved.
+
+This source code is licensed under the BSD-style license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
 package service
 
 import (
 	"context"
 	"fmt"
-	"log"
-	"magma/gateway/service_registry"
-	"magma/orc8r/lib/go/protos"
-	"magma/orc8r/lib/go/registry"
-
 	"net"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+
+	"magma/gateway/service_registry"
+	"magma/orc8r/lib/go/protos"
+	"magma/orc8r/lib/go/registry"
 )
 
 type testSyncRpcService struct {
@@ -44,7 +52,7 @@ func (svc *testSyncRpcService) SyncRPC(stream protos.SyncRPCService_SyncRPCServe
 func runTestSyncRpcService(server *testSyncRpcService, grpcPortCh chan string) {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":0"))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		glog.Fatalf("failed to listen: %v", err)
 	}
 
 	v := strings.Split(lis.Addr().String(), ":")
@@ -107,7 +115,6 @@ func TestSyncRpcClient(t *testing.T) {
 	})
 	svcSyncRpcReqCh <- &protos.SyncRPCRequest{ReqId: 1, ReqBody: &protos.GatewayRequest{Authority: "testService"}}
 	BrokerRespCh <- &protos.SyncRPCResponse{ReqId: 1}
-
 	select {
 	case resp := <-svcSyncRpcRespCh:
 		assert.Equal(t, resp.ReqId, uint32(1))
@@ -118,15 +125,10 @@ func TestSyncRpcClient(t *testing.T) {
 	// send a SyncRpcRequest terminating a request
 	svcSyncRpcReqCh <- &protos.SyncRPCRequest{ReqId: 2, ReqBody: &protos.GatewayRequest{Authority: "testService"}}
 	svcSyncRpcReqCh <- &protos.SyncRPCRequest{ReqId: 2, ConnClosed: true}
-	BrokerRespCh <- &protos.SyncRPCResponse{ReqId: 2}
-	timer := time.NewTimer(time.Second)
-
-	select {
-	case resp := <-svcSyncRpcRespCh:
-		t.Fatalf("no response was expected. recd %v", resp)
-	case <-timer.C:
-		break
+	termCheckFn := func() bool {
+		return client.isReqTerminated(2)
 	}
+	assert.Eventually(t, termCheckFn, 30*time.Second, time.Second, "request not terminated as expected")
 
 	// send a syncRpcRequest which is already being handled
 	svcSyncRpcReqCh <- &protos.SyncRPCRequest{ReqId: 3, ReqBody: &protos.GatewayRequest{Authority: "testService"}}

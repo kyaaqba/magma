@@ -38,6 +38,7 @@ extern "C" {
 
 namespace {
 constexpr char S1AP_STATE_TABLE[] = "s1ap_state";
+constexpr char S1AP_TASK_NAME[] = "S1AP";
 }
 
 namespace magma {
@@ -51,8 +52,8 @@ class S1apStateManager :
   public StateManager<
     s1ap_state_t,
     ue_description_t,
-    magma::lte::gateway::s1ap::S1apState,
-    magma::lte::gateway::s1ap::UeDescription,
+    magma::lte::oai::S1apState,
+    magma::lte::oai::UeDescription,
     S1apStateConverter> {
  public:
   /**
@@ -76,6 +77,12 @@ class S1apStateManager :
    * Frees all memory allocated on s1ap_state cache struct
    */
   void free_state() override;
+
+  /**
+   * Reads S1AP context state for all UEs in db
+   * @return operation response code
+   */
+  int read_ue_state_from_db() override;
 
   /**
    * Serializes s1ap_imsi_map to proto and saves it into data store

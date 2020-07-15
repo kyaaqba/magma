@@ -7,28 +7,30 @@ package resolver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 
 	"github.com/AlekSi/pointer"
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/equipment"
-	"github.com/facebookincubator/symphony/graph/ent/location"
-	"github.com/facebookincubator/symphony/graph/ent/locationtype"
-	"github.com/facebookincubator/symphony/graph/ent/reportfilter"
-	"github.com/facebookincubator/symphony/graph/ent/workorder"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer"
+	"github.com/facebookincubator/symphony/graph/resolverutil"
 	"github.com/facebookincubator/symphony/pkg/actions"
 	"github.com/facebookincubator/symphony/pkg/actions/core"
-
-	"github.com/pkg/errors"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/equipment"
+	"github.com/facebookincubator/symphony/pkg/ent/location"
+	"github.com/facebookincubator/symphony/pkg/ent/locationtype"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/ent/reportfilter"
+	"github.com/facebookincubator/symphony/pkg/ent/service"
+	"github.com/facebookincubator/symphony/pkg/ent/servicetype"
+	"github.com/facebookincubator/symphony/pkg/viewer"
 	"go.uber.org/zap"
 )
 
 type queryResolver struct{ resolver }
 
-func (queryResolver) Me(ctx context.Context) (*viewer.Viewer, error) {
+func (queryResolver) Me(ctx context.Context) (viewer.Viewer, error) {
 	return viewer.FromContext(ctx), nil
 }
 
@@ -45,22 +47,6 @@ func (r queryResolver) Node(ctx context.Context, id int) (ent.Noder, error) {
 	return nil, ent.MaskNotFound(err)
 }
 
-func (r queryResolver) Location(ctx context.Context, id int) (*ent.Location, error) {
-	l, err := r.ClientFrom(ctx).Location.Get(ctx, id)
-	if err != nil && !ent.IsNotFound(err) {
-		return nil, errors.Wrapf(err, "querying location: id=%q", id)
-	}
-	return l, nil
-}
-
-func (r queryResolver) LocationType(ctx context.Context, id int) (*ent.LocationType, error) {
-	lt, err := r.ClientFrom(ctx).LocationType.Get(ctx, id)
-	if err != nil && !ent.IsNotFound(err) {
-		return nil, errors.Wrapf(err, "querying location type: id=%q", id)
-	}
-	return lt, nil
-}
-
 func (r queryResolver) LocationTypes(
 	ctx context.Context,
 	after *ent.Cursor, first *int,
@@ -75,8 +61,13 @@ func (r queryResolver) Locations(
 	types []int, name *string, needsSiteSurvey *bool,
 	after *ent.Cursor, first *int,
 	before *ent.Cursor, last *int,
+	filters []*models.LocationFilterInput,
 ) (*ent.LocationConnection, error) {
 	query := r.ClientFrom(ctx).Location.Query()
+	query, err := resolverutil.LocationFilter(query, filters)
+	if err != nil {
+		return nil, err
+	}
 	if pointer.GetBool(onlyTopLevel) {
 		query = query.Where(location.Not(location.HasParent()))
 	}
@@ -106,22 +97,6 @@ func (r queryResolver) NearestSites(ctx context.Context, latitude, longitude flo
 	return sites[:first], nil
 }
 
-func (r queryResolver) Equipment(ctx context.Context, id int) (*ent.Equipment, error) {
-	e, err := r.ClientFrom(ctx).Equipment.Get(ctx, id)
-	if err != nil && !ent.IsNotFound(err) {
-		return nil, errors.Wrapf(err, "querying equipment: id=%q", id)
-	}
-	return e, nil
-}
-
-func (r queryResolver) EquipmentType(ctx context.Context, id int) (*ent.EquipmentType, error) {
-	et, err := r.ClientFrom(ctx).EquipmentType.Get(ctx, id)
-	if err != nil && !ent.IsNotFound(err) {
-		return nil, errors.Wrapf(err, "querying equipment type: id=%q", id)
-	}
-	return et, nil
-}
-
 func (r queryResolver) EquipmentTypes(
 	ctx context.Context,
 	after *ent.Cursor, first *int,
@@ -129,14 +104,6 @@ func (r queryResolver) EquipmentTypes(
 ) (*ent.EquipmentTypeConnection, error) {
 	return r.ClientFrom(ctx).EquipmentType.Query().
 		Paginate(ctx, after, first, before, last)
-}
-
-func (r queryResolver) EquipmentPortType(ctx context.Context, id int) (*ent.EquipmentPortType, error) {
-	e, err := r.ClientFrom(ctx).EquipmentPortType.Get(ctx, id)
-	if err != nil && !ent.IsNotFound(err) {
-		return nil, errors.Wrapf(err, "querying equipment port type: id=%q", id)
-	}
-	return e, nil
 }
 
 func (r queryResolver) EquipmentPortTypes(
@@ -157,27 +124,45 @@ func (r queryResolver) EquipmentPortDefinitions(
 		Paginate(ctx, after, first, before, last)
 }
 
-func (r queryResolver) WorkOrder(ctx context.Context, id int) (*ent.WorkOrder, error) {
-	noder, err := r.Node(ctx, id)
+func (r queryResolver) EquipmentPorts(
+	ctx context.Context,
+	after *ent.Cursor, first *int,
+	before *ent.Cursor, last *int,
+	filters []*models.PortFilterInput,
+) (*ent.EquipmentPortConnection, error) {
+	query := r.ClientFrom(ctx).EquipmentPort.Query()
+	query, err := resolverutil.PortFilter(query, filters)
 	if err != nil {
 		return nil, err
 	}
-	wo, _ := noder.(*ent.WorkOrder)
-	return wo, nil
+	return query.Paginate(ctx, after, first, before, last)
+}
+
+func (r queryResolver) Equipments(
+	ctx context.Context,
+	after *ent.Cursor, first *int,
+	before *ent.Cursor, last *int,
+	filters []*models.EquipmentFilterInput,
+) (*ent.EquipmentConnection, error) {
+	query := r.ClientFrom(ctx).Equipment.Query()
+	query, err := resolverutil.EquipmentFilter(query, filters)
+	if err != nil {
+		return nil, err
+	}
+	return query.Paginate(ctx, after, first, before, last)
 }
 
 func (r queryResolver) WorkOrders(
 	ctx context.Context,
 	after *ent.Cursor, first *int,
 	before *ent.Cursor, last *int,
-	showCompleted *bool,
+	orderBy *models.WorkOrderOrder,
+	filterBy []*models.WorkOrderFilterInput,
 ) (*ent.WorkOrderConnection, error) {
 	query := r.ClientFrom(ctx).WorkOrder.Query()
-	if pointer.GetBool(showCompleted) {
-		query = query.Where(workorder.StatusIn(
-			models.WorkOrderStatusPending.String(),
-			models.WorkOrderStatusPlanned.String(),
-		))
+	query, err := resolverutil.WorkOrderFilter(query, filterBy)
+	if err != nil {
+		return nil, err
 	}
 	return query.Paginate(ctx, after, first, before, last)
 }
@@ -191,68 +176,80 @@ func (r queryResolver) WorkOrderTypes(
 		Paginate(ctx, after, first, before, last)
 }
 
-func (r queryResolver) SearchForEntity(
-	ctx context.Context, name string,
-	_ *ent.Cursor, limit *int,
-	_ *ent.Cursor, _ *int,
-) (*models.SearchEntriesConnection, error) {
-	if limit == nil {
-		return nil, errors.New("first is a mandatory param")
-	}
-	client := r.ClientFrom(ctx)
-	locations, err := client.Location.Query().
-		Where(
-			location.Or(
-				location.NameContainsFold(name),
-				location.ExternalIDContainsFold(name),
-			),
-		).
-		Limit(*limit).
-		All(ctx)
+func (r queryResolver) Links(
+	ctx context.Context,
+	after *ent.Cursor, first *int,
+	before *ent.Cursor, last *int,
+	filters []*models.LinkFilterInput,
+) (*ent.LinkConnection, error) {
+	query := r.ClientFrom(ctx).Link.Query()
+	query, err := resolverutil.LinkFilter(query, filters)
 	if err != nil {
-		return nil, errors.Wrap(err, "error searching for locations")
+		return nil, err
 	}
+	return query.Paginate(ctx, after, first, before, last)
+}
 
-	edges := make([]*models.SearchEntryEdge, len(locations))
-	for i, l := range locations {
-		lt := l.QueryType().FirstX(ctx)
-		edges[i] = &models.SearchEntryEdge{
-			Node: &models.SearchEntry{
-				EntityType: "location",
-				EntityID:   l.ID,
-				Name:       l.Name,
-				Type:       lt.Name,
-				ExternalID: &l.ExternalID,
-			},
-		}
-	}
-	if len(locations) == *limit {
-		return &models.SearchEntriesConnection{Edges: edges}, nil
-	}
+func (r queryResolver) Projects(
+	ctx context.Context,
+	after *ent.Cursor, first *int,
+	before *ent.Cursor, last *int,
+	_ []*models.ProjectFilterInput,
+) (*ent.ProjectConnection, error) {
+	query := r.ClientFrom(ctx).Project.Query()
+	return query.Paginate(ctx, after, first, before, last)
+}
 
-	equipments, err := client.Equipment.Query().
-		Where(equipment.Or(
-			equipment.NameContainsFold(name),
-			equipment.ExternalIDContainsFold(name),
-		)).
-		Limit(*limit - len(locations)).
-		All(ctx)
+func (r queryResolver) Services(
+	ctx context.Context,
+	after *ent.Cursor, first *int,
+	before *ent.Cursor, last *int,
+	filters []*models.ServiceFilterInput) (*ent.ServiceConnection, error) {
+	query := r.ClientFrom(ctx).Service.Query().Where(service.HasTypeWith(servicetype.IsDeleted(false)))
+	query, err := resolverutil.ServiceFilter(query, filters)
 	if err != nil {
-		return nil, errors.Wrap(err, "error searching for equipments")
+		return nil, err
 	}
-	for _, e := range equipments {
-		et := e.QueryType().FirstX(ctx)
-		edges = append(edges, &models.SearchEntryEdge{
-			Node: &models.SearchEntry{
-				EntityType: "equipment",
-				EntityID:   e.ID,
-				Name:       e.Name,
-				Type:       et.Name,
-				ExternalID: &e.ExternalID,
-			},
-		})
+	return query.Paginate(ctx, after, first, before, last)
+}
+
+func (r queryResolver) Users(
+	ctx context.Context,
+	after *ent.Cursor, first *int,
+	before *ent.Cursor, last *int,
+	filters []*models.UserFilterInput) (*ent.UserConnection, error) {
+	query := r.ClientFrom(ctx).User.Query()
+	query, err := resolverutil.UserFilter(query, filters)
+	if err != nil {
+		return nil, err
 	}
-	return &models.SearchEntriesConnection{Edges: edges}, nil
+	return query.Paginate(ctx, after, first, before, last)
+}
+
+func (r queryResolver) UsersGroups(
+	ctx context.Context,
+	after *ent.Cursor, first *int,
+	before *ent.Cursor, last *int,
+	filters []*models.UsersGroupFilterInput) (*ent.UsersGroupConnection, error) {
+	query := r.ClientFrom(ctx).UsersGroup.Query()
+	query, err := resolverutil.UsersGroupFilter(query, filters)
+	if err != nil {
+		return nil, err
+	}
+	return query.Paginate(ctx, after, first, before, last)
+}
+
+func (r queryResolver) PermissionsPolicies(
+	ctx context.Context,
+	after *ent.Cursor, first *int,
+	before *ent.Cursor, last *int,
+	filters []*models.PermissionsPolicyFilterInput) (*ent.PermissionsPolicyConnection, error) {
+	query := r.ClientFrom(ctx).PermissionsPolicy.Query()
+	query, err := resolverutil.PermissionsPolicyFilter(query, filters)
+	if err != nil {
+		return nil, err
+	}
+	return query.Paginate(ctx, after, first, before, last)
 }
 
 func (r queryResolver) SearchForNode(
@@ -274,7 +271,7 @@ func (r queryResolver) SearchForNode(
 		Limit(*limit).
 		All(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "error searching for locations")
+		return nil, fmt.Errorf("querying locations: %w", err)
 	}
 
 	edges := make([]*models.SearchNodeEdge, len(locations))
@@ -295,7 +292,7 @@ func (r queryResolver) SearchForNode(
 		Limit(*limit - len(locations)).
 		All(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "error searching for equipments")
+		return nil, fmt.Errorf("querying equipment: %w", err)
 	}
 	for _, e := range equipments {
 		edges = append(edges, &models.SearchNodeEdge{
@@ -325,7 +322,10 @@ func (r queryResolver) PossibleProperties(ctx context.Context, entityType models
 		return nil, fmt.Errorf("querying property types: %w", err)
 	}
 
-	type key struct{ name, typ string }
+	type key struct {
+		name string
+		typ  propertytype.Type
+	}
 	var (
 		groups = map[key]struct{}{}
 		types  []*ent.PropertyType
@@ -346,22 +346,6 @@ func (r queryResolver) Surveys(ctx context.Context) ([]*ent.Survey, error) {
 		return nil, fmt.Errorf("querying all surveys: %w", err)
 	}
 	return surveys, nil
-}
-
-func (r queryResolver) Service(ctx context.Context, id int) (*ent.Service, error) {
-	s, err := r.ClientFrom(ctx).Service.Get(ctx, id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "querying service: id=%q", id)
-	}
-	return s, nil
-}
-
-func (r queryResolver) ServiceType(ctx context.Context, id int) (*ent.ServiceType, error) {
-	st, err := r.ClientFrom(ctx).ServiceType.Get(ctx, id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "querying service type: id=%q", id)
-	}
-	return st, nil
 }
 
 func (r queryResolver) ServiceTypes(
@@ -434,10 +418,10 @@ func (r queryResolver) ReportFilters(ctx context.Context, entity models.FilterEn
 	return rfs, nil
 }
 
-func (queryResolver) LatestPythonPackage(context.Context) (*models.LatestPythonPackageResult, error) {
-	var packages []models.PythonPackage
-	if err := json.Unmarshal([]byte(PyinventoryConsts), &packages); err != nil {
-		return nil, errors.Wrap(err, "decoding python packages")
+func (r queryResolver) LatestPythonPackage(ctx context.Context) (*models.LatestPythonPackageResult, error) {
+	packages, err := r.PythonPackages(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if len(packages) == 0 {
 		return nil, nil
@@ -450,9 +434,24 @@ func (queryResolver) LatestPythonPackage(context.Context) (*models.LatestPythonP
 		}
 	}
 	return &models.LatestPythonPackageResult{
-		LastPythonPackage:         &packages[0],
-		LastBreakingPythonPackage: &packages[lastBreakingChange],
+		LastPythonPackage:         packages[0],
+		LastBreakingPythonPackage: packages[lastBreakingChange],
 	}, nil
+}
+
+func (queryResolver) PythonPackages(context.Context) ([]*models.PythonPackage, error) {
+	var (
+		packages []models.PythonPackage
+		res      []*models.PythonPackage
+	)
+	if err := json.Unmarshal([]byte(PyinventoryConsts), &packages); err != nil {
+		return nil, fmt.Errorf("decoding python packages: %w", err)
+	}
+	for _, p := range packages {
+		p := p
+		res = append(res, &p)
+	}
+	return res, nil
 }
 
 func (r queryResolver) Vertex(ctx context.Context, id int) (*ent.Node, error) {

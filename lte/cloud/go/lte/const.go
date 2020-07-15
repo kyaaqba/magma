@@ -11,7 +11,7 @@ package lte
 const ModuleName = "lte"
 
 const (
-	LteNetworkType = "lte"
+	NetworkType = "lte"
 
 	CellularNetworkType         = "cellular_network"
 	CellularGatewayType         = "cellular_gateway"
@@ -28,4 +28,17 @@ const (
 	RatingGroupEntityType = "rating_group"
 
 	ApnEntityType = "apn"
+
+	SubscriberStreamName       = "subscriberdb"
+	PolicyStreamName           = "policydb"
+	BaseNameStreamName         = "base_names"
+	MappingsStreamName         = "rule_mappings"
+	NetworkWideRulesStreamName = "network_wide_rules"
+	RatingGroupStreamName      = "rating_groups"
+
+	// Replicated states from AGW
+	SPGWStateType      = "SPGW"
+	MMEStateType       = "MME"
+	S1APStateType      = "S1AP"
+	MobilitydStateType = "mobilityd_ipdesc_record"
 )

@@ -16,7 +16,10 @@ import type {
   RemoveLocationMutationResponse,
   RemoveLocationMutationVariables,
 } from './__generated__/RemoveLocationMutation.graphql';
-import type {StoreUpdater} from '../common/RelayEnvironment';
+import type {SelectorStoreUpdater} from 'relay-runtime';
+
+import {getGraphError} from '../common/EntUtils';
+import {removeLocationFromStore} from './utils/LocationStoreUtils';
 
 const mutation = graphql`
   mutation RemoveLocationMutation($id: ID!) {
@@ -24,10 +27,36 @@ const mutation = graphql`
   }
 `;
 
-export default (
+export const removeLocation = (
+  locationId: string,
+  parentLocationId: ?string,
+): Promise<RemoveLocationMutationResponse> => {
+  const variables: RemoveLocationMutationVariables = {
+    id: locationId,
+  };
+
+  return new Promise((resolve, reject) => {
+    const callbacks: MutationCallbacks<RemoveLocationMutationResponse> = {
+      onCompleted: (response, errors) => {
+        if (errors && errors[0]) {
+          return reject(getGraphError(errors[0]));
+        } else {
+          resolve(response);
+        }
+      },
+      onError: (error: Error) => reject(getGraphError(error)),
+    };
+    const updater = store => {
+      removeLocationFromStore(store, locationId, parentLocationId);
+    };
+    CommitRemoveLocationMutation(variables, callbacks, updater);
+  });
+};
+
+const CommitRemoveLocationMutation = (
   variables: RemoveLocationMutationVariables,
   callbacks?: MutationCallbacks<RemoveLocationMutationResponse>,
-  updater?: StoreUpdater,
+  updater?: SelectorStoreUpdater,
 ) => {
   const {onCompleted, onError} = callbacks ? callbacks : {};
   commitMutation<RemoveLocationMutation>(RelayEnvironment, {
@@ -38,3 +67,5 @@ export default (
     onError,
   });
 };
+
+export default CommitRemoveLocationMutation;

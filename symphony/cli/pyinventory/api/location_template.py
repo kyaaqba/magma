@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
+# Copyright (c) 2004-present Facebook All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
 
 from typing import Dict, List, Tuple
 
-from ..client import SymphonyClient
-from ..consts import Entity, Equipment, Location
+from pysymphony import SymphonyClient
+
+from ..common.data_class import Equipment, Location
+from ..common.data_enum import Entity
 from ..exceptions import EntityNotFoundError
-from ..graphql.equipment_positions_query import EquipmentPositionsQuery
-from ..graphql.location_equipments_query import LocationEquipmentsQuery
+from ..graphql.query.equipment_positions import EquipmentPositionsQuery
+from ..graphql.query.location_equipments import LocationEquipmentsQuery
 from .equipment import copy_equipment, copy_equipment_in_position
 from .link import add_link, get_all_links_and_port_names_of_equipment
 
@@ -14,9 +19,7 @@ from .link import add_link, get_all_links_and_port_names_of_equipment
 def _get_one_level_attachments_of_equipment(
     client: SymphonyClient, equipment: Equipment
 ) -> List[Tuple[str, Equipment]]:
-    equipment_with_positions = EquipmentPositionsQuery.execute(
-        client, id=equipment.id
-    ).equipment
+    equipment_with_positions = EquipmentPositionsQuery.execute(client, id=equipment.id)
     if not equipment_with_positions:
         raise EntityNotFoundError(entity=Entity.Equipment, entity_id=equipment.id)
     attachments = []
@@ -43,19 +46,31 @@ def copy_equipment_with_all_attachments(
 ) -> Dict[Equipment, Equipment]:
     """Copy the equipment to the new location with all its attachments
 
-        Args:
-            equipment (pyinventory.consts.Equipment object): could be retrieved from the following apis:
-                * getEquipment
-                * getEquipmentInPosition
-                * addEquipment
-                * addEquipmentToPosition
-            dest_location (pyinventory.consts.Location object): retrieved from getLocation or addLocation api.
+        :param equipment: Equipment object to be copied, could be retrieved from
 
-        Raises: FailedOperationException for internal inventory error
+            * :meth:`~pyinventory.api.equipment.get_equipment`
+            * :meth:`~pyinventory.api.equipment.get_equipment_in_position`
+            * :meth:`~pyinventory.api.equipment.add_equipment`
+            * :meth:`~pyinventory.api.equipment.add_equipment_to_position`
 
-        Returns: dict of source equipment (pyinventory.consts.Equipment) to new equipment (pyinventory.consts.Equipment)
-                The dict includes the equipment given as parameter and also all the equipments
-                attached to it
+        :type equipment: :class:`~pyinventory.common.data_class.Equipment`
+        :param dest_location: Location to copy equipment to, could be retrieved from
+
+            * :meth:`~pyinventory.api.location.get_location`
+            * :meth:`~pyinventory.api.location.add_location`
+
+        :type dest_location: :class:`~pyinventory.common.data_class.Location`
+
+        :raises:
+            FailedOperationException: Internal inventory error
+
+        :return: Dictionary of source equipment to new equipment,
+            includes the equipment given as parameter and also all the equipments attached to it
+
+            * source equipment - :class:`~pyinventory.common.data_class.Equipment`
+            * new equipment - :class:`~pyinventory.common.data_class.Equipment`
+
+        :rtype: Iterator[ Tuple[ :class:`~pyinventory.common.data_class.Equipment`, str ] ]
     """
 
     result = {}
@@ -81,7 +96,7 @@ def apply_location_template_to_location(
 
     location_with_equipments = LocationEquipmentsQuery.execute(
         client, id=template_location.id
-    ).location
+    )
     if not location_with_equipments:
         raise EntityNotFoundError(
             entity=Entity.Location, entity_id=template_location.id
@@ -102,12 +117,10 @@ def apply_location_template_to_location(
             copy_equipment_with_all_attachments(client, equipment, location)
         )
 
-    equipments = equipments_to_new_equipments.keys()
-
     link_to_equipment_and_port = {}
     connected_links = []
 
-    for equipment in equipments:
+    for equipment in equipments_to_new_equipments.keys():
         links_and_ports = get_all_links_and_port_names_of_equipment(client, equipment)
         for link, port_name in links_and_ports:
             if link not in link_to_equipment_and_port:

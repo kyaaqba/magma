@@ -60,7 +60,10 @@ def main():
                 "Failed to set MASQUERADE: %d", returncode
             )
 
-    if service.mconfig.nat_enabled:
+    # override mconfig using local config.
+    enable_nat = service.config.get('enable_nat', service.mconfig.nat_enabled)
+    service.config['enable_nat'] = enable_nat
+    if enable_nat is True:
         call_process('iptables -t nat -A POSTROUTING -o %s -j MASQUERADE'
                      % service.config['nat_iface'],
                      callback,
@@ -76,12 +79,15 @@ def main():
     # Add pipelined rpc servicer
     pipelined_srv = PipelinedRpcServicer(
         service.loop,
+        manager.applications.get('GYController', None),
         manager.applications.get('EnforcementController', None),
         manager.applications.get('EnforcementStatsController', None),
         manager.applications.get('DPIController', None),
         manager.applications.get('UEMacAddressController', None),
         manager.applications.get('CheckQuotaController', None),
         manager.applications.get('IPFIXController', None),
+        manager.applications.get('VlanLearnController', None),
+        manager.applications.get('TunnelLearnController', None),
         service_manager)
     pipelined_srv.add_to_server(service.rpc_server)
 

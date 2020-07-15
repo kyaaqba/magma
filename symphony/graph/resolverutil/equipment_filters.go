@@ -5,12 +5,12 @@
 package resolverutil
 
 import (
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/equipment"
-	"github.com/facebookincubator/symphony/graph/ent/equipmenttype"
-	"github.com/facebookincubator/symphony/graph/ent/property"
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/equipment"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmenttype"
+	"github.com/facebookincubator/symphony/pkg/ent/property"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
 
 	"github.com/pkg/errors"
 )
@@ -29,7 +29,7 @@ func handleEquipmentFilter(q *ent.EquipmentQuery, filter *models.EquipmentFilter
 
 func equipmentExternalID(q *ent.EquipmentQuery, filter *models.EquipmentFilterInput) (*ent.EquipmentQuery, error) {
 	if filter.Operator == models.FilterOperatorIs {
-		return q.Where(equipment.ExternalIDEqualFold(*filter.StringValue)), nil
+		return q.Where(equipment.ExternalID(*filter.StringValue)), nil
 	}
 	return nil, errors.Errorf("operation %q not supported", filter.Operator)
 }
@@ -59,7 +59,7 @@ func equipmentPropertyFilter(q *ent.EquipmentQuery, filter *models.EquipmentFilt
 				property.And(
 					property.HasTypeWith(
 						propertytype.Name(p.Name),
-						propertytype.Type(p.Type.String()),
+						propertytype.TypeEQ(p.Type),
 					),
 					pred,
 				),
@@ -67,13 +67,13 @@ func equipmentPropertyFilter(q *ent.EquipmentQuery, filter *models.EquipmentFilt
 			equipment.And(
 				equipment.HasTypeWith(equipmenttype.HasPropertyTypesWith(
 					propertytype.Name(p.Name),
-					propertytype.Type(p.Type.String()),
+					propertytype.TypeEQ(p.Type),
 					predType,
 				)),
 				equipment.Not(equipment.HasPropertiesWith(
 					property.HasTypeWith(
 						propertytype.Name(p.Name),
-						propertytype.Type(p.Type.String()),
+						propertytype.TypeEQ(p.Type),
 					)),
 				))))
 		return q, nil
@@ -87,7 +87,7 @@ func equipmentPropertyFilter(q *ent.EquipmentQuery, filter *models.EquipmentFilt
 				property.And(
 					property.HasTypeWith(
 						propertytype.Name(p.Name),
-						propertytype.Type(p.Type.String()),
+						propertytype.TypeEQ(p.Type),
 					),
 					propPred,
 				),
@@ -95,13 +95,13 @@ func equipmentPropertyFilter(q *ent.EquipmentQuery, filter *models.EquipmentFilt
 			equipment.And(
 				equipment.HasTypeWith(equipmenttype.HasPropertyTypesWith(
 					propertytype.Name(p.Name),
-					propertytype.Type(p.Type.String()),
+					propertytype.TypeEQ(p.Type),
 					propTypePred,
 				)),
 				equipment.Not(equipment.HasPropertiesWith(
 					property.HasTypeWith(
 						propertytype.Name(p.Name),
-						propertytype.Type(p.Type.String()),
+						propertytype.TypeEQ(p.Type),
 					)),
 				))))
 		return q, nil

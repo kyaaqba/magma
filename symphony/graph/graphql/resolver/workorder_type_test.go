@@ -6,15 +6,22 @@
 package resolver
 
 import (
+	"context"
 	"testing"
 
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/checklistitemdefinition"
+	"github.com/facebookincubator/symphony/pkg/ent/checklistitem"
+
+	"github.com/facebookincubator/symphony/pkg/ent/checklistcategorydefinition"
+	"github.com/facebookincubator/symphony/pkg/ent/checklistitemdefinition"
+
+	"github.com/99designs/gqlgen/client"
+
+	"github.com/facebookincubator/symphony/pkg/ent"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/facebookincubator/symphony/graph/ent/propertytype"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
-	"github.com/facebookincubator/symphony/graph/viewer/viewertest"
+	"github.com/facebookincubator/symphony/pkg/ent/propertytype"
+	"github.com/facebookincubator/symphony/pkg/viewer/viewertest"
 
 	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/require"
@@ -22,8 +29,8 @@ import (
 
 func TestAddWorkOrderType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	typ, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "example_type"})
@@ -38,8 +45,8 @@ func TestAddWorkOrderType(t *testing.T) {
 
 func TestAddWorkOrderTypes(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	_, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "example_type_a"})
@@ -53,8 +60,8 @@ func TestAddWorkOrderTypes(t *testing.T) {
 
 func TestNumberOfWorkOrders(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, wtr := r.Mutation(), r.WorkOrderType()
 
 	woType, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "example_type"})
@@ -83,8 +90,8 @@ func TestNumberOfWorkOrders(t *testing.T) {
 
 func TestAddWorkOrderTypeWithDescription(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 	mr, qr := r.Mutation(), r.Query()
 
 	typ, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{
@@ -102,8 +109,8 @@ func TestAddWorkOrderTypeWithDescription(t *testing.T) {
 
 func TestAddWorkOrderTypeWithProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, wtr := r.Mutation(), r.WorkOrderType()
 	strValue, strIndex := "Foo", 7
@@ -128,16 +135,16 @@ func TestAddWorkOrderTypeWithProperties(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	intProp := woType.QueryPropertyTypes().Where(propertytype.Type("int")).OnlyX(ctx)
-	strProp := woType.QueryPropertyTypes().Where(propertytype.Type("string")).OnlyX(ctx)
+	intProp := woType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeInt)).OnlyX(ctx)
+	strProp := woType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 
 	require.Equal(t, "int_prop", intProp.Name, "verifying int property type's name")
-	require.Equal(t, "", intProp.StringVal, "verifying int property type's string value (default as this is an int property)")
-	require.Equal(t, intValue, intProp.IntVal, "verifying int property type's int value")
+	require.Nil(t, intProp.StringVal, "verifying int property type's string value (default as this is an int property)")
+	require.Equal(t, intValue, pointer.GetInt(intProp.IntVal), "verifying int property type's int value")
 	require.Equal(t, intIndex, intProp.Index, "verifying int property type's index")
 	require.Equal(t, "str_prop", strProp.Name, "verifying string property type's name")
-	require.Equal(t, strValue, strProp.StringVal, "verifying string property type's String value")
-	require.Equal(t, 0, strProp.IntVal, "verifying int property type's int value")
+	require.Equal(t, strValue, pointer.GetString(strProp.StringVal), "verifying string property type's String value")
+	require.Nil(t, strProp.IntVal, "verifying int property type's int value")
 	require.Equal(t, strIndex, strProp.Index, "verifying string property type's index")
 
 	pt, err := wtr.PropertyTypes(ctx, woType)
@@ -145,39 +152,193 @@ func TestAddWorkOrderTypeWithProperties(t *testing.T) {
 	require.Equal(t, 2, len(pt))
 }
 
-func TestAddWorkOrderTypeWithCheckList(t *testing.T) {
+func TestAddWorkOrderTypeWithCheckListCategories(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	c := r.GraphClient()
 
-	mr, wtr := r.Mutation(), r.WorkOrderType()
-	indexValue := 1
-	fooCL := models.CheckListDefinitionInput{
-		Title: "Foo",
-		Type:  "none",
-		Index: &indexValue,
+	selectionMode := checklistitem.EnumSelectionModeValueSingle
+	woTypeInput := models.AddWorkOrderTypeInput{
+		Name: "WO Type",
+		CheckListCategories: []*models.CheckListCategoryDefinitionInput{
+			{
+				Title:       "Category 1",
+				Description: pointer.ToString("Category 1"),
+				CheckList: []*models.CheckListDefinitionInput{{
+					Title: "String",
+					Type:  "string",
+					Index: pointer.ToInt(0),
+				}, {
+					Title:             "Single Choice",
+					Type:              "enum",
+					Index:             pointer.ToInt(1),
+					EnumSelectionMode: &selectionMode,
+					EnumValues:        pointer.ToString("1,2,3"),
+				}},
+			},
+		},
 	}
-	clInputs := []*models.CheckListDefinitionInput{&fooCL}
-	woType, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{
-		Name:      "example_type_a",
-		CheckList: clInputs,
-	})
-	require.NoError(t, err)
-	defs := woType.QueryCheckListDefinitions().AllX(ctx)
-	require.Len(t, defs, 1)
+	var rsp struct {
+		AddWorkOrderType struct {
+			ID                           string
+			CheckListCategoryDefinitions []struct {
+				ID                       string
+				Title                    string
+				ChecklistItemDefinitions []struct {
+					ID                string
+					Title             string
+					Type              models.CheckListItemType
+					EnumValues        *string
+					EnumSelectionMode *checklistitem.EnumSelectionModeValue
+				}
+			}
+		}
+	}
+	c.MustPost(
+		`mutation($input: AddWorkOrderTypeInput!) {
+			addWorkOrderType(input: $input) {
+				id
+				checkListCategoryDefinitions {
+					id
+					title
+					checklistItemDefinitions {
+						id
+						title
+						type
+						enumValues
+						enumSelectionMode
+					}
+				}
+			}
+		}`,
+		&rsp,
+		client.Var("input", woTypeInput),
+	)
 
-	fooCLFetched := woType.QueryCheckListDefinitions().Where(checklistitemdefinition.Type("none")).OnlyX(ctx)
-	require.Equal(t, "Foo", fooCLFetched.Title, "verifying check list name")
+	require.Len(t, rsp.AddWorkOrderType.CheckListCategoryDefinitions, 1)
+	category := rsp.AddWorkOrderType.CheckListCategoryDefinitions[0]
+	require.Equal(t, category.Title, "Category 1")
+	require.Len(t, category.ChecklistItemDefinitions, 2)
 
-	cl, err := wtr.CheckListDefinitions(ctx, woType)
+	for _, item := range category.ChecklistItemDefinitions {
+		switch item.Type {
+		case models.CheckListItemTypeString:
+			require.Equal(t, item.Title, "String")
+		case models.CheckListItemTypeEnum:
+			require.Equal(t, *item.EnumSelectionMode, checklistitem.EnumSelectionModeValueSingle)
+			require.Equal(t, *item.EnumValues, "1,2,3")
+		}
+	}
+}
+
+func TestEditWorkOrderTypeWithCheckListCategories(t *testing.T) {
+	r := newTestResolver(t)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
+	mr := r.Mutation()
+
+	woTypeInput := models.AddWorkOrderTypeInput{
+		Name: "WO Type",
+		CheckListCategories: []*models.CheckListCategoryDefinitionInput{
+			{
+				Title:       "Category 1",
+				Description: pointer.ToString("Category 1"),
+				CheckList: []*models.CheckListDefinitionInput{{
+					Title: "String 1",
+					Type:  "string",
+					Index: pointer.ToInt(0),
+				}, {
+					Title: "String 2",
+					Type:  "string",
+					Index: pointer.ToInt(1),
+				}},
+			},
+			{
+				Title:       "Category 2",
+				Description: pointer.ToString("Category 2"),
+			},
+		},
+	}
+
+	wot, err := mr.AddWorkOrderType(ctx, woTypeInput)
 	require.NoError(t, err)
-	require.Len(t, cl, 1)
+
+	category1 := wot.QueryCheckListCategoryDefinitions().Where(checklistcategorydefinition.Title("Category 1")).OnlyX(ctx)
+	string1 := wot.QueryCheckListCategoryDefinitions().QueryCheckListItemDefinitions().Where(checklistitemdefinition.Title("String 1")).OnlyX(ctx)
+	string2 := wot.QueryCheckListCategoryDefinitions().QueryCheckListItemDefinitions().Where(checklistitemdefinition.Title("String 2")).OnlyX(ctx)
+
+	category2 := wot.QueryCheckListCategoryDefinitions().Where(checklistcategorydefinition.Title("Category 2")).OnlyX(ctx)
+
+	// Category 1: 1 item renamed, 1 deleted, 1 new. Category 2 deleted. Category 3 - new.
+	editWOTypeInput := models.EditWorkOrderTypeInput{
+		ID:   wot.ID,
+		Name: "WO Type",
+		CheckListCategories: []*models.CheckListCategoryDefinitionInput{
+			{
+				ID:          &category1.ID,
+				Title:       "Category 1 Renamed",
+				Description: pointer.ToString("Category 1 Renamed"),
+				CheckList: []*models.CheckListDefinitionInput{{
+					ID:    &string1.ID,
+					Title: "String 1 Renamed",
+					Type:  "string",
+					Index: pointer.ToInt(0),
+				}, {
+					Title: "String 3",
+					Type:  "string",
+					Index: pointer.ToInt(2),
+				}},
+			},
+			{
+				Title:       "Category 3",
+				Description: pointer.ToString("Category 3"),
+			},
+		},
+	}
+
+	updatedWOT, err := mr.EditWorkOrderType(ctx, editWOTypeInput)
+	require.NoError(t, err)
+
+	updatedCategories, err := updatedWOT.QueryCheckListCategoryDefinitions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, updatedCategories, 2)
+
+	// Verify Category 1 Renamed
+	category1 = updatedWOT.QueryCheckListCategoryDefinitions().Where(checklistcategorydefinition.ID(category1.ID)).OnlyX(ctx)
+	require.Equal(t, category1.Title, "Category 1 Renamed")
+
+	// Verify Category 2 deleted
+	category2Exists := updatedWOT.QueryCheckListCategoryDefinitions().Where(checklistcategorydefinition.ID(category2.ID)).ExistX(ctx)
+	require.False(t, category2Exists)
+
+	// Verify Category 3 created
+	category3Exists, err := updatedWOT.QueryCheckListCategoryDefinitions().Where(checklistcategorydefinition.Title("Category 3")).Exist(ctx)
+	require.NoError(t, err)
+	require.True(t, category3Exists)
+
+	// Verify category 1 items created
+	category1Items, err := category1.QueryCheckListItemDefinitions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, category1Items, 2)
+
+	// Verify item string1 renamed
+	string1Exists := category1.QueryCheckListItemDefinitions().Where(checklistitemdefinition.Title("String 1 Renamed")).Where(checklistitemdefinition.ID(string1.ID)).ExistX(ctx)
+	require.True(t, string1Exists)
+
+	// Verify item string2 deleted
+	string2Exists := category1.QueryCheckListItemDefinitions().Where(checklistitemdefinition.ID(string2.ID)).ExistX(ctx)
+	require.False(t, string2Exists)
+
+	// Verify item string3 created
+	string3Exists, err := category1.QueryCheckListItemDefinitions().Where(checklistitemdefinition.Title("String 3")).Exist(ctx)
+	require.NoError(t, err)
+	require.True(t, string3Exists)
 }
 
 func TestAddWorkOrderTypesSameName(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr := r.Mutation(), r.Query()
 	woType, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "example_type_name"})
@@ -191,8 +352,8 @@ func TestAddWorkOrderTypesSameName(t *testing.T) {
 
 func TestRemoveWorkOrderType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr := r.Mutation(), r.Query()
 	woType, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "example_type_name"})
@@ -213,8 +374,8 @@ func TestRemoveWorkOrderType(t *testing.T) {
 
 func TestEditWorkOrderType(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr, qr := r.Mutation(), r.Query()
 	woType, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "example_type_name"})
@@ -249,8 +410,8 @@ func TestEditWorkOrderType(t *testing.T) {
 
 func TestEditWorkOrderTypeWithProperties(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr := r.Mutation()
 	strValue := "Foo"
@@ -263,7 +424,7 @@ func TestEditWorkOrderTypeWithProperties(t *testing.T) {
 	woType, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "example_type_a", Properties: propTypeInput})
 	require.NoError(t, err)
 
-	strProp := woType.QueryPropertyTypes().Where(propertytype.Type("string")).OnlyX(ctx)
+	strProp := woType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 	strValue = "Foo - edited"
 	intValue := 5
 	strPropType = models.PropertyTypeInput{
@@ -286,13 +447,13 @@ func TestEditWorkOrderTypeWithProperties(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, woType.Name, newType.Name, "successfully edited work order type name")
 
-	strProp = woType.QueryPropertyTypes().Where(propertytype.Type("string")).OnlyX(ctx)
+	strProp = woType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 	require.Equal(t, "str_prop_new", strProp.Name, "successfully edited prop type name")
-	require.Equal(t, strValue, strProp.StringVal, "successfully edited prop type string value")
+	require.Equal(t, strValue, pointer.GetString(strProp.StringVal), "successfully edited prop type string value")
 
-	intProp := woType.QueryPropertyTypes().Where(propertytype.Type("int")).OnlyX(ctx)
+	intProp := woType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeInt)).OnlyX(ctx)
 	require.Equal(t, "int_prop", intProp.Name, "successfully edited prop type name")
-	require.Equal(t, intValue, intProp.IntVal, "successfully edited prop type int value")
+	require.Equal(t, intValue, pointer.GetInt(intProp.IntVal), "successfully edited prop type int value")
 
 	intValue = 6
 	intPropType = models.PropertyTypeInput{
@@ -311,8 +472,8 @@ func TestEditWorkOrderTypeWithProperties(t *testing.T) {
 
 func TestDeleteWorkOrderTypeProperty(t *testing.T) {
 	r := newTestResolver(t)
-	defer r.drv.Close()
-	ctx := viewertest.NewContext(r.client)
+	defer r.Close()
+	ctx := viewertest.NewContext(context.Background(), r.client)
 
 	mr := r.Mutation()
 	strValue := "Foo"
@@ -325,7 +486,7 @@ func TestDeleteWorkOrderTypeProperty(t *testing.T) {
 	woType, err := mr.AddWorkOrderType(ctx, models.AddWorkOrderTypeInput{Name: "example_type_a", Properties: propTypeInput})
 	require.NoError(t, err)
 
-	strProp := woType.QueryPropertyTypes().Where(propertytype.Type(models.PropertyKindString.String())).OnlyX(ctx)
+	strProp := woType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 	strPropType = models.PropertyTypeInput{
 		ID:          &strProp.ID,
 		Name:        "str_prop",
@@ -334,7 +495,7 @@ func TestDeleteWorkOrderTypeProperty(t *testing.T) {
 		IsDeleted:   pointer.ToBool(true),
 	}
 
-	strProp = woType.QueryPropertyTypes().Where(propertytype.Type(models.PropertyKindString.String())).OnlyX(ctx)
+	strProp = woType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 	require.False(t, strProp.Deleted, "successfully edited prop type name")
 
 	editedPropTypeInput := []*models.PropertyTypeInput{&strPropType}
@@ -346,6 +507,6 @@ func TestDeleteWorkOrderTypeProperty(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, woType.Name, newType.Name, "successfully edited work order type name")
 
-	strProp = woType.QueryPropertyTypes().Where(propertytype.Type(models.PropertyKindString.String())).OnlyX(ctx)
+	strProp = woType.QueryPropertyTypes().Where(propertytype.TypeEQ(propertytype.TypeString)).OnlyX(ctx)
 	require.True(t, strProp.Deleted, "successfully edited prop type name")
 }

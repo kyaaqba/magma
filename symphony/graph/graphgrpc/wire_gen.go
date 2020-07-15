@@ -11,12 +11,12 @@ package graphgrpc
 
 import (
 	"database/sql"
-	"github.com/facebookincubator/symphony/graph/viewer"
 	"github.com/facebookincubator/symphony/pkg/actions/action/magmarebootnode"
 	"github.com/facebookincubator/symphony/pkg/actions/executor"
 	"github.com/facebookincubator/symphony/pkg/actions/trigger/magmaalert"
 	"github.com/facebookincubator/symphony/pkg/log"
 	"github.com/facebookincubator/symphony/pkg/orc8r"
+	"github.com/facebookincubator/symphony/pkg/viewer"
 	"google.golang.org/grpc"
 	"net/http"
 )
@@ -24,13 +24,13 @@ import (
 // Injectors from wire.go:
 
 func NewServer(cfg Config) (*grpc.Server, func(), error) {
-	mySQLTenancy := cfg.Tenancy
+	tenancy := cfg.Tenancy
 	db := cfg.DB
 	logger := cfg.Logger
 	config := cfg.Orc8r
 	client := newOrc8rClient(config)
 	registry := newActionsRegistry(client)
-	server, cleanup, err := newServer(mySQLTenancy, db, logger, registry)
+	server, cleanup, err := newServer(tenancy, db, logger, registry)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -46,7 +46,7 @@ type Config struct {
 	DB      *sql.DB
 	Logger  log.Logger
 	Orc8r   orc8r.Config
-	Tenancy *viewer.MySQLTenancy
+	Tenancy viewer.Tenancy
 }
 
 func newOrc8rClient(config orc8r.Config) *http.Client {

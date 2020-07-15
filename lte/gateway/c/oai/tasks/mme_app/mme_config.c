@@ -144,7 +144,6 @@ void log_config_init(log_config_t *log_conf)
   log_conf->util_log_level = MAX_LOG_LEVEL;
   log_conf->itti_log_level = MAX_LOG_LEVEL;
   log_conf->spgw_app_log_level = MAX_LOG_LEVEL;
-  log_conf->pgw_app_log_level = MAX_LOG_LEVEL;
   log_conf->asn1_verbosity_level = 0;
 }
 
@@ -442,11 +441,6 @@ int mme_config_parse_file(mme_config_t *config_pP)
         config_pP->log_config.spgw_app_log_level =
           OAILOG_LEVEL_STR2INT(astring);
 
-      if (config_setting_lookup_string(
-            setting,
-            LOG_CONFIG_STRING_PGW_APP_LOG_LEVEL,
-            (const char **) &astring))
-        config_pP->log_config.pgw_app_log_level = OAILOG_LEVEL_STR2INT(astring);
 #else
       if (config_setting_lookup_string(
             setting,
@@ -577,7 +571,7 @@ int mme_config_parse_file(mme_config_t *config_pP)
       config_pP->unauthenticated_imsi_supported = parse_bool(astring);
     }
 
-    // ITTI SETTING
+   // ITTI SETTING
     setting = config_setting_get_member(
       setting_mme, MME_CONFIG_STRING_INTERTASK_INTERFACE_CONFIG);
 
@@ -1366,7 +1360,7 @@ void mme_config_display(mme_config_t *config_pP)
   OAILOG_INFO(LOG_CONFIG, "- ITTI:\n");
   OAILOG_INFO(
     LOG_CONFIG,
-    "    queue size .......: %u (bytes)\n",
+   "    queue size .......: %u (bytes)\n",
     config_pP->itti_config.queue_size);
   OAILOG_INFO(
     LOG_CONFIG,
@@ -1541,10 +1535,6 @@ void mme_config_display(mme_config_t *config_pP)
     LOG_CONFIG,
     "    SPGW_APP log level....: %s\n",
     OAILOG_LEVEL_INT2STR(config_pP->log_config.spgw_app_log_level));
-  OAILOG_INFO(
-    LOG_CONFIG,
-    "    PGW_APP log level....: %s\n",
-    OAILOG_LEVEL_INT2STR(config_pP->log_config.pgw_app_log_level));
   OAILOG_INFO(
     LOG_CONFIG,
     "    S11 log level........: %s\n",

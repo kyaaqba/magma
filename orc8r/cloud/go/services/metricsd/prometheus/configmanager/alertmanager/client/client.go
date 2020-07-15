@@ -38,6 +38,9 @@ type AlertmanagerClient interface {
 	// GetRoute returns the routing tree for the given tenantID
 	GetRoute(tenantID string) (*config.Route, error)
 
+	// GetTenants returns a list of tenants configured in the system
+	GetTenants() ([]string, error)
+
 	GetGlobalConfig() (*config.GlobalConfig, error)
 	SetGlobalConfig(globalConfig config.GlobalConfig) error
 
@@ -98,6 +101,9 @@ func (c *client) GetReceivers(tenantID string) ([]config.Receiver, error) {
 	recs := make([]config.Receiver, 0)
 	for _, rec := range conf.Receivers {
 		if strings.HasPrefix(rec.Name, config.ReceiverTenantPrefix(tenantID)) {
+			if rec.Name == config.ReceiverTenantPrefix(tenantID)+config.TenantBaseRoutePostfix {
+				continue
+			}
 			rec.Unsecure(tenantID)
 			recs = append(recs, *rec)
 		}
@@ -171,12 +177,18 @@ func (c *client) ModifyTenantRoute(tenantID string, route *config.Route) error {
 
 	// ensure base route is valid base route for this tenant
 	baseRoute := c.getBaseRouteForTenant(tenantID, conf)
-	route.Receiver = baseRoute.Receiver
+	if route.Receiver != baseRoute.Receiver {
+		return fmt.Errorf("route base receiver is incorrect (should be \"%s\"). "+
+			"The base node should match nothing, then add routes as children of the base node", baseRoute.Receiver)
+	}
+
 	if route.Match == nil {
 		route.Match = map[string]string{}
 	}
 
-	route.Match[c.tenancy.RestrictorLabel] = tenantID
+	if c.tenancy.RestrictorLabel != "" {
+		route.Match[c.tenancy.RestrictorLabel] = tenantID
+	}
 
 	for _, childRoute := range route.Routes {
 		if childRoute == nil {
@@ -218,6 +230,23 @@ func (c *client) GetRoute(tenantID string) (*config.Route, error) {
 		return route, nil
 	}
 	return nil, fmt.Errorf("Route for tenant %s does not exist", tenantID)
+}
+
+func (c *client) GetTenants() ([]string, error) {
+	c.RLock()
+	defer c.RUnlock()
+	conf, err := c.readConfigFile()
+	if err != nil {
+		return []string{}, err
+	}
+
+	tenants := make([]string, 0)
+	for _, rec := range conf.Receivers {
+		if strings.Contains(rec.Name, config.TenantBaseRoutePostfix) {
+			tenants = append(tenants, rec.Name[0:strings.Index(rec.Name, config.TenantBaseRoutePostfix)-1])
+		}
+	}
+	return tenants, nil
 }
 
 func (c *client) ReloadAlertmanager() error {
@@ -299,7 +328,9 @@ func secureRoute(tenantID string, route *config.Route) {
 // unsecureRoute traverses a routing tree and reverts receiver
 // names to their non-prefixed original names
 func unsecureRoute(tenantID string, route *config.Route) {
-	route.Receiver = config.UnsecureReceiverName(route.Receiver, tenantID)
+	if !strings.HasSuffix(route.Receiver, config.TenantBaseRoutePostfix) {
+		route.Receiver = config.UnsecureReceiverName(route.Receiver, tenantID)
+	}
 	for _, childRoute := range route.Routes {
 		unsecureRoute(tenantID, childRoute)
 	}

@@ -11,7 +11,6 @@
 
 ; Huge libraries that we dont need flow for, just speed up because we dont care
 .*/node_modules/@material-ui/.*
-.*/node_modules/@storybook/.*
 .*/node_modules/listr/.*
 .*/node_modules/pondjs/.*
 .*/node_modules/plotly.js/.*
@@ -20,8 +19,13 @@
 .*/node_modules/rxjs/.*
 .*/node_modules/vis/.*
 
+.*/fbcnms-projects/hub/app/components/workflow/pages/diagramBuilder/NodeModels/.*
+.*/fbcnms-projects/hub/app/components/workflow/pages/diagramBuilder/Sidemenu/.*
+.*/fbcnms-projects/hub/app/components/workflow/pages/diagramBuilder/NodeModal/.*
+
 ; Mapbox disables these because of flow errors
 ; See https://github.com/mapbox/mapbox-gl-js/blob/master/.flowconfig
+.*/node_modules/jsonlint-lines/.*
 .*/node_modules/@mapbox/jsonlint-lines-primitives/.*
 .*/node_modules/stylelint/.*
 .*/node_modules/unflowify/.*
@@ -47,13 +51,9 @@
 .*/node_modules/express-graphql/.*
 .*/node_modules/graphql/.*
 .*/node_modules/mapbox-gl/src/.*
-.*/node_modules/react-beautiful-dnd/.*
 
 [options]
 esproposal.optional_chaining=enable
-suppress_comment= \\(.\\|\n\\)*\\$FlowFixMe
-suppress_comment= \\(.\\|\n\\)*\\$FlowIgnore
-suppress_comment= \\(.\\|\n\\)*\\$FlowIssue
 
 [libs]
 node_modules/mapbox-gl/flow-typed
@@ -62,6 +62,8 @@ node_modules/mapbox-gl/dist/mapbox-gl.js.flow
 [declarations]
 <PROJECT_ROOT>/fbcnms-projects/inventory/node_modules/relay-runtime/.*
 <PROJECT_ROOT>/fbcnms-packages/fbcnms-ui/node_modules/relay-runtime/.*
+<PROJECT_ROOT>/node_modules/relay-runtime/.*
+.*/node_modules/react-beautiful-dnd/.*
 
 [lints]
 all=warn
@@ -89,4 +91,4 @@ untyped-import
 untyped-type-import
 
 [version]
-^0.119.0
+^0.128.0

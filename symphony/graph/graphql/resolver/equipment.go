@@ -14,15 +14,15 @@ import (
 	"time"
 
 	"github.com/AlekSi/pointer"
-	"github.com/facebookincubator/symphony/graph/ent"
-	"github.com/facebookincubator/symphony/graph/ent/equipment"
-	"github.com/facebookincubator/symphony/graph/ent/equipmentport"
-	"github.com/facebookincubator/symphony/graph/ent/file"
-	"github.com/facebookincubator/symphony/graph/ent/link"
-	"github.com/facebookincubator/symphony/graph/ent/service"
-	"github.com/facebookincubator/symphony/graph/ent/serviceendpoint"
 	"github.com/facebookincubator/symphony/graph/graphql/models"
 	"github.com/facebookincubator/symphony/graph/resolverutil"
+	"github.com/facebookincubator/symphony/pkg/ent"
+	"github.com/facebookincubator/symphony/pkg/ent/equipment"
+	"github.com/facebookincubator/symphony/pkg/ent/equipmentport"
+	"github.com/facebookincubator/symphony/pkg/ent/file"
+	"github.com/facebookincubator/symphony/pkg/ent/link"
+	"github.com/facebookincubator/symphony/pkg/ent/service"
+	"github.com/facebookincubator/symphony/pkg/ent/serviceendpoint"
 )
 
 type equipmentPortResolver struct{}
@@ -250,11 +250,11 @@ func (equipmentResolver) WorkOrder(ctx context.Context, e *ent.Equipment) (*ent.
 	return wo, ent.MaskNotFound(err)
 }
 
-func (equipmentResolver) filesOfType(ctx context.Context, e *ent.Equipment, typ string) ([]*ent.File, error) {
+func (equipmentResolver) filesOfType(ctx context.Context, e *ent.Equipment, typ file.Type) ([]*ent.File, error) {
 	fds, err := e.Edges.FilesOrErr()
 	if ent.IsNotLoaded(err) {
 		return e.QueryFiles().
-			Where(file.Type(typ)).
+			Where(file.TypeEQ(typ)).
 			All(ctx)
 	}
 	files := make([]*ent.File, 0, len(fds))
@@ -267,11 +267,11 @@ func (equipmentResolver) filesOfType(ctx context.Context, e *ent.Equipment, typ 
 }
 
 func (r equipmentResolver) Images(ctx context.Context, e *ent.Equipment) ([]*ent.File, error) {
-	return r.filesOfType(ctx, e, models.FileTypeImage.String())
+	return r.filesOfType(ctx, e, file.TypeIMAGE)
 }
 
 func (r equipmentResolver) Files(ctx context.Context, e *ent.Equipment) ([]*ent.File, error) {
-	return r.filesOfType(ctx, e, models.FileTypeFile.String())
+	return r.filesOfType(ctx, e, file.TypeFILE)
 }
 
 func (equipmentResolver) Hyperlinks(ctx context.Context, e *ent.Equipment) ([]*ent.Hyperlink, error) {
@@ -297,6 +297,20 @@ func (equipmentResolver) PositionHierarchy(ctx context.Context, e *ent.Equipment
 		ppos = p
 	}
 	return positions, nil
+}
+
+func (r equipmentResolver) FirstLocation(ctx context.Context, e *ent.Equipment) (*ent.Location, error) {
+	positions, err := r.PositionHierarchy(ctx, e)
+	if err != nil {
+		return nil, err
+	}
+	var query *ent.LocationQuery
+	if len(positions) > 0 {
+		query = positions[0].QueryParent().QueryLocation()
+	} else {
+		query = e.QueryLocation()
+	}
+	return query.Only(ctx)
 }
 
 func (r equipmentResolver) LocationHierarchy(ctx context.Context, e *ent.Equipment) ([]*ent.Location, error) {
