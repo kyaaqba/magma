@@ -67,6 +67,9 @@
     },
     "aks_dnsServiceIP": {
       "value": "20.0.0.10"
+    },
+    "aks_nodeResourceGroup": {
+      "value": "<INSERT NAME OF AKS BACKING RESOURCE GROUP>"
     }
   }
 }
