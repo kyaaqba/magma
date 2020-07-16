@@ -153,23 +153,23 @@ stages:
           containerregistrytype: 'Azure Container Registry'
           azureSubscription: ${{ parameters.acrServiceConnection }}
           azureContainerRegistry: '{"loginServer":"${{ parameters.acrName }}.azurecr.io", "id" : "/subscriptions/${{ parameters.acrSubscriptionId }}/resourceGroups/${{ parameters.acrResourceGroup }}/providers/Microsoft.ContainerRegistry/registries/${{ parameters.acrName }}"}'
-          dockerComposeFile: 'nms/fbcnms-projects/magmalte/docker-compose.yml'
+          dockerComposeFile: 'symphony/app/fbcnms-projects/magmalte/docker-compose.yml'
           projectName: $(NMS_COMPOSE_PROJECT)
           qualifyImageNames: true
           action: 'Build services'
           additionalImageTags: 'v1.0.1'
-          currentWorkingDirectory: '$(System.DefaultWorkingDirectory)/nms/fbcnms-projects/magmalte'
+          currentWorkingDirectory: '$(System.DefaultWorkingDirectory)/symphony/app/fbcnms-projects/magmalte'
       - task: DockerCompose@0
         displayName: Push NMS Container images to ACR
         inputs:
           containerregistrytype: 'Azure Container Registry'
           azureSubscription: ${{ parameters.acrServiceConnection }}
           azureContainerRegistry: '{"loginServer":"${{ parameters.acrName }}.azurecr.io", "id" : "/subscriptions/${{ parameters.acrSubscriptionId }}/resourceGroups/${{ parameters.acrResourceGroup }}/providers/Microsoft.ContainerRegistry/registries/${{ parameters.acrName }}"}'
-          dockerComposeFile: 'nms/fbcnms-projects/magmalte/docker-compose.yml'
+          dockerComposeFile: 'symphony/app/fbcnms-projects/magmalte/docker-compose.yml'
           projectName: $(NMS_COMPOSE_PROJECT)
           qualifyImageNames: true
           action: 'Push services'
-          currentWorkingDirectory: '$(System.DefaultWorkingDirectory)/nms/fbcnms-projects/magmalte'    
+          currentWorkingDirectory: '$(System.DefaultWorkingDirectory)/symphony/app/fbcnms-projects/magmalte'    
 
 - stage: Stage_Deploy
   jobs:
