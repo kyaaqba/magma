@@ -62,7 +62,7 @@ stages:
         inputs:
           scriptSource: 'filePath'
           scriptPath: 'orc8r/cloud/docker/build.py'
-          arguments: '-c'
+          arguments: '-a --parallel'
           workingDirectory: 'orc8r/cloud/docker'
       - task: DockerCompose@0
         displayName: Build Magma Cache image
