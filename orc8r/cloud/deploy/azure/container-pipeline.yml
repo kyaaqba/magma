@@ -183,6 +183,16 @@ stages:
           deploy:
             steps:
             - script: echo "Insert AKS Stage deploy..."
+            - task: HelmDeploy@0
+              inputs:
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceConnection: 'SonarEricDevAKS'
+                namespace: 'magma-stage'
+                command: 'upgrade'
+                chartType: 'FilePath'
+                chartPath: 'orc8r/cloud/helm/orc8r'
+                releaseName: 'orc8r'
+                valueFile: 'orc8r/cloud/helm/orc8r/vals.yml'
 
 - stage: Prod_Deploy
   jobs:
