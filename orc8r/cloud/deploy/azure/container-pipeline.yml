@@ -28,7 +28,7 @@ variables:
   - name: PWD
     value: $(Build.SourcesDirectory)/orc8r/cloud/docker
   - name: ImageVersion
-    value: v1.0.1
+    value: v1.0.2
   - name: COMPOSE_PROJECT
     value: orc8r
   - name: NMS_COMPOSE_PROJECT
