@@ -148,14 +148,16 @@ stages:
         displayName: Push Magma Containers to ACR
         inputs:
           containerregistrytype: 'Azure Container Registry'
-          azureSubscription: ${{ parameters.acrServiceConnection }}
+          azureSubscription: '${{ parameters.acrServiceConnection }}'
           azureContainerRegistry: '{"loginServer":"${{ parameters.acrName }}.azurecr.io", "id" : "/subscriptions/${{ parameters.acrSubscriptionId }}/resourceGroups/${{ parameters.acrResourceGroup }}/providers/Microsoft.ContainerRegistry/registries/${{ parameters.acrName }}"}'
           dockerComposeFile: 'orc8r/cloud/docker/docker-compose.yml'
           additionalDockerComposeFiles: |
             ./docker-compose.override.yml
             ./docker-compose.metrics.yml
-          projectName: $(COMPOSE_PROJECT)
+          projectName: '$(COMPOSE_PROJECT)'
           action: 'Push services'
+          additionalImageTags: '$(ImageVersion)'
+          includeLatestTag: true
           currentWorkingDirectory: '$(System.DefaultWorkingDirectory)/orc8r/cloud/docker'
       - task: DockerCompose@0
         displayName: Build NMS Container images
@@ -167,19 +169,20 @@ stages:
           projectName: $(NMS_COMPOSE_PROJECT)
           qualifyImageNames: true
           action: 'Build services'
-          additionalImageTags: 'v1.0.1'
+          additionalImageTags: '$(ImageVersion)'
           currentWorkingDirectory: '$(System.DefaultWorkingDirectory)/symphony/app/fbcnms-projects/magmalte'
       - task: DockerCompose@0
         displayName: Push NMS Container images to ACR
         inputs:
           containerregistrytype: 'Azure Container Registry'
-          azureSubscription: ${{ parameters.acrServiceConnection }}
+          azureSubscription: '${{ parameters.acrServiceConnection }}'
           azureContainerRegistry: '{"loginServer":"${{ parameters.acrName }}.azurecr.io", "id" : "/subscriptions/${{ parameters.acrSubscriptionId }}/resourceGroups/${{ parameters.acrResourceGroup }}/providers/Microsoft.ContainerRegistry/registries/${{ parameters.acrName }}"}'
           dockerComposeFile: 'symphony/app/fbcnms-projects/magmalte/docker-compose.yml'
-          projectName: $(NMS_COMPOSE_PROJECT)
-          qualifyImageNames: true
+          projectName: '$(NMS_COMPOSE_PROJECT)'
           action: 'Push services'
-          currentWorkingDirectory: '$(System.DefaultWorkingDirectory)/symphony/app/fbcnms-projects/magmalte'    
+          additionalImageTags: '$(ImageVersion)'
+          includeLatestTag: true
+          currentWorkingDirectory: '$(System.DefaultWorkingDirectory)/symphony/app/fbcnms-projects/magmalte'
 
 - stage: Stage_Deploy
   jobs:
