@@ -68,9 +68,9 @@ stages:
         inputs:
           script: |
             echo "Setting execute permissions..."
-            chmod u+x controller/create_test_controller_certs
-            chmod u+x proxy/create_test_proxy_certs
-            chmod u+x proxy/run_nghttpx.py
+            chmod +x controller/create_test_controller_certs
+            chmod +x proxy/create_test_proxy_certs
+            chmod +x proxy/run_nghttpx.py
             echo "Execute permissions set!"
           workingDirectory: 'orc8r/cloud/docker'
           failOnStderr: true
