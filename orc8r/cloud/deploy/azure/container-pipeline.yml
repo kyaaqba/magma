@@ -64,6 +64,16 @@ stages:
           scriptPath: 'orc8r/cloud/docker/build.py'
           arguments: '-a --parallel'
           workingDirectory: 'orc8r/cloud/docker'
+      - task: CmdLine@2
+        inputs:
+          script: |
+            echo "Setting execute permissions..."
+            chmod u+x controller/create_test_controller_certs
+            chmod u+x proxy/create_test_proxy_certs
+            chmod u+x proxy/run_nghttpx.py
+            echo "Execute permissions set!"
+          workingDirectory: 'orc8r/cloud/docker'
+          failOnStderr: true
       - task: DockerCompose@0
         displayName: Build Magma Cache image
         inputs:
