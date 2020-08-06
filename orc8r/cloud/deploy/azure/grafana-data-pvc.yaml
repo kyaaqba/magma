@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data-azurefile
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: azurefile-sc
+  resources:
+    requests:
+      storage: 2Gi

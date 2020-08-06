@@ -1,0 +1,157 @@
+imagePullSecrets: []
+
+secrets:
+  create: true
+secret:
+  certs: orc8r-secrets-certs
+  configs:
+    orc8r: orc8r-secrets-configs-orc8r
+  envdir: orc8r-secrets-envdir
+
+proxy:
+  podDisruptionBudget:
+    enabled: true
+  image:
+    repository: sonarregistry.azurecr.io/orc8r_proxy
+    tag: "latest"
+    pullPolicy: Always
+  replicas: 2
+  service:
+    enabled: true
+    legacyEnabled: true
+    extraAnnotations:
+      bootstrapLagacy:
+        external-dns.alpha.kubernetes.io/hostname: bootstrapper-controller.stage.sonar.com
+      clientcertLegacy:
+        external-dns.alpha.kubernetes.io/hostname: controller.stage.sonar.com,api.stage.sonar.com
+    name: orc8r-bootstrap-legacy
+    type: LoadBalancer
+  spec:
+    hostname: controller.stage.sonar.com
+    http_proxy_docker_hostname: "orc8r-proxy"
+
+controller:
+  podDisruptionBudget:
+    enabled: true
+  image:
+    repository: sonarregistry.azurecr.io/orc8r_controller
+    tag: "latest"
+    pullPolicy: Always
+  replicas: 2
+  spec:
+    database:
+      db: orc8r
+      host: orc8r-postgresqldb-03.postgres.database.azure.com
+      port: 5432
+      user: magma_dev@orc8r-postgresqldb-03
+      pass: Sonar_SFT_654321!!
+
+metrics:
+  imagePullSecrets: []
+  metrics:
+    volumes:
+      prometheusData:
+        volumeSpec:
+          persistentVolumeClaim:
+            claimName: prometheus-data-azurefile
+      prometheusConfig:
+        volumeSpec:
+          persistentVolumeClaim:
+            claimName: prometheus-cfg-azurefile
+
+  prometheus:
+    create: true
+    includeOrc8rAlerts: true
+    prometheusCacheHostname: orc8r-prometheus-cache
+    alertmanagerHostname: orc8r-alertmanager
+
+  alertmanager:
+    create: true
+
+  prometheusConfigurer:
+    create: true
+    image:
+      repository: sonarregistry.azurecr.io/orc8r_prometheus-configurer
+      tag: "latest"
+    prometheusURL: orc8r-prometheus:9090
+
+  alertmanagerConfigurer:
+    create: true
+    image:
+      repository: sonarregistry.azurecr.io/orc8r_alertmanager-configurer
+      tag: "latest"
+    alertmanagerURL: orc8r-alertmanager:9093
+
+  prometheusCache:
+    create: true
+    image:
+      repository: sonarregistry.azurecr.io/orc8r_prometheus-cache
+      tag: "latest"
+    limit: 500000
+  grafana:
+    create: false
+
+  userGrafana:
+    image:
+      repository: docker.io/grafana/grafana
+      tag: 6.6.2
+    create: true
+    volumes:
+      datasources:
+        persistentVolumeClaim:
+          claimName: grafana-datasources-azurefile
+      dashboardproviders:
+        persistentVolumeClaim:
+          claimName: grafana-providers-azurefile
+      dashboards:
+        persistentVolumeClaim:
+          claimName: grafana-dashboards-azurefile
+      grafanaData:
+        persistentVolumeClaim:
+          claimName: grafana-data-azurefile
+
+nms:
+  enabled: false
+
+  imagePullSecrets: []
+
+  secret:
+    certs: ${nms_certs_secret}
+
+  magmalte:
+    manifests:
+      secrets: true
+      deployment: true
+      service: true
+      rbac: false
+
+    image:
+      repository: ${docker_registry}/magmalte
+      tag: "${docker_tag}"
+
+    env:
+      api_host: ${controller_hostname}
+      mysql_host: ${nms_db_host}
+      mysql_user: ${nms_db_user}
+      grafana_address: ${user_grafana_hostname}
+
+  nginx:
+    manifests:
+      configmap: true
+      secrets: true
+      deployment: true
+      service: true
+      rbac: false
+
+    service:
+      type: LoadBalancer
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: "${nms_hostname}"
+
+    deployment:
+      spec:
+        ssl_cert_name: controller.crt
+        ssl_cert_key_name: controller.key
+
+logging:
+  enabled: false

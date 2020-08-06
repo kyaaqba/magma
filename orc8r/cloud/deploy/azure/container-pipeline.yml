@@ -7,19 +7,35 @@ parameters:
   - name: acrSubscriptionId
     displayName: Azure Container Registry Subscription Id
     type: string
-    default: df72d7e7-e980-42e2-8be9-e89f702836b6
+    default: 53d25eb2-0006-42be-bc4b-27a5906cf9ce
   - name: acrResourceGroup
     displayName: Azure Container Registry Resource Group
     type: string
-    default: sonar
+    default: sonar-prod-magma
   - name: acrName
     displayName: Azure Container Registry Name
     type: string
-    default: alexsonar
+    default: SonarRegistry
+  - name: aksName
+    displayName: Azure Kubernetes Service Name
+    type: string
+    default: magma-aks
+  - name: aksNamespace
+    displayName: Azure Kubernetes Service Namespace
+    type: string
+    default: magma-stage
+  - name: helmValsFilepath
+    displayName: Helm Values Filepath
+    type: string
+    default: orc8r/cloud/helm/orc8r/vals-stage.yml
   - name: acrServiceConnection
     displayName: Azure Container Registry Service Connection
     type: string
-    default: Alex - Subscription    
+    default: sonar-prod-magma
+  - name: aksServiceConnection
+    displayName: Azure Kubernetes Service Connection
+    type: string
+    default: sonar-prod-magma-aks
 
 trigger:
 - master
@@ -28,7 +44,7 @@ variables:
   - name: PWD
     value: $(Build.SourcesDirectory)/orc8r/cloud/docker
   - name: ImageVersion
-    value: v1.0.2
+    value: v1.1.0
   - name: COMPOSE_PROJECT
     value: orc8r
   - name: NMS_COMPOSE_PROJECT
@@ -64,16 +80,6 @@ stages:
           scriptPath: 'orc8r/cloud/docker/build.py'
           arguments: '-a --parallel'
           workingDirectory: 'orc8r/cloud/docker'
-      - task: CmdLine@2
-        inputs:
-          script: |
-            echo "Setting execute permissions..."
-            chmod +x controller/create_test_controller_certs
-            chmod +x proxy/create_test_proxy_certs
-            chmod +x proxy/run_nghttpx.py
-            echo "Execute permissions set!"
-          workingDirectory: 'orc8r/cloud/docker'
-          failOnStderr: true
       - task: DockerCompose@0
         displayName: Build Magma Cache image
         inputs:
@@ -167,7 +173,7 @@ stages:
           projectName: $(NMS_COMPOSE_PROJECT)
           qualifyImageNames: true
           action: 'Build services'
-          additionalImageTags: 'v1.0.1'
+          additionalImageTags: 'v1.1.0'
           currentWorkingDirectory: '$(System.DefaultWorkingDirectory)/symphony/app/fbcnms-projects/magmalte'
       - task: DockerCompose@0
         displayName: Push NMS Container images to ACR
@@ -184,7 +190,7 @@ stages:
 - stage: Stage_Deploy
   jobs:
     - deployment: Stage
-      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/${{ variables.STAGE_BRANCH_PREFIX }}/'))
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/${{ variables.STAGE_BRANCH_PREFIX }}'))
       pool:
         vmImage: 'ubuntu-latest'
       environment: Magma_Stage
@@ -192,7 +198,103 @@ stages:
         runOnce:
           deploy:
             steps:
+            - checkout: self
             - script: echo "Insert AKS Stage deploy..."
+            - task: HelmInstaller@1
+              inputs:
+                helmVersionToInstall: '3.2.4'
+            - task: KubectlInstaller@0
+              inputs:
+                kubectlVersion: 'latest'
+            # - task: Kubernetes@1
+            #   inputs:
+            #     connectionType: 'Azure Resource Manager'
+            #     azureSubscriptionEndpoint: '${{ parameters.acrServiceConnection }}'
+            #     azureResourceGroup: '${{ parameters.acrResourceGroup }}'
+            #     kubernetesCluster: '${{ parameters.aksName }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     command: 'apply'
+            #     arguments: '-f orc8r/cloud/deploy/azure/azurefile-sc.yaml'
+            #     secretType: 'dockerRegistry'
+            #     containerRegistryType: 'Azure Container Registry'
+            - task: Kubernetes@1
+              inputs:
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceEndpoint: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                command: 'apply'
+                arguments: '-f orc8r/cloud/deploy/azure/azurefile-sc.yaml'
+                secretType: 'dockerRegistry'
+                containerRegistryType: 'Azure Container Registry'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/prometheus-cfg-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/prometheus-data-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/grafana-dashboards-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/grafana-data-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/grafana-datasources-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/grafana-providers-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/openvpn-pvc.yaml'
+            # - task: HelmDeploy@0
+            #   inputs:
+            #     connectionType: 'Azure Resource Manager'
+            #     azureSubscription: '${{ parameters.acrServiceConnection }}'
+            #     azureResourceGroup: '${{ parameters.acrResourceGroup }}'
+            #     kubernetesCluster: '${{ parameters.aksName }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     command: 'upgrade'
+            #     chartType: 'FilePath'
+            #     chartPath: 'orc8r/cloud/helm/orc8r'
+            #     releaseName: 'orc8r'
+            #     valueFile: 'orc8r/cloud/helm/orc8r/vals2.yml'
+            # - task: PythonScript@0
+            #   inputs:
+            #     scriptSource: 'filePath'
+            #     scriptPath: 'orc8r/cloud/deploy/terraform/orc8r-helm-aws/scripts/create_orc8r_secrets.py'
+            #     arguments: 'orc8r-secrets us-west-2 /orc8r/cloud/helm/orc8r/charts/secrets/certs'
+            - task: HelmDeploy@0
+              inputs:
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                command: 'upgrade'
+                chartType: 'FilePath'
+                chartPath: 'orc8r/cloud/helm/orc8r'
+                releaseName: 'orc8r'
+                valueFile: '${{ parameters.helmValsFilepath }}'
 
 - stage: Prod_Deploy
   jobs:
