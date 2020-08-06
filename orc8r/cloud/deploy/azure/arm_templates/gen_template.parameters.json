@@ -12,7 +12,7 @@
       "value": "Sonar_SFT_654321!!"
     },
     "postgresql_db_server_name": {
-        "value":"orc8r-postgresqldb-01"
+        "value":"orc8r-postgresqldb-03"
     },
     "mariadb_admin_login": {
       "value": "magma_dev"
@@ -21,10 +21,10 @@
       "value": "Sonar_SFT_654321!!"
     },
     "maria_db_server_name": {
-        "value": "orc8r-mariadbserver-01"
+        "value": "orc8r-mariadbserver-03"
     },
     "virtualNetwork_resourceGroup": {
-      "value": "<INSERT NETWORK RESOURCE GROUP NAME>"
+      "value": "sonar-prod-magma"
     },
     "virtualNetwork_name": {
       "value": "orc8r-vnet-01"
@@ -39,28 +39,58 @@
       "value": "magma-aks"
     },
     "aks_subnetRoleAssignmentName": {
-      "value": "<INSERT UNIQUE NAME FOR ROLE ASSIGNMENT>"
+      "value": "ae9fc887-a9da-45f7-b8da-6e9f4075dd9e"
     },
     "aks_servicePrincipalObjectId": {
-      "value": "<INSERT SERVICE PRINCIPAL OBJECT ID FOR CLUSTER IDENTITY>"
+      "reference": {
+        "keyVault": {
+        "id": "/subscriptions/53d25eb2-0006-42be-bc4b-27a5906cf9ce/resourceGroups/sonar-prod-magma/providers/Microsoft.KeyVault/vaults/sonar-prod-magma-01"
+        },
+        "secretName": "ServicePrincipalObjectId"
+      }
     },
     "aks_servicePrincipalClientId": {
-      "value": "<INSERT SERVICE PRINCIPAL CLIENT ID FOR CLUSTER IDENTITY>"
+      "reference": {
+        "keyVault": {
+        "id": "/subscriptions/53d25eb2-0006-42be-bc4b-27a5906cf9ce/resourceGroups/sonar-prod-magma/providers/Microsoft.KeyVault/vaults/sonar-prod-magma-01"
+        },
+        "secretName": "ServicePrincipalClientId"
+      }
     },
     "aks_servicePrincipalClientSecret": {
-      "value": "<INSERT SERVICE PRINCIPAL CLIENT SECRET FOR CLUSTER IDENTITY>"
+      "reference": {
+        "keyVault": {
+        "id": "/subscriptions/53d25eb2-0006-42be-bc4b-27a5906cf9ce/resourceGroups/sonar-prod-magma/providers/Microsoft.KeyVault/vaults/sonar-prod-magma-01"
+        },
+        "secretName": "ServicePrincipalSecret"
+      }
     },
     "aks_AAD_ClientAppID": {
-      "value": "<INSERT CLIENT APP CLIENT ID FOR AAD AUTH>"
+      "reference": {
+        "keyVault": {
+        "id": "/subscriptions/53d25eb2-0006-42be-bc4b-27a5906cf9ce/resourceGroups/sonar-prod-magma/providers/Microsoft.KeyVault/vaults/sonar-prod-magma-01"
+        },
+        "secretName": "ClientAppId"
+      }
     },
     "aks_AAD_ServerAppID": {
-      "value": "<INSERT SERVER APP CLIENT ID FOR AAD AUTH>"
+      "reference": {
+        "keyVault": {
+        "id": "/subscriptions/53d25eb2-0006-42be-bc4b-27a5906cf9ce/resourceGroups/sonar-prod-magma/providers/Microsoft.KeyVault/vaults/sonar-prod-magma-01"
+        },
+        "secretName": "ServerAppId"
+      }
     },
     "aks_AAD_TenantID": {
-      "value": "<INSERT AAD TENANT ID FOR AAD AUTH>"
+      "value": "1c68ef4b-f2e1-4bbf-b44a-4aae3cc3d70f"
     },
     "aks_AAD_ServerAppSecret": {
-      "value": "<INSERT SERVER APP CLIENT SECRET FOR AAD AUTH>"
+      "reference": {
+        "keyVault": {
+        "id": "/subscriptions/53d25eb2-0006-42be-bc4b-27a5906cf9ce/resourceGroups/sonar-prod-magma/providers/Microsoft.KeyVault/vaults/sonar-prod-magma-01"
+        },
+        "secretName": "ServerAppSecret"
+      }
     },
     "aks_serviceCidr": {
       "value": "20.0.0.0/16"
@@ -69,7 +99,7 @@
       "value": "20.0.0.10"
     },
     "aks_nodeResourceGroup": {
-      "value": "<INSERT NAME OF AKS BACKING RESOURCE GROUP>"
+      "value": "sonar-prod-magma-nodes"
     }
   }
 }

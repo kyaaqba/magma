@@ -40,7 +40,7 @@
         },
         "postgresdb_database_name": {
             "type": "string",
-            "defaultValue": "magma"
+            "defaultValue": "orc8r"
         },
         "virtualNetwork_resourceGroup": {
             "type": "string"
@@ -78,7 +78,7 @@
             }
         },
         "aks_kubernetesVersion": {
-            "defaultValue": "1.15.10",
+            "defaultValue": "1.18.4",
             "type": "string",
             "metadata": {
                 "description": "The version of Kubernetes."
@@ -297,7 +297,8 @@
                     "authorizedIPRanges": [],
                     "enablePrivateCluster": "[parameters('aks_enablePrivateCluster')]"
                 },
-                "nodeResourceGroup": "[if(empty(parameters('aks_nodeResourceGroup')), json('null'), parameters('nodeResourceGroup'))]"
+                //"nodeResourceGroup": "sonar-prod-magma-mc"
+                "nodeResourceGroup": "[parameters('aks_nodeResourceGroup')]"
             }
         },
         {
