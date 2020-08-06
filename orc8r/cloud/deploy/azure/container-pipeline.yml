@@ -28,7 +28,7 @@ variables:
   - name: PWD
     value: $(Build.SourcesDirectory)/orc8r/cloud/docker
   - name: ImageVersion
-    value: v1.0.1
+    value: v1.0.2
   - name: COMPOSE_PROJECT
     value: orc8r
   - name: NMS_COMPOSE_PROJECT
@@ -64,6 +64,16 @@ stages:
           scriptPath: 'orc8r/cloud/docker/build.py'
           arguments: '-a --parallel'
           workingDirectory: 'orc8r/cloud/docker'
+      - task: CmdLine@2
+        inputs:
+          script: |
+            echo "Setting execute permissions..."
+            chmod +x controller/create_test_controller_certs
+            chmod +x proxy/create_test_proxy_certs
+            chmod +x proxy/run_nghttpx.py
+            echo "Execute permissions set!"
+          workingDirectory: 'orc8r/cloud/docker'
+          failOnStderr: true
       - task: DockerCompose@0
         displayName: Build Magma Cache image
         inputs:
@@ -196,4 +206,3 @@ stages:
           deploy:
             steps:
             - script: echo "Insert AKS Prod deploy..."
-
