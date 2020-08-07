@@ -296,13 +296,22 @@ stages:
                 azureSubscription: 'sonar-prod-magma'
                 scriptType: 'bash'
                 scriptLocation: 'scriptPath'
-                scriptPath: 'orc8r/cloud/deploy/azure/get-cert.sh'
+                scriptPath: '
                 failOnStandardError: true
-            - task: CmdLine@2
+            - task: AzureCLI@2
               inputs:
-                script: |
-                  cat downloaded-file2.txt
-                failOnStderr: true
+                azureSubscription: 'sonar-prod-magma'
+                scriptType: 'bash'
+                scriptLocation: 'scriptPath'
+                scriptPath: 'orc8r/cloud/deploy/scripts/fetch-certs.sh'
+                arguments: '$(SSLKeyPassword) https://sonar-prod-magma-01.vault.azure.net/secrets/sonarlte-com/dabfd633beb74baea2dfefcd57a806cc sonar-prod-magma-01'
+                failOnStandardError: true'
+            # - task: CmdLine@2
+            #   inputs:
+            #     script: |
+            #       cat downloaded-file2.txt
+
+            #     failOnStderr: true
             # - task: CmdLine@2
             #   inputs:
             #     script: |
