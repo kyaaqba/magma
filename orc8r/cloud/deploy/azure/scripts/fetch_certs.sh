@@ -1,3 +1,6 @@
+mkdir orc8r/cloud/helm/orc8r/charts/secrets/certs
+cd orc8r/cloud/helm/orc8r/charts/secrets/certs
+
 echo "Downloading pfx (no password) from Key vault..."
 az keyvault secret download -f sonar-nopass.pfx --vault-name $3 --id $2 --encoding base64
 
