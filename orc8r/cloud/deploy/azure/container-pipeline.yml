@@ -291,13 +291,13 @@ stages:
                 KeyVaultName: 'sonar-prod-magma-01'
                 SecretsFilter: '*'
                 RunAsPreJob: true
-            - task: AzureCLI@2
-              inputs:
-                azureSubscription: 'sonar-prod-magma'
-                scriptType: 'bash'
-                scriptLocation: 'scriptPath'
-                scriptPath: '
-                failOnStandardError: true
+            # - task: AzureCLI@2
+            #   inputs:
+            #     azureSubscription: 'sonar-prod-magma'
+            #     scriptType: 'bash'
+            #     scriptLocation: 'scriptPath'
+            #     scriptPath: 'orc8r/cloud/deploy/scripts/fetch-certs.sh'
+            #     failOnStandardError: true
             - task: AzureCLI@2
               inputs:
                 azureSubscription: 'sonar-prod-magma'
@@ -305,7 +305,12 @@ stages:
                 scriptLocation: 'scriptPath'
                 scriptPath: 'orc8r/cloud/deploy/scripts/fetch-certs.sh'
                 arguments: '$(SSLKeyPassword) https://sonar-prod-magma-01.vault.azure.net/secrets/sonarlte-com/dabfd633beb74baea2dfefcd57a806cc sonar-prod-magma-01'
-                failOnStandardError: true'
+                failOnStandardError: true
+            - task: CmdLine@2
+              inputs:
+                script: |
+                  ls -lh
+                failOnStderr: true
             # - task: CmdLine@2
             #   inputs:
             #     script: |
