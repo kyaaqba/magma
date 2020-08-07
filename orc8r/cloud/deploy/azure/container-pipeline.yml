@@ -291,16 +291,16 @@ stages:
                 KeyVaultName: 'sonar-prod-magma-01'
                 SecretsFilter: '*'
                 RunAsPreJob: true
-            - task: HelmDeploy@0
-              inputs:
-                connectionType: 'Kubernetes Service Connection'
-                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-                namespace: '${{ parameters.aksNamespace }}'
-                command: 'upgrade'
-                chartType: 'FilePath'
-                chartPath: 'orc8r/cloud/helm/orc8r'
-                releaseName: 'orc8r'
-                valueFile: '${{ parameters.helmValsFilepath }}'
+            # - task: HelmDeploy@0
+            #   inputs:
+            #     connectionType: 'Kubernetes Service Connection'
+            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     command: 'upgrade'
+            #     chartType: 'FilePath'
+            #     chartPath: 'orc8r/cloud/helm/orc8r'
+            #     releaseName: 'orc8r'
+            #     valueFile: '${{ parameters.helmValsFilepath }}'
 
 - stage: Prod_Deploy
   jobs:
