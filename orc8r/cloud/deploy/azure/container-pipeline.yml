@@ -217,57 +217,57 @@ stages:
             #     arguments: '-f orc8r/cloud/deploy/azure/azurefile-sc.yaml'
             #     secretType: 'dockerRegistry'
             #     containerRegistryType: 'Azure Container Registry'
-            - task: Kubernetes@1
-              inputs:
-                connectionType: 'Kubernetes Service Connection'
-                kubernetesServiceEndpoint: '${{ parameters.aksServiceConnection }}'
-                namespace: '${{ parameters.aksNamespace }}'
-                command: 'apply'
-                arguments: '-f orc8r/cloud/deploy/azure/azurefile-sc.yaml'
-                secretType: 'dockerRegistry'
-                containerRegistryType: 'Azure Container Registry'
-            - task: KubernetesManifest@0
-              inputs:
-                action: 'deploy'
-                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-                namespace: '${{ parameters.aksNamespace }}'
-                manifests: 'orc8r/cloud/deploy/azure/prometheus-cfg-pvc.yaml'
-            - task: KubernetesManifest@0
-              inputs:
-                action: 'deploy'
-                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-                namespace: '${{ parameters.aksNamespace }}'
-                manifests: 'orc8r/cloud/deploy/azure/prometheus-data-pvc.yaml'
-            - task: KubernetesManifest@0
-              inputs:
-                action: 'deploy'
-                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-                namespace: '${{ parameters.aksNamespace }}'
-                manifests: 'orc8r/cloud/deploy/azure/grafana-dashboards-pvc.yaml'
-            - task: KubernetesManifest@0
-              inputs:
-                action: 'deploy'
-                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-                namespace: '${{ parameters.aksNamespace }}'
-                manifests: 'orc8r/cloud/deploy/azure/grafana-data-pvc.yaml'
-            - task: KubernetesManifest@0
-              inputs:
-                action: 'deploy'
-                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-                namespace: '${{ parameters.aksNamespace }}'
-                manifests: 'orc8r/cloud/deploy/azure/grafana-datasources-pvc.yaml'
-            - task: KubernetesManifest@0
-              inputs:
-                action: 'deploy'
-                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-                namespace: '${{ parameters.aksNamespace }}'
-                manifests: 'orc8r/cloud/deploy/azure/grafana-providers-pvc.yaml'
-            - task: KubernetesManifest@0
-              inputs:
-                action: 'deploy'
-                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-                namespace: '${{ parameters.aksNamespace }}'
-                manifests: 'orc8r/cloud/deploy/azure/openvpn-pvc.yaml'
+            # - task: Kubernetes@1
+            #   inputs:
+            #     connectionType: 'Kubernetes Service Connection'
+            #     kubernetesServiceEndpoint: '${{ parameters.aksServiceConnection }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     command: 'apply'
+            #     arguments: '-f orc8r/cloud/deploy/azure/azurefile-sc.yaml'
+            #     secretType: 'dockerRegistry'
+            #     containerRegistryType: 'Azure Container Registry'
+            # - task: KubernetesManifest@0
+            #   inputs:
+            #     action: 'deploy'
+            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     manifests: 'orc8r/cloud/deploy/azure/prometheus-cfg-pvc.yaml'
+            # - task: KubernetesManifest@0
+            #   inputs:
+            #     action: 'deploy'
+            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     manifests: 'orc8r/cloud/deploy/azure/prometheus-data-pvc.yaml'
+            # - task: KubernetesManifest@0
+            #   inputs:
+            #     action: 'deploy'
+            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     manifests: 'orc8r/cloud/deploy/azure/grafana-dashboards-pvc.yaml'
+            # - task: KubernetesManifest@0
+            #   inputs:
+            #     action: 'deploy'
+            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     manifests: 'orc8r/cloud/deploy/azure/grafana-data-pvc.yaml'
+            # - task: KubernetesManifest@0
+            #   inputs:
+            #     action: 'deploy'
+            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     manifests: 'orc8r/cloud/deploy/azure/grafana-datasources-pvc.yaml'
+            # - task: KubernetesManifest@0
+            #   inputs:
+            #     action: 'deploy'
+            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     manifests: 'orc8r/cloud/deploy/azure/grafana-providers-pvc.yaml'
+            # - task: KubernetesManifest@0
+            #   inputs:
+            #     action: 'deploy'
+            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+            #     namespace: '${{ parameters.aksNamespace }}'
+            #     manifests: 'orc8r/cloud/deploy/azure/openvpn-pvc.yaml'
             # - task: HelmDeploy@0
             #   inputs:
             #     connectionType: 'Azure Resource Manager'
