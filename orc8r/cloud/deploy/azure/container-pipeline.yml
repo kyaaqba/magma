@@ -294,9 +294,9 @@ stages:
             - task: AzureCLI@2
               inputs:
                 azureSubscription: 'sonar-prod-magma'
-                scriptType: 'ps'
+                scriptType: 'bash'
                 scriptLocation: 'scriptPath'
-                scriptPath: 'orc8r/cloud/deploy/azure/get-cert.ps1'
+                scriptPath: 'orc8r/cloud/deploy/azure/get-cert.sh'
                 failOnStandardError: true
             # - task: CmdLine@2
             #   inputs:
