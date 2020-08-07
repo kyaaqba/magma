@@ -50,7 +50,7 @@ variables:
   - name: NMS_COMPOSE_PROJECT
     value: magmalte    
   - name: STAGE_BRANCH_PREFIX
-    value: stage
+    value: azure-deployment
   - name: PROD_BRANCH
     value: azure-pipelines
 
