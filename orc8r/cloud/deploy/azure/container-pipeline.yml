@@ -285,22 +285,16 @@ stages:
             #     scriptSource: 'filePath'
             #     scriptPath: 'orc8r/cloud/deploy/terraform/orc8r-helm-aws/scripts/create_orc8r_secrets.py'
             #     arguments: 'orc8r-secrets us-west-2 /orc8r/cloud/helm/orc8r/charts/secrets/certs'
-            - task: AzureKeyVault@1
+            - task: HelmDeploy@0
               inputs:
-                azureSubscription: 'sonar-prod-magma'
-                KeyVaultName: 'sonar-prod-magma-01'
-                SecretsFilter: '*'
-                RunAsPreJob: true
-            # - task: HelmDeploy@0
-            #   inputs:
-            #     connectionType: 'Kubernetes Service Connection'
-            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     command: 'upgrade'
-            #     chartType: 'FilePath'
-            #     chartPath: 'orc8r/cloud/helm/orc8r'
-            #     releaseName: 'orc8r'
-            #     valueFile: '${{ parameters.helmValsFilepath }}'
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                command: 'upgrade'
+                chartType: 'FilePath'
+                chartPath: 'orc8r/cloud/helm/orc8r'
+                releaseName: 'orc8r'
+                valueFile: '${{ parameters.helmValsFilepath }}'
 
 - stage: Prod_Deploy
   jobs:
