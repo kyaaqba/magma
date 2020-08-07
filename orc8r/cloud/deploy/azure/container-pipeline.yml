@@ -302,6 +302,7 @@ stages:
             - task: CmdLine@2
               inputs:
                 script: |
+                  cd orc8r/cloud/helm/orc8r/charts/secrets/certs
                   ls -lh
                 failOnStderr: true
             # - task: CmdLine@2
