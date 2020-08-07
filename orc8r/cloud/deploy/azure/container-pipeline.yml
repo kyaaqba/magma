@@ -303,7 +303,7 @@ stages:
               inputs:
                 script: |
                   cd orc8r/cloud/helm/orc8r/charts/secrets/certs
-                  apt-get install dos2unix
+                  sudo apt-get install dos2unix
                   dos2unix ../../../../../deploy/scripts/create_application_certs.sh
                   bash ../../../../../deploy/scripts/create_application_certs.sh sonarlte.com
                   ls -lh
