@@ -14,7 +14,7 @@ echo "Extracting private key from pfx..."
 openssl pkcs12 -in sonar-lte.pfx -nocerts -out controller.key -passin pass:"$1" -passout pass:"$1"
 
 echo "Decrypting private key..."
-openssl rsa -in sonar-lte.key -out controller-decrypted.key -passin pass:"$1"
+openssl rsa -in controller.key -out controller-decrypted.key -passin pass:"$1"
 
 echo "Extracting public certificate from pfx..."
 openssl pkcs12 -in sonar-lte.pfx -clcerts -nokeys -out controller.crt -password pass:"$1"
