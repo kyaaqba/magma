@@ -1,4 +1,4 @@
-echo "Downloading pfx from Key vault with no password..."
+echo "Downloading pfx (no password) from Key vault..."
 az keyvault secret download -f sonar-nopass.pfx --vault-name $3 --id $2 --encoding base64
 
 echo "Converting pfx (no password) to pem format..."
