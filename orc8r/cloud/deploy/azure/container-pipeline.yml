@@ -308,12 +308,12 @@ stages:
             #       bash ../../../../../deploy/scripts/create_application_certs.sh sonarlte.com
             #       ls -lh
             #     failOnStderr: true
-            - task: Bash@3
-              inputs:
-                filePath: 'orc8r/cloud/deploy/scripts/create_application_certs.sh'
-                arguments: 'sonarlte.com'
-                workingDirectory: 'orc8r/cloud/helm/orc8r/charts/secrets/certs'
-                failOnStderr: true
+            # - task: Bash@3
+            #   inputs:
+            #     filePath: 'orc8r/cloud/deploy/scripts/create_application_certs.sh'
+            #     arguments: 'sonarlte.com'
+            #     workingDirectory: 'orc8r/cloud/helm/orc8r/charts/secrets/certs'
+            #     failOnStderr: true
             # - task: CmdLine@2
             #   inputs:
             #     script: |

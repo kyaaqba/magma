@@ -82,6 +82,6 @@ echo "Extracting private key from pfx..."
 openssl pkcs12 -in bootstrapper.pfx -nocerts -out bootstrapper-encrypted.key -passin pass:"$1" -passout pass:"$1"
 
 echo "Decrypting private key..."
-openssl rsa -in bootstrapper.key -out bootstrapper.key -passin pass:"$1"
+openssl rsa -in bootstrapper-encrypted.key -out bootstrapper.key -passin pass:"$1"
 
 echo "*************************************"
