@@ -205,86 +205,58 @@ stages:
                 helmVersionToInstall: '3.2.4'
             - task: KubectlInstaller@0
               inputs:
-                kubectlVersion: 'latest'            
-            # - task: Kubernetes@1
-            #   inputs:
-            #     connectionType: 'Azure Resource Manager'
-            #     azureSubscriptionEndpoint: '${{ parameters.acrServiceConnection }}'
-            #     azureResourceGroup: '${{ parameters.acrResourceGroup }}'
-            #     kubernetesCluster: '${{ parameters.aksName }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     command: 'apply'
-            #     arguments: '-f orc8r/cloud/deploy/azure/azurefile-sc.yaml'
-            #     secretType: 'dockerRegistry'
-            #     containerRegistryType: 'Azure Container Registry'
-            # - task: Kubernetes@1
-            #   inputs:
-            #     connectionType: 'Kubernetes Service Connection'
-            #     kubernetesServiceEndpoint: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     command: 'apply'
-            #     arguments: '-f orc8r/cloud/deploy/azure/azurefile-sc.yaml'
-            #     secretType: 'dockerRegistry'
-            #     containerRegistryType: 'Azure Container Registry'
-            # - task: KubernetesManifest@0
-            #   inputs:
-            #     action: 'deploy'
-            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     manifests: 'orc8r/cloud/deploy/azure/prometheus-cfg-pvc.yaml'
-            # - task: KubernetesManifest@0
-            #   inputs:
-            #     action: 'deploy'
-            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     manifests: 'orc8r/cloud/deploy/azure/prometheus-data-pvc.yaml'
-            # - task: KubernetesManifest@0
-            #   inputs:
-            #     action: 'deploy'
-            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     manifests: 'orc8r/cloud/deploy/azure/grafana-dashboards-pvc.yaml'
-            # - task: KubernetesManifest@0
-            #   inputs:
-            #     action: 'deploy'
-            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     manifests: 'orc8r/cloud/deploy/azure/grafana-data-pvc.yaml'
-            # - task: KubernetesManifest@0
-            #   inputs:
-            #     action: 'deploy'
-            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     manifests: 'orc8r/cloud/deploy/azure/grafana-datasources-pvc.yaml'
-            # - task: KubernetesManifest@0
-            #   inputs:
-            #     action: 'deploy'
-            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     manifests: 'orc8r/cloud/deploy/azure/grafana-providers-pvc.yaml'
-            # - task: KubernetesManifest@0
-            #   inputs:
-            #     action: 'deploy'
-            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     manifests: 'orc8r/cloud/deploy/azure/openvpn-pvc.yaml'
-            # - task: HelmDeploy@0
-            #   inputs:
-            #     connectionType: 'Azure Resource Manager'
-            #     azureSubscription: '${{ parameters.acrServiceConnection }}'
-            #     azureResourceGroup: '${{ parameters.acrResourceGroup }}'
-            #     kubernetesCluster: '${{ parameters.aksName }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     command: 'upgrade'
-            #     chartType: 'FilePath'
-            #     chartPath: 'orc8r/cloud/helm/orc8r'
-            #     releaseName: 'orc8r'
-            #     valueFile: 'orc8r/cloud/helm/orc8r/vals2.yml'
-            # - task: PythonScript@0
-            #   inputs:
-            #     scriptSource: 'filePath'
-            #     scriptPath: 'orc8r/cloud/deploy/terraform/orc8r-helm-aws/scripts/create_orc8r_secrets.py'
-            #     arguments: 'orc8r-secrets us-west-2 /orc8r/cloud/helm/orc8r/charts/secrets/certs'
+                kubectlVersion: 'latest'
+            - task: Kubernetes@1
+              inputs:
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceEndpoint: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                command: 'apply'
+                arguments: '-f orc8r/cloud/deploy/azure/azurefile-sc.yaml'
+                secretType: 'dockerRegistry'
+                containerRegistryType: 'Azure Container Registry'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/prometheus-cfg-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/prometheus-data-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/grafana-dashboards-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/grafana-data-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/grafana-datasources-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/grafana-providers-pvc.yaml'
+            - task: KubernetesManifest@0
+              inputs:
+                action: 'deploy'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                manifests: 'orc8r/cloud/deploy/azure/openvpn-pvc.yaml'
             - task: AzureKeyVault@1
               inputs:
                 azureSubscription: 'sonar-prod-magma'
@@ -308,33 +280,16 @@ stages:
                   # bash ../../../../../deploy/scripts/create_application_certs.sh sonarlte.com
                   ls -lh
                 failOnStderr: true
-            # - task: Bash@3
-            #   inputs:
-            #     filePath: 'orc8r/cloud/deploy/scripts/create_application_certs.sh'
-            #     arguments: 'sonarlte.com'
-            #     workingDirectory: 'orc8r/cloud/helm/orc8r/charts/secrets/certs'
-            #     failOnStderr: true
-            # - task: CmdLine@2
-            #   inputs:
-            #     script: |
-            #       cat downloaded-file2.txt
-
-            #     failOnStderr: true
-            # - task: CmdLine@2
-            #   inputs:
-            #     script: |
-            #       openssl pkcs12 -export -inkey mykey.key -in developer_identity.pem -out iphone_dev.p12 -password pass:YourPassword
-            #     failOnStderr: true
-            # - task: HelmDeploy@0
-            #   inputs:
-            #     connectionType: 'Kubernetes Service Connection'
-            #     kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
-            #     namespace: '${{ parameters.aksNamespace }}'
-            #     command: 'upgrade'
-            #     chartType: 'FilePath'
-            #     chartPath: 'orc8r/cloud/helm/orc8r'
-            #     releaseName: 'orc8r'
-            #     valueFile: '${{ parameters.helmValsFilepath }}'
+            - task: HelmDeploy@0
+              inputs:
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                command: 'upgrade'
+                chartType: 'FilePath'
+                chartPath: 'orc8r/cloud/helm/orc8r'
+                releaseName: 'orc8r'
+                valueFile: '${{ parameters.helmValsFilepath }}'
 
 - stage: Prod_Deploy
   jobs:

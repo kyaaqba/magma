@@ -21,13 +21,13 @@ proxy:
     legacyEnabled: true
     extraAnnotations:
       bootstrapLagacy:
-        external-dns.alpha.kubernetes.io/hostname: bootstrapper-controller.stage.sonar.com
+        external-dns.alpha.kubernetes.io/hostname: bootstrapper-controller.stage.sonarlte.com
       clientcertLegacy:
-        external-dns.alpha.kubernetes.io/hostname: controller.stage.sonar.com,api.stage.sonar.com
+        external-dns.alpha.kubernetes.io/hostname: controller.stage.sonarlte.com,api.stage.sonarlte.com
     name: orc8r-bootstrap-legacy
     type: LoadBalancer
   spec:
-    hostname: controller.stage.sonar.com
+    hostname: controller.stage.sonarlte.com
     http_proxy_docker_hostname: "orc8r-proxy"
 
 controller:
