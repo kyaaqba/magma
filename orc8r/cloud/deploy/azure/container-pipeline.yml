@@ -299,15 +299,15 @@ stages:
                 scriptPath: 'orc8r/cloud/deploy/azure/scripts/fetch_certs.sh'
                 arguments: '$(SSLKeyPassword) sonar-prod-magma-01'
                 failOnStandardError: false
-            # - task: CmdLine@2
-            #   inputs:
-            #     script: |
-            #       cd orc8r/cloud/helm/orc8r/charts/secrets/certs
-            #       sudo apt-get install dos2unix
-            #       sudo dos2unix ../../../../../deploy/scripts/create_application_certs.sh
-            #       bash ../../../../../deploy/scripts/create_application_certs.sh sonarlte.com
-            #       ls -lh
-            #     failOnStderr: true
+            - task: CmdLine@2
+              inputs:
+                script: |
+                  cd orc8r/cloud/helm/orc8r/charts/secrets/certs
+                  # sudo apt-get install dos2unix
+                  # sudo dos2unix ../../../../../deploy/scripts/create_application_certs.sh
+                  # bash ../../../../../deploy/scripts/create_application_certs.sh sonarlte.com
+                  ls -lh
+                failOnStderr: true
             # - task: Bash@3
             #   inputs:
             #     filePath: 'orc8r/cloud/deploy/scripts/create_application_certs.sh'
