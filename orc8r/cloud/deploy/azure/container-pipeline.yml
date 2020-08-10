@@ -298,7 +298,7 @@ stages:
                 scriptLocation: 'scriptPath'
                 scriptPath: 'orc8r/cloud/deploy/azure/scripts/fetch_certs.sh'
                 arguments: '$(SSLKeyPassword) sonar-prod-magma-01'
-                failOnStandardError: true
+                failOnStandardError: false
             # - task: CmdLine@2
             #   inputs:
             #     script: |
