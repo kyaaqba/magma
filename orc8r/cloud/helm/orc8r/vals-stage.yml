@@ -89,7 +89,7 @@ metrics:
       tag: "latest"
     limit: 500000
   grafana:
-    create: false
+    create: true
 
   userGrafana:
     image:
