@@ -1,5 +1,5 @@
-mkdir orc8r/cloud/helm/orc8r/charts/secrets/certs
-cd orc8r/cloud/helm/orc8r/charts/secrets/certs
+mkdir orc8r/cloud/helm/orc8r/charts/secrets/secrets/certs
+cd orc8r/cloud/helm/orc8r/charts/secrets/secrets/certs
 
 echo "******Acquiring Sonarlte Certificate******"
 
