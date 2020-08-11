@@ -91,3 +91,22 @@ echo "Decrypting private key..."
 openssl rsa -in bootstrapper-encrypted.key -out bootstrapper.key -passin pass:"$1"
 
 echo "*************************************"
+
+echo "Removing temporary files..."
+rm bootstrapper.pem
+rm bootstrapper.pfx
+rm bootstrapper-encrypted.key
+rm bootstrapper-nopass.pem
+rm bootstrapper-nopass.pfx
+rm certifier.pfx
+rm certifier-encrypted.key
+rm certifier-nopass.pem
+rm certifier-nopass.pfx
+rm controller-encrypted.key
+rm fluentd.pfx
+rm fluentd-encrypted.key
+rm fluentd-nopass.pem
+rm fluentd-nopass.pfx
+rm sonar-lte.pfx
+rm sonar-nopass.pem
+rm sonar-nopass.pfx
