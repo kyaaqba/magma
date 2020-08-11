@@ -13,7 +13,7 @@ echo "Converting pem to pfx with the password..."
 openssl pkcs12 -export -out sonar-lte.pfx -in sonar-nopass.pem -password pass:"$1"
 
 echo "Converting pfx (with password) to pem..."
-openssl pkcs12 -in sonar-lte.pfx -out rootCA.pem -nodes -password pass:"$1"
+openssl pkcs12 -in sonar-lte.pfx -nokeys -out rootCA.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
 openssl pkcs12 -in sonar-lte.pfx -nocerts -out controller-encrypted.key -passin pass:"$1" -passout pass:"$1"
@@ -38,7 +38,7 @@ echo "Converting pem to pfx with the password..."
 openssl pkcs12 -export -out certifier.pfx -in certifier-nopass.pem -password pass:"$1"
 
 echo "Converting pfx (with password) to pem..."
-openssl pkcs12 -in certifier.pfx -out certifier.pem -nodes -password pass:"$1"
+openssl pkcs12 -in certifier.pfx -nokeys -out certifier.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
 openssl pkcs12 -in certifier.pfx -nocerts -out certifier-encrypted.key -passin pass:"$1" -passout pass:"$1"
@@ -60,7 +60,7 @@ echo "Converting pem to pfx with the password..."
 openssl pkcs12 -export -out fluentd.pfx -in fluentd-nopass.pem -password pass:"$1"
 
 echo "Converting pfx (with password) to pem..."
-openssl pkcs12 -in fluentd.pfx -out fluentd.pem -nodes -password pass:"$1"
+openssl pkcs12 -in fluentd.pfx -nokeys -out fluentd.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
 openssl pkcs12 -in fluentd.pfx -nocerts -out fluentd-encrypted.key -passin pass:"$1" -passout pass:"$1"
@@ -82,7 +82,7 @@ echo "Converting pem to pfx with the password..."
 openssl pkcs12 -export -out bootstrapper.pfx -in bootstrapper-nopass.pem -password pass:"$1"
 
 echo "Converting pfx (with password) to pem..."
-openssl pkcs12 -in bootstrapper.pfx -out bootstrapper.pem -nodes -password pass:"$1"
+openssl pkcs12 -in bootstrapper.pfx -nokeys -out bootstrapper.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
 openssl pkcs12 -in bootstrapper.pfx -nocerts -out bootstrapper-encrypted.key -passin pass:"$1" -passout pass:"$1"
