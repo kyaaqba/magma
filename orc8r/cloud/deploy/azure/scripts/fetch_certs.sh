@@ -16,10 +16,10 @@ echo "Converting pfx (with password) to pem..."
 openssl pkcs12 -in sonar-lte.pfx -out rootCA.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
-openssl pkcs12 -in sonar-lte.pfx -nocerts -out controller.key -passin pass:"$1" -passout pass:"$1"
+openssl pkcs12 -in sonar-lte.pfx -nocerts -out controller-encrypted.key -passin pass:"$1" -passout pass:"$1"
 
-# echo "Decrypting private key..."
-# openssl rsa -in controller.key -out controller-decrypted.key -passin pass:"$1"
+echo "Decrypting private key..."
+openssl rsa -in controller-encrypted.key -out controller.key -passin pass:"$1"
 
 echo "Extracting public certificate from pfx..."
 openssl pkcs12 -in sonar-lte.pfx -clcerts -nokeys -out controller.crt -password pass:"$1"
@@ -41,7 +41,10 @@ echo "Converting pfx (with password) to pem..."
 openssl pkcs12 -in certifier.pfx -out certifier.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
-openssl pkcs12 -in certifier.pfx -nocerts -out certifier.key -passin pass:"$1" -passout pass:"$1"
+openssl pkcs12 -in certifier.pfx -nocerts -out certifier-encrypted.key -passin pass:"$1" -passout pass:"$1"
+
+echo "Decrypting private key..."
+openssl rsa -in certifier-encrypted.key -out certifier.key -passin pass:"$1"
 
 echo "*****************************************"
 
@@ -60,7 +63,10 @@ echo "Converting pfx (with password) to pem..."
 openssl pkcs12 -in fluentd.pfx -out fluentd.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
-openssl pkcs12 -in fluentd.pfx -nocerts -out fluentd.key -passin pass:"$1" -passout pass:"$1"
+openssl pkcs12 -in fluentd.pfx -nocerts -out fluentd-encrypted.key -passin pass:"$1" -passout pass:"$1"
+
+echo "Decrypting private key..."
+openssl rsa -in fluentd-encrypted.key -out fluentd.key -passin pass:"$1"
 
 echo "**************************************"
 
