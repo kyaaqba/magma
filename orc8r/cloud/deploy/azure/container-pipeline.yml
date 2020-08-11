@@ -257,20 +257,20 @@ stages:
                 kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
                 namespace: '${{ parameters.aksNamespace }}'
                 manifests: 'orc8r/cloud/deploy/azure/openvpn-pvc.yaml'
-            - task: AzureKeyVault@1
-              inputs:
-                azureSubscription: 'sonar-prod-magma'
-                KeyVaultName: 'sonar-prod-magma-01'
-                SecretsFilter: '*'
-                RunAsPreJob: true
-            - task: AzureCLI@2
-              inputs:
-                azureSubscription: 'sonar-prod-magma'
-                scriptType: 'bash'
-                scriptLocation: 'scriptPath'
-                scriptPath: 'orc8r/cloud/deploy/azure/scripts/fetch_certs.sh'
-                arguments: '$(SSLKeyPassword) sonar-prod-magma-01'
-                failOnStandardError: false
+            # - task: AzureKeyVault@1
+            #   inputs:
+            #     azureSubscription: 'sonar-prod-magma'
+            #     KeyVaultName: 'sonar-prod-magma-01'
+            #     SecretsFilter: '*'
+            #     RunAsPreJob: true
+            # - task: AzureCLI@2
+            #   inputs:
+            #     azureSubscription: 'sonar-prod-magma'
+            #     scriptType: 'bash'
+            #     scriptLocation: 'scriptPath'
+            #     scriptPath: 'orc8r/cloud/deploy/azure/scripts/fetch_certs.sh'
+            #     arguments: '$(SSLKeyPassword) sonar-prod-magma-01'
+            #     failOnStandardError: false
             - task: CmdLine@2
               inputs:
                 script: |
