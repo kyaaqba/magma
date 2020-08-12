@@ -312,6 +312,7 @@
                 "version": "[parameters('maria_db_version')]",
                 "administratorLogin": "[parameters('mariadb_admin_login')]",
                 "administratorLoginPassword": "[parameters('mariadb_admin_password')]",
+                "sslEnforcement": "Disabled",
                 "storageProfile": {
                     "storageMB": 5120,
                     "backupRetentionDays": 14,
