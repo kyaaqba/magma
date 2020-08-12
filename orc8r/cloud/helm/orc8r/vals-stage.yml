@@ -95,7 +95,7 @@ metrics:
     image:
       repository: docker.io/grafana/grafana
       tag: 6.6.2
-    create: false
+    create: true
     volumes:
       datasources:
         persistentVolumeClaim:
