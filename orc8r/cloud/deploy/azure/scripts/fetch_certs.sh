@@ -1,5 +1,5 @@
-mkdir orc8r/cloud/helm/orc8r/charts/secrets/certs
-cd orc8r/cloud/helm/orc8r/charts/secrets/certs
+mkdir orc8r/cloud/helm/orc8r/charts/secrets/secrets/certs
+cd orc8r/cloud/helm/orc8r/charts/secrets/secrets/certs
 
 echo "******Acquiring Sonarlte Certificate******"
 
@@ -13,13 +13,13 @@ echo "Converting pem to pfx with the password..."
 openssl pkcs12 -export -out sonar-lte.pfx -in sonar-nopass.pem -password pass:"$1"
 
 echo "Converting pfx (with password) to pem..."
-openssl pkcs12 -in sonar-lte.pfx -out rootCA.pem -nodes -password pass:"$1"
+openssl pkcs12 -in sonar-lte.pfx -nokeys -out rootCA.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
-openssl pkcs12 -in sonar-lte.pfx -nocerts -out controller.key -passin pass:"$1" -passout pass:"$1"
+openssl pkcs12 -in sonar-lte.pfx -nocerts -out controller-encrypted.key -passin pass:"$1" -passout pass:"$1"
 
-# echo "Decrypting private key..."
-# openssl rsa -in controller.key -out controller-decrypted.key -passin pass:"$1"
+echo "Decrypting private key..."
+openssl rsa -in controller-encrypted.key -out controller.key -passin pass:"$1"
 
 echo "Extracting public certificate from pfx..."
 openssl pkcs12 -in sonar-lte.pfx -clcerts -nokeys -out controller.crt -password pass:"$1"
@@ -38,10 +38,13 @@ echo "Converting pem to pfx with the password..."
 openssl pkcs12 -export -out certifier.pfx -in certifier-nopass.pem -password pass:"$1"
 
 echo "Converting pfx (with password) to pem..."
-openssl pkcs12 -in certifier.pfx -out certifier.pem -nodes -password pass:"$1"
+openssl pkcs12 -in certifier.pfx -nokeys -out certifier.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
-openssl pkcs12 -in certifier.pfx -nocerts -out certifier.key -passin pass:"$1" -passout pass:"$1"
+openssl pkcs12 -in certifier.pfx -nocerts -out certifier-encrypted.key -passin pass:"$1" -passout pass:"$1"
+
+echo "Decrypting private key..."
+openssl rsa -in certifier-encrypted.key -out certifier.key -passin pass:"$1"
 
 echo "*****************************************"
 
@@ -57,10 +60,13 @@ echo "Converting pem to pfx with the password..."
 openssl pkcs12 -export -out fluentd.pfx -in fluentd-nopass.pem -password pass:"$1"
 
 echo "Converting pfx (with password) to pem..."
-openssl pkcs12 -in fluentd.pfx -out fluentd.pem -nodes -password pass:"$1"
+openssl pkcs12 -in fluentd.pfx -nokeys -out fluentd.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
-openssl pkcs12 -in fluentd.pfx -nocerts -out fluentd.key -passin pass:"$1" -passout pass:"$1"
+openssl pkcs12 -in fluentd.pfx -nocerts -out fluentd-encrypted.key -passin pass:"$1" -passout pass:"$1"
+
+echo "Decrypting private key..."
+openssl rsa -in fluentd-encrypted.key -out fluentd.key -passin pass:"$1"
 
 echo "**************************************"
 
@@ -76,7 +82,7 @@ echo "Converting pem to pfx with the password..."
 openssl pkcs12 -export -out bootstrapper.pfx -in bootstrapper-nopass.pem -password pass:"$1"
 
 echo "Converting pfx (with password) to pem..."
-openssl pkcs12 -in bootstrapper.pfx -out bootstrapper.pem -nodes -password pass:"$1"
+openssl pkcs12 -in bootstrapper.pfx -nokeys -out bootstrapper.pem -nodes -password pass:"$1"
 
 echo "Extracting private key from pfx..."
 openssl pkcs12 -in bootstrapper.pfx -nocerts -out bootstrapper-encrypted.key -passin pass:"$1" -passout pass:"$1"
@@ -85,3 +91,22 @@ echo "Decrypting private key..."
 openssl rsa -in bootstrapper-encrypted.key -out bootstrapper.key -passin pass:"$1"
 
 echo "*************************************"
+
+echo "Removing temporary files..."
+rm bootstrapper.pem
+rm bootstrapper.pfx
+rm bootstrapper-encrypted.key
+rm bootstrapper-nopass.pem
+rm bootstrapper-nopass.pfx
+rm certifier.pfx
+rm certifier-encrypted.key
+rm certifier-nopass.pem
+rm certifier-nopass.pfx
+rm controller-encrypted.key
+rm fluentd.pfx
+rm fluentd-encrypted.key
+rm fluentd-nopass.pem
+rm fluentd-nopass.pfx
+rm sonar-lte.pfx
+rm sonar-nopass.pem
+rm sonar-nopass.pfx
