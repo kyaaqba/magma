@@ -132,13 +132,13 @@ nms:
     env:
       api_host: controller.sonarlte.com # orc8r proxy endpoint
       mysql_host: orc8r-mariadbserver-03.mariadb.database.azure.com # MySQL host IP/Name
-      mysql_user: magma_dev # NMS Database user
+      mysql_user: magma_dev@orc8r-mariadbserver-03 # NMS Database user
       grafana_address: orc8r-user-grafana:3000
 
       # host: # Host to bind
-      port: 3306 # Magmalte service port bind
+      # port: 3306 # Magmalte service port bind
       # mapbox_access_token: # Mapbox Access token
-      mysql_db: orc8r-mariadbserver-03 # NMS Database name
+      # mysql_db: orc8r-mariadbserver-03 # NMS Database name
       mysql_pass: Sonar_SFT_654321!! # NMS Database password
 
   nginx:
