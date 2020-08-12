@@ -92,6 +92,28 @@ openssl rsa -in bootstrapper-encrypted.key -out bootstrapper.key -passin pass:"$
 
 echo "*************************************"
 
+echo "******Acquiring Admin_operator Certificate******"
+
+echo "Downloading pfx (no password) from Key vault..."
+az keyvault secret download -f admin_operator-nopass.pfx --vault-name $2 --id https://sonar-prod-magma-01.vault.azure.net/secrets/admin-operator/3073eede15374e0c9100fddffc896d61 --encoding base64
+
+echo "Converting pfx (no password) to pem format..."
+openssl pkcs12 -in admin_operator-nopass.pfx -out admin_operator-nopass.pem -nodes -password pass:""
+
+echo "Converting pem to pfx with the password..."
+openssl pkcs12 -export -out admin_operator.pfx -in admin_operator-nopass.pem -password pass:"$1"
+
+echo "Converting pfx (with password) to pem..."
+openssl pkcs12 -in admin_operator.pfx -nokeys -out admin_operator.pem -nodes -password pass:"$1"
+
+echo "Extracting private key from pfx..."
+openssl pkcs12 -in admin_operator.pfx -nocerts -out admin_operator-encrypted.key -passin pass:"$1" -passout pass:"$1"
+
+echo "Decrypting private key..."
+openssl rsa -in admin_operator-encrypted.key -out admin_operator.key.pem -passin pass:"$1"
+
+echo "**************************************"
+
 echo "Removing temporary files..."
 rm bootstrapper.pem
 rm bootstrapper.pfx
@@ -110,3 +132,6 @@ rm fluentd-nopass.pfx
 rm sonar-lte.pfx
 rm sonar-nopass.pem
 rm sonar-nopass.pfx
+rm admin_operator-nopass.pfx
+rm admin_operator-nopass.pem
+rm admin_operator-encrypted.key
