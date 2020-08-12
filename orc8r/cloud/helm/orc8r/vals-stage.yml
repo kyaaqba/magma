@@ -95,7 +95,7 @@ metrics:
     image:
       repository: docker.io/grafana/grafana
       tag: 6.6.2
-    create: true
+    create: false
     volumes:
       datasources:
         persistentVolumeClaim:
@@ -111,12 +111,12 @@ metrics:
           claimName: grafana-data-azurefile
 
 nms:
-  enabled: false
+  enabled: true
 
   imagePullSecrets: []
 
   secret:
-    certs: ${nms_certs_secret}
+    certs: orc8r-secrets-certs # ${nms_certs_secret}
 
   magmalte:
     manifests:
@@ -126,14 +126,20 @@ nms:
       rbac: false
 
     image:
-      repository: ${docker_registry}/magmalte
-      tag: "${docker_tag}"
+      repository: sonarregistry.azurecr.io/magmalte_magmalte
+      tag: "latest"
 
     env:
-      api_host: ${controller_hostname}
-      mysql_host: ${nms_db_host}
-      mysql_user: ${nms_db_user}
-      grafana_address: ${user_grafana_hostname}
+      api_host: controller.sonarlte.com # orc8r proxy endpoint
+      mysql_host: orc8r-mariadbserver-03.mariadb.database.azure.com # MySQL host IP/Name
+      mysql_user: magma_dev@orc8r-mariadbserver-03 # NMS Database user
+      grafana_address: orc8r-user-grafana:3000
+
+      # host: # Host to bind
+      # port: 3306 # Magmalte service port bind
+      # mapbox_access_token: # Mapbox Access token
+      # mysql_db: orc8r-mariadbserver-03 # NMS Database name
+      mysql_pass: Sonar_SFT_654321!! # NMS Database password
 
   nginx:
     manifests:
@@ -146,7 +152,7 @@ nms:
     service:
       type: LoadBalancer
       annotations:
-        external-dns.alpha.kubernetes.io/hostname: "${nms_hostname}"
+        external-dns.alpha.kubernetes.io/hostname: "*.nms.sonarlte.com"
 
     deployment:
       spec:
