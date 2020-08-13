@@ -21,7 +21,7 @@
       "value": "Sonar_SFT_654321!!"
     },
     "mysql_db_server_name": {
-        "value": "orc8r-mysqldbserver-03"
+        "value": "orc8r-mysqldbserver-01"
     },
     "virtualNetwork_resourceGroup": {
       "value": "sonar-prod-magma"
