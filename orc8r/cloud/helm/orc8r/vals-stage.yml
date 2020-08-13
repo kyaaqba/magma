@@ -131,6 +131,7 @@ nms:
       pullPolicy: Always
 
     env:
+      api_host: orc8r-proxy.magma-stage.svc.cluster.local:9443
       # api_host: controller.sonarlte.com:9443 # orc8r proxy endpoint
       mysql_host: nms-db.mysql.database.azure.com # MySQL host IP/Name
       # mysql_host: orc8r-mariadbserver-03.mariadb.database.azure.com # MySQL host IP/Name
