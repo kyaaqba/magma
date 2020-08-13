@@ -4,7 +4,7 @@ metadata:
   name: grafana-datasources-azuredisk
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   storageClassName: azuredisk-sc
   resources:
     requests:
