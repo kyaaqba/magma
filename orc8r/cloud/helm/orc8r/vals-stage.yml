@@ -53,11 +53,11 @@ metrics:
       prometheusData:
         volumeSpec:
           persistentVolumeClaim:
-            claimName: prometheus-data-azurefile
+            claimName: prometheus-data-azuredisk
       prometheusConfig:
         volumeSpec:
           persistentVolumeClaim:
-            claimName: prometheus-cfg-azurefile
+            claimName: prometheus-cfg-azuredisk
 
   prometheus:
     create: true
@@ -99,16 +99,16 @@ metrics:
     volumes:
       datasources:
         persistentVolumeClaim:
-          claimName: grafana-datasources-azurefile
+          claimName: grafana-datasources-azuredisk
       dashboardproviders:
         persistentVolumeClaim:
-          claimName: grafana-providers-azurefile
+          claimName: grafana-providers-azuredisk
       dashboards:
         persistentVolumeClaim:
-          claimName: grafana-dashboards-azurefile
+          claimName: grafana-dashboards-azuredisk
       grafanaData:
         persistentVolumeClaim:
-          claimName: grafana-data-azurefile
+          claimName: grafana-data-azuredisk
 
 nms:
   enabled: true
