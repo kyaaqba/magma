@@ -53,11 +53,11 @@ metrics:
       prometheusData:
         volumeSpec:
           persistentVolumeClaim:
-            claimName: prometheus-data-azuredisk
+            claimName: prometheus-data-azurefile
       prometheusConfig:
         volumeSpec:
           persistentVolumeClaim:
-            claimName: prometheus-cfg-azuredisk
+            claimName: prometheus-cfg-azurefile
 
   prometheus:
     create: true
