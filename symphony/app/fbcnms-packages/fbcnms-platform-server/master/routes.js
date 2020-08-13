@@ -28,6 +28,18 @@ router.get(
   '/organization/async',
   asyncHandler(async (req: FBCNMSRequest, res) => {
     const organizations = await Organization.findAll();
+
+    for (let org of organizations) {      
+      if (!Array.isArray(org.tabs)) {        
+        try {          
+          org.tabs = JSON.parse(org.tabs);        
+        }        
+        catch {          
+          org.tabs = []        
+        }      
+      }    
+    }
+
     res.status(200).send({organizations});
   }),
 );
