@@ -7,3 +7,4 @@ reclaimPolicy: Retain
 parameters:
   storageaccounttype: Standard_LRS
   kind: Managed
+volumeBindingMode: WaitForFirstConsumer
