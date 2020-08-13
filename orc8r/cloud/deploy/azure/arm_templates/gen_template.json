@@ -8,7 +8,7 @@
         },
         "mysql_db_version": {
             "type": "string",
-            "defaultValue": "10.2"
+            "defaultValue": "5.7"
         },
         "mysql_db_server_name": {
             "type": "string",
@@ -303,7 +303,7 @@
         },
         {
             "type": "Microsoft.DBforMySQL/servers",
-            "apiVersion": "2018-06-01",
+            "apiVersion": "2017-12-01",
             "kind": "",
             "location": "[parameters('location')]",
             "name": "[parameters('mysql_db_server_name')]",
@@ -329,7 +329,7 @@
             "resources": [
                 {
                     "type": "databases",
-                    "apiVersion": "2018-06-01",
+                    "apiVersion": "2017-12-01",
                     "name": "[parameters('mysqldb_database_name')]",
                     "dependsOn": [
                         "[resourceId('Microsoft.DBforMySQL/servers', parameters('mysql_db_server_name'))]"
@@ -394,7 +394,7 @@
         },
         {
             "type": "Microsoft.DBforMySQL/servers/virtualNetworkRules",
-            "apiVersion": "2018-06-01",
+            "apiVersion": "2017-12-01",
             "name": "[concat(parameters('mysql_db_server_name'), '/mysqldb-vnet-rule')]",
             "dependsOn": [
                 "[resourceId('Microsoft.DBforMySQL/servers', parameters('mysql_db_server_name'))]"
