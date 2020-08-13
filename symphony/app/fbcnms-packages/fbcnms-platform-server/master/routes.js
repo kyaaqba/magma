@@ -203,6 +203,16 @@ router.get(
   '/networks/async',
   asyncHandler(async (_: FBCNMSRequest, res) => {
     const networks = await MagmaV1API.getNetworks();
+
+    if (!Array.isArray(networks)) {        
+      try {          
+        networks = JSON.parse(networks);        
+      }        
+      catch {          
+        networks = []        
+      }      
+    }    
+
     res.status(200).send(networks);
   }),
 );
