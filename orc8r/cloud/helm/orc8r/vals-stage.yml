@@ -131,7 +131,7 @@ nms:
       pullPolicy: Always
 
     env:
-      api_host: controller.sonarlte.com:9443 # orc8r proxy endpoint
+      api_host: controller.sonarlte.com # orc8r proxy endpoint
       mysql_host: orc8r-mariadbserver-03.mariadb.database.azure.com # MySQL host IP/Name
       mysql_user: magma_dev@orc8r-mariadbserver-03 # NMS Database user
       grafana_address: orc8r-user-grafana:3000
