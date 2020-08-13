@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: grafana-datasources-azurefile
+  name: grafana-datasources-azuredisk
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: azurefile-sc
+    - ReadWriteOnce
+  storageClassName: azuredisk-sc
   resources:
     requests:
       storage: 100M

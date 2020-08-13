@@ -99,16 +99,16 @@ metrics:
     volumes:
       datasources:
         persistentVolumeClaim:
-          claimName: grafana-datasources-azurefile
+          claimName: grafana-datasources-azuredisk
       dashboardproviders:
         persistentVolumeClaim:
-          claimName: grafana-providers-azurefile
+          claimName: grafana-providers-azuredisk
       dashboards:
         persistentVolumeClaim:
-          claimName: grafana-dashboards-azurefile
+          claimName: grafana-dashboards-azuredisk
       grafanaData:
         persistentVolumeClaim:
-          claimName: grafana-data-azurefile
+          claimName: grafana-data-azuredisk
 
 nms:
   enabled: true
@@ -133,19 +133,21 @@ nms:
     env:
       api_host: orc8r-proxy.magma-stage.svc.cluster.local:9443
       # api_host: controller.sonarlte.com:9443 # orc8r proxy endpoint
-      mysql_host: nms-db.mysql.database.azure.com # MySQL host IP/Name
+      mysql_host: orc8r-mysqldbserver-01.mysql.database.azure.com
+      # mysql_host: nms-db.mysql.database.azure.com # MySQL host IP/Name
       # mysql_host: orc8r-mariadbserver-03.mariadb.database.azure.com # MySQL host IP/Name
-      mysql_user: magma_dev@nms-db # NMS Database user
+      mysql_user: magma_dev@orc8r-mysqldbserver-01
+      # mysql_user: magma_dev@nms-db # NMS Database user
       # mysql_user: magma_dev@orc8r-mariadbserver-03 # NMS Database user
-      mysql_dialect: mysql
-      grafana_address: orc8r-user-grafana:3000
+      # mysql_dialect: mysql
+      grafana_address: orc8r-user-grafana.magma-stage.svc.cluster.local:3000
 
       # host: # Host to bind
       # port: 9443 # 3306 # Magmalte service port bind
       # mapbox_access_token: # Mapbox Access token
       # mysql_db: orc8r-mariadbserver-03 # NMS Database name
-      mysql_pass: BlueChip!! # NMS Database password
-      # mysql_pass: Sonar_SFT_654321!! # NMS Database password
+      # mysql_pass: BlueChip!! # NMS Database password
+      mysql_pass: Sonar_SFT_654321!! # NMS Database password
 
   nginx:
     manifests:

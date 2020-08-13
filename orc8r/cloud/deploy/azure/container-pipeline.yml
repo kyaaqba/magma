@@ -215,6 +215,15 @@ stages:
                 arguments: '-f orc8r/cloud/deploy/azure/azurefile-sc.yaml'
                 secretType: 'dockerRegistry'
                 containerRegistryType: 'Azure Container Registry'
+            - task: Kubernetes@1
+              inputs:
+                connectionType: 'Kubernetes Service Connection'
+                kubernetesServiceEndpoint: '${{ parameters.aksServiceConnection }}'
+                namespace: '${{ parameters.aksNamespace }}'
+                command: 'apply'
+                arguments: '-f orc8r/cloud/deploy/azure/azuredisk-sc.yaml'
+                secretType: 'dockerRegistry'
+                containerRegistryType: 'Azure Container Registry'
             - task: KubernetesManifest@0
               inputs:
                 action: 'deploy'
