@@ -143,8 +143,8 @@ nms:
       # port: 9443 # 3306 # Magmalte service port bind
       # mapbox_access_token: # Mapbox Access token
       # mysql_db: orc8r-mariadbserver-03 # NMS Database name
-      # mysql_pass: BlueChip!! # NMS Database password
-      mysql_pass: Sonar_SFT_654321!! # NMS Database password
+      mysql_pass: BlueChip!! # NMS Database password
+      # mysql_pass: Sonar_SFT_654321!! # NMS Database password
 
   nginx:
     manifests:
