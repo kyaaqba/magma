@@ -6,21 +6,21 @@
             "type": "string",
             "defaultValue": "eastus2"
         },
-        "maria_db_version": {
+        "mysql_db_version": {
             "type": "string",
             "defaultValue": "10.2"
         },
-        "maria_db_server_name": {
+        "mysql_db_server_name": {
             "type": "string",
-            "defaultValue": "orc8r-mariadbserver-01"
+            "defaultValue": "orc8r-mysqldbserver-01"
         },
-        "mariadb_admin_login": {
+        "mysqldb_admin_login": {
             "type": "string"
         },
-        "mariadb_admin_password": {
+        "mysqldb_admin_password": {
             "type": "securestring"
         },
-        "mariadb_database_name": {
+        "mysqldb_database_name": {
             "type": "string",
             "defaultValue": "magma"
         },
@@ -302,21 +302,22 @@
             }
         },
         {
-            "type": "Microsoft.DBforMariaDB/servers",
+            "type": "Microsoft.DBforMySQL/servers",
             "apiVersion": "2018-06-01",
             "kind": "",
             "location": "[parameters('location')]",
-            "name": "[parameters('maria_db_server_name')]",
+            "name": "[parameters('mysql_db_server_name')]",
             "properties": {
                 "createMode": "Default",
-                "version": "[parameters('maria_db_version')]",
-                "administratorLogin": "[parameters('mariadb_admin_login')]",
-                "administratorLoginPassword": "[parameters('mariadb_admin_password')]",
+                "version": "[parameters('mysql_db_version')]",
+                "administratorLogin": "[parameters('mysqldb_admin_login')]",
+                "administratorLoginPassword": "[parameters('mysqldb_admin_password')]",
                 "sslEnforcement": "Disabled",
                 "storageProfile": {
                     "storageMB": 5120,
                     "backupRetentionDays": 14,
-                    "geoRedundantBackup": "Disabled"
+                    "geoRedundantBackup": "Disabled",
+                    "storageAutogrow": "Enabled"
                 }
             },
             "sku": {
@@ -329,9 +330,9 @@
                 {
                     "type": "databases",
                     "apiVersion": "2018-06-01",
-                    "name": "[parameters('mariadb_database_name')]",
+                    "name": "[parameters('mysqldb_database_name')]",
                     "dependsOn": [
-                        "[resourceId('Microsoft.DBforMariaDB/servers', parameters('maria_db_server_name'))]"
+                        "[resourceId('Microsoft.DBforMySQL/servers', parameters('mysql_db_server_name'))]"
                     ],
                     "properties": {
                         "charset": "utf8",
@@ -392,11 +393,11 @@
             }
         },
         {
-            "type": "Microsoft.DBforMariaDB/servers/virtualNetworkRules",
+            "type": "Microsoft.DBforMySQL/servers/virtualNetworkRules",
             "apiVersion": "2018-06-01",
-            "name": "[concat(parameters('maria_db_server_name'), '/mariadb-vnet-rule')]",
+            "name": "[concat(parameters('mysql_db_server_name'), '/mysqldb-vnet-rule')]",
             "dependsOn": [
-                "[resourceId('Microsoft.DBforMariaDB/servers', parameters('maria_db_server_name'))]"
+                "[resourceId('Microsoft.DBforMySQL/servers', parameters('mysql_db_server_name'))]"
             ],
             "properties": {
                 "virtualNetworkSubnetId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('virtualNetwork_resourceGroup'), '/providers/Microsoft.Network/virtualNetworks/', parameters('virtualNetwork_name'), '/subnets/',parameters('virtualNetwork_aksSubnet'))]",

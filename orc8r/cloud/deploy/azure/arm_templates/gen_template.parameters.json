@@ -14,14 +14,14 @@
     "postgresql_db_server_name": {
         "value":"orc8r-postgresqldb-03"
     },
-    "mariadb_admin_login": {
+    "mysqldb_admin_login": {
       "value": "magma_dev"
     },
-    "mariadb_admin_password": {
+    "mysqldb_admin_password": {
       "value": "Sonar_SFT_654321!!"
     },
-    "maria_db_server_name": {
-        "value": "orc8r-mariadbserver-03"
+    "mysql_db_server_name": {
+        "value": "orc8r-mysqldbserver-03"
     },
     "virtualNetwork_resourceGroup": {
       "value": "sonar-prod-magma"
