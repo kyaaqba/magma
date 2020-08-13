@@ -128,6 +128,7 @@ nms:
     image:
       repository: sonarregistry.azurecr.io/magmalte_magmalte
       tag: "latest"
+      pullPolicy: Always
 
     env:
       api_host: controller.sonarlte.com:9443 # orc8r proxy endpoint
