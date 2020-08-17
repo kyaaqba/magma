@@ -10,11 +10,11 @@ This document lays out the steps to get Orchestrator deployed and configured in 
 
 ## Azure CLI Authentication
 
-In order to use the Azure CLI, we first need to connect and authenticate with the tenant. Run the command below replacing and enter your credentials when prompted:
+In order to use the Azure CLI, we first need to connect and authenticate with the tenant. Run the command below replacing `TENANT_ID` with the appropriate ID of your Azure tenant and enter your credentials when prompted:
 
 `az login --tenant TENANT_ID`
 
-## 1.  Prerequisites - Azure AD Applications and Key Vault
+## 1. Prerequisites - Azure AD Applications and Key Vault
 
 ### Creating the Resource
 
@@ -30,7 +30,7 @@ Here is an example usage of the script with the required parameters:
 
 ---
 
-### 2.  Packaging, And Storing Certificates In Key Vault 
+## 2. Packaging and Storing Certificates In Key Vault
 
 From a bash shell, set the current directory to a local location of the certificates by replacing the SECRET_VALUE below with the password for the certificate and running the command.
 
@@ -60,18 +60,6 @@ Now that the certificate files are packaged, we can import them into the Key Vau
 
 `az keyvault certificate import --file .\bootstrapper.pfx --name BootstrapperKey --vault-name sonar-prod-magma-01`
 
-### Updating the Secret IDs
-
-The pipeline runs a script called *`fetch_certs.sh`* to prepare the certificates for deployment. We need to ensure the secret ID for each certificate is correct in the script. Open the script and replace the values in the --id parameters of the `az keyvault secret download` commands with the values in the Azure portal under:
-
-**`[Key Vault resource] > Certificates > [certificate name] > Current Version > Secret Identifier`**
-
----
-
-*Note: This process to be automated/improved.*
-
----
-
 ## 3.  Deployoing Infrastructure
 
 Run the pipeline that deploys the infrastructure to your Azure tenant via the ARM templates.
@@ -88,11 +76,11 @@ To deploy the generic template, use the command below to validate and then chang
 
 Each of these should execute and build all appropriate items needed for each resource group.
 
-## Container Registry
+## 4. Container Registry
 
 ---
 
-*Note: This will be added to the ARM Template in the future *
+*Note: This will be added to the ARM Template in the future.*
 
 ---
 
@@ -104,7 +92,7 @@ Then run the following command to connect the ACR to AKS:
 
 `az aks update -n magma-aks -g sonar-prod-magma --attach-acr SonarRegistry`
 
-## 4.  Kubernetes CLI Authentication
+## 5.  Kubernetes CLI Authentication
 
 Run the command below to generate AKS administrator credentials and connect the kubectl CLI to the cluster:
 
@@ -120,10 +108,175 @@ Then run the following command to create the AKS namespace:
 
 `kubectl create namespace magma-stage`
 
-## 5.  Populate Helm Chart Values
+## 6.  Populate Helm Chart Values
 
+A values YAML file for the Helm deployment needs to be created for your specific environment. Create a YAML file under the folder: `orc8r/cloud/helm/orc8r/`.
 
-## 6.  Pipeline Configuration
+Add the following template to the file replacing the brackets with the appropriate values:
+
+```yaml
+imagePullSecrets: []
+
+secrets:
+  create: true
+secret:
+  certs: orc8r-secrets-certs
+  configs:
+    orc8r: orc8r-secrets-configs-orc8r
+  envdir: orc8r-secrets-envdir
+
+proxy:
+  podDisruptionBudget:
+    enabled: true
+  image:
+    repository: [container registry login server]/orc8r_proxy
+    tag: "latest"
+    pullPolicy: Always
+  replicas: 2
+  service:
+    enabled: true
+    legacyEnabled: true
+    extraAnnotations:
+      bootstrapLagacy:
+        external-dns.alpha.kubernetes.io/hostname: bootstrapper-controller.[domain]
+      clientcertLegacy:
+        external-dns.alpha.kubernetes.io/hostname: controller.[domain],api.[domain]
+    name: orc8r-bootstrap-legacy
+    type: LoadBalancer
+  spec:
+    hostname: controller.[domain]
+    http_proxy_docker_hostname: "orc8r-proxy"
+
+controller:
+  podDisruptionBudget:
+    enabled: true
+  image:
+    repository: [container registry login server]/orc8r_controller
+    tag: "latest"
+    pullPolicy: Always
+  replicas: 2
+  spec:
+    database:
+      db: orc8r
+      host: orc8r-postgresqldb-03.postgres.database.azure.com
+      port: 5432
+      user: magma_dev@orc8r-postgresqldb-03
+      pass: [password]
+
+metrics:
+  imagePullSecrets: []
+  metrics:
+    volumes:
+      prometheusData:
+        volumeSpec:
+          persistentVolumeClaim:
+            claimName: prometheus-data-azurefile
+      prometheusConfig:
+        volumeSpec:
+          persistentVolumeClaim:
+            claimName: prometheus-cfg-azurefile
+
+  prometheus:
+    create: true
+    includeOrc8rAlerts: true
+    prometheusCacheHostname: orc8r-prometheus-cache.magma-stage.svc.cluster.local
+    alertmanagerHostname: orc8r-alertmanager.magma-stage.svc.cluster.local
+
+  alertmanager:
+    create: true
+
+  prometheusConfigurer:
+    create: true
+    image:
+      repository: [container registry login server]/orc8r_prometheus-configurer
+      tag: "latest"
+    prometheusURL: orc8r-prometheus.magma-stage.svc.cluster.local:9090
+
+  alertmanagerConfigurer:
+    create: true
+    image:
+      repository: [container registry login server]/orc8r_alertmanager-configurer
+      tag: "latest"
+    alertmanagerURL: orc8r-alertmanager.magma-stage.svc.cluster.local:9093
+
+  prometheusCache:
+    create: true
+    image:
+      repository: [container registry login server]/orc8r_prometheus-cache
+      tag: "latest"
+    limit: 500000
+  grafana:
+    create: false
+
+  userGrafana:
+    image:
+      repository: docker.io/grafana/grafana
+      tag: 6.6.2
+    create: true
+    volumes:
+      datasources:
+        persistentVolumeClaim:
+          claimName: grafana-datasources-azuredisk
+      dashboardproviders:
+        persistentVolumeClaim:
+          claimName: grafana-providers-azuredisk
+      dashboards:
+        persistentVolumeClaim:
+          claimName: grafana-dashboards-azuredisk
+      grafanaData:
+        persistentVolumeClaim:
+          claimName: grafana-data-azuredisk
+
+nms:
+  enabled: true
+
+  imagePullSecrets: []
+
+  secret:
+    certs: orc8r-secrets-certs
+
+  magmalte:
+    manifests:
+      secrets: true
+      deployment: true
+      service: true
+      rbac: false
+
+    image:
+      repository: [container registry login server]/magmalte_magmalte
+      tag: "latest"
+      pullPolicy: Always
+
+    env:
+      api_host: orc8r-proxy.magma-stage.svc.cluster.local:9443
+      mysql_host: orc8r-mysqldbserver-01.mysql.database.azure.com
+      mysql_user: magma_dev@orc8r-mysqldbserver-01
+      grafana_address: orc8r-user-grafana.magma-stage.svc.cluster.local:3000
+      mysql_pass: [password]
+
+  nginx:
+    manifests:
+      configmap: true
+      secrets: true
+      deployment: true
+      service: true
+      rbac: false
+
+    service:
+      type: LoadBalancer
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: "*.nms.[domain]"
+
+    deployment:
+      spec:
+        ssl_cert_name: controller.crt
+        ssl_cert_key_name: controller.key
+
+logging:
+  enabled: false
+```
+
+## 7.  Pipeline Configuration
 
 ### Creating the AKS Service Connection
 
