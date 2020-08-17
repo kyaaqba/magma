@@ -1,10 +1,13 @@
 mkdir orc8r/cloud/helm/orc8r/charts/secrets/secrets/certs
 cd orc8r/cloud/helm/orc8r/charts/secrets/secrets/certs
 
+sudo apt install jq
+
 echo "******Acquiring Sonarlte Certificate******"
 
 echo "Downloading pfx (no password) from Key vault..."
-az keyvault secret download -f sonar-nopass.pfx --vault-name $2 --id https://sonar-prod-magma-01.vault.azure.net/secrets/sonarlte-com/dabfd633beb74baea2dfefcd57a806cc --encoding base64
+secretId=$(az keyvault certificate show --vault-name $2 --name sonarlte-com | jq -r ".sid")
+az keyvault secret download -f sonar-nopass.pfx --vault-name $2 --id $secretId --encoding base64
 
 echo "Converting pfx (no password) to pem format..."
 openssl pkcs12 -in sonar-nopass.pfx -out sonar-nopass.pem -nodes -password pass:""
@@ -29,7 +32,8 @@ echo "*******************************************"
 echo "******Acquiring Certifier Certificate******"
 
 echo "Downloading pfx (no password) from Key vault..."
-az keyvault secret download -f certifier-nopass.pfx --vault-name $2 --id https://sonar-prod-magma-01.vault.azure.net/secrets/Certifier/05b28b14abc348ccaac5602b7fb4b2be --encoding base64
+secretId=$(az keyvault certificate show --vault-name $2 --name Certifier | jq -r ".sid")
+az keyvault secret download -f certifier-nopass.pfx --vault-name $2 --id $secretId --encoding base64
 
 echo "Converting pfx (no password) to pem format..."
 openssl pkcs12 -in certifier-nopass.pfx -out certifier-nopass.pem -nodes -password pass:""
@@ -51,7 +55,8 @@ echo "*****************************************"
 echo "******Acquiring Fluentd Certificate******"
 
 echo "Downloading pfx (no password) from Key vault..."
-az keyvault secret download -f fluentd-nopass.pfx --vault-name $2 --id https://sonar-prod-magma-01.vault.azure.net/secrets/Fluentd/c01a57ceb15749e899fc0a1a2adbb604 --encoding base64
+secretId=$(az keyvault certificate show --vault-name $2 --name Fluentd | jq -r ".sid")
+az keyvault secret download -f fluentd-nopass.pfx --vault-name $2 --id $secretId --encoding base64
 
 echo "Converting pfx (no password) to pem format..."
 openssl pkcs12 -in fluentd-nopass.pfx -out fluentd-nopass.pem -nodes -password pass:""
@@ -73,7 +78,8 @@ echo "**************************************"
 echo "******Acquiring Bootstrapper Key******"
 
 echo "Downloading pfx (no password) from Key vault..."
-az keyvault secret download -f bootstrapper-nopass.pfx --vault-name $2 --id https://sonar-prod-magma-01.vault.azure.net/secrets/BoostrapperKey/c643eb0765ca49fd9f1b333938670d06 --encoding base64
+secretId=$(az keyvault certificate show --vault-name $2 --name BootstrapperKey | jq -r ".sid")
+az keyvault secret download -f bootstrapper-nopass.pfx --vault-name $2 --id $secretId --encoding base64
 
 echo "Converting pfx (no password) to pem format..."
 openssl pkcs12 -in bootstrapper-nopass.pfx -out bootstrapper-nopass.pem -nodes -password pass:""
@@ -95,7 +101,8 @@ echo "*************************************"
 # echo "******Acquiring Admin_operator Certificate******"
 
 # echo "Downloading pfx (no password) from Key vault..."
-# az keyvault secret download -f admin_operator-nopass.pfx --vault-name $2 --id https://sonar-prod-magma-01.vault.azure.net/secrets/admin-operator/3073eede15374e0c9100fddffc896d61 --encoding base64
+# secretId=$(az keyvault certificate show --vault-name $2 --name admin-operator | jq -r ".sid")
+# az keyvault secret download -f admin_operator-nopass.pfx --vault-name $2 --id $secretId --encoding base64
 
 # echo "Converting pfx (no password) to pem format..."
 # openssl pkcs12 -in admin_operator-nopass.pfx -out admin_operator-nopass.pem -nodes -password pass:""
