@@ -35,8 +35,6 @@ From a bash shell, set the current directory to a local location of the certific
 
 `az keyvault secret set --name SSLKeyPassword --value SECRET_VALUE --vault-name sonar-prod-magma-01`
 
-
-
 ### Packaging the Files
 
 After creating the application certificates using the *`create_application_certs.sh`* script as described in the [Orchestrator installation documentation](https://magma.github.io/magma/docs/orc8r/deploy_install#ssl-certificates), we need to package the resulting files in order to import them. From a bash shell, run the following commands:
