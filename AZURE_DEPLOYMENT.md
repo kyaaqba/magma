@@ -60,7 +60,7 @@ Now that the certificate files are packaged, we can import them into the Key Vau
 
 `az keyvault certificate import --file .\bootstrapper.pfx --name BootstrapperKey --vault-name sonar-prod-magma-01`
 
-## 3.  Deployoing Infrastructure
+## 3.  Deploying the Infrastructure
 
 Run the pipeline that deploys the infrastructure to your Azure tenant via the ARM templates.
 
