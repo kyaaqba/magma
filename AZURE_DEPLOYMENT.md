@@ -14,7 +14,7 @@ In order to use the Azure CLI, we first need to connect and authenticate with th
 
 `az login --tenant TENANT_ID`
 
-## Prerequisites - Azure AD Applications and Key Vault
+## 1.  Prerequisites - Azure AD Applications and Key Vault
 
 ### Creating the Resource
 
@@ -30,7 +30,7 @@ Here is an example usage of the script with the required parameters:
 
 ---
 
-### Creating the Secret
+### 2.  Packaging, And Storing Certificates In Key Vault 
 
 From a bash shell, set the current directory to a local location of the certificates by replacing the SECRET_VALUE below with the password for the certificate and running the command.
 
@@ -72,9 +72,9 @@ The pipeline runs a script called *`fetch_certs.sh`* to prepare the certificates
 
 ---
 
-## Architecture
+## 3.  Deployoing Infrastructure
 
-Run the pipeline that deploys the architecture to your Azure tenant via the ARM templates.
+Run the pipeline that deploys the infrastructure to your Azure tenant via the ARM templates.
 
 Alternatively, the ARM templates can be deployed with the Azure CLI.
 
@@ -90,6 +90,12 @@ Each of these should execute and build all appropriate items needed for each res
 
 ## Container Registry
 
+---
+
+*Note: This will be added to the ARM Template in the future *
+
+---
+
 Run the command below to create the Azure Container Registry:
 
 `az acr create --resource-group sonar-prod-magma --name SonarRegistry --sku Basic`
@@ -98,7 +104,7 @@ Then run the following command to connect the ACR to AKS:
 
 `az aks update -n magma-aks -g sonar-prod-magma --attach-acr SonarRegistry`
 
-## Kubernetes CLI Authentication
+## 4.  Kubernetes CLI Authentication
 
 Run the command below to generate AKS administrator credentials and connect the kubectl CLI to the cluster:
 
@@ -114,7 +120,10 @@ Then run the following command to create the AKS namespace:
 
 `kubectl create namespace magma-stage`
 
-## Pipeline Configuration
+## 5.  Populate Helm Chart Values
+
+
+## 6.  Pipeline Configuration
 
 ### Creating the AKS Service Connection
 
@@ -146,7 +155,7 @@ On the Triggers tab, you can override and disable continuous integration if you 
 
 Click the **Save & queue** dropdown arrow and select **Save**.
 
-## Deployment
+## 7.  Deployment
 
 At this point, we should be ready to run the pipeline. Open the pipeline in Azure DevOps and click the **Run pipeline** button.
 
