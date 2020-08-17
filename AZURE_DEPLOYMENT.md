@@ -14,7 +14,7 @@ In order to use the Azure CLI, we first need to connect and authenticate with th
 
 `az login --tenant TENANT_ID`
 
-## Key Vault
+## Prerequisites - Azure AD Applications and Key Vault
 
 ### Creating the Resource
 
