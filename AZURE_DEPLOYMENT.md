@@ -6,6 +6,7 @@ This document lays out the steps to get Orchestrator deployed and configured in 
 - Windows Subsystem for Linux (WSL)
 - Azure CLI for Linux
 - Kubernetes CLI (kubectl) for Windows
+- PowerShell
 
 ## Azure CLI Authentication
 
