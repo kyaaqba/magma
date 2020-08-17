@@ -22,7 +22,7 @@ There are a few items that need to be present before deployment of the pipeline.
 To create the Key Vault instance, create these AAD applications and store their secrets as Key Vault secrets, run the PowerShell script: *`orc8r\cloud\deploy\azure\create-identities.ps1`* as a user that has both Azure AD global admin right as well as at least a contributor role in the resource group where the Key Vault instance will be created.
 Here is an example usage of the script with the required parameters:
 
-`.\create-identities.ps1 -rgName sonar-prod-magma -keyVaultName sonar-prod-magma-kv-1 -aksName magma-aks`
+`.\create-identities.ps1 -rgName myorg-prod-magma -keyVaultName myorg-prod-magma-kv-1 -aksName magma-aks`
 
 ---
 
@@ -34,7 +34,7 @@ Here is an example usage of the script with the required parameters:
 
 From a bash shell, set the current directory to a local location of the certificates by replacing the SECRET_VALUE below with the password for the certificate and running the command.
 
-`az keyvault secret set --name SSLKeyPassword --value SECRET_VALUE --vault-name sonar-prod-magma-01`
+`az keyvault secret set --name SSLKeyPassword --value SECRET_VALUE --vault-name myorg-prod-magma-01`
 
 ### Packaging the Files
 
@@ -44,7 +44,7 @@ After creating the application certificates using the *`create_application_certs
 
 `openssl pkcs12 -inkey fluentd.key -in fluentd.pem -export -out fluentd.pfx`
 
-`openssl req -x509 -new -nodes -key bootstrapper.key -sha256 -days 3650 -out bootstrapper.pem -subj "/C=US/CN=bootstrapper.sonarlte.com"`
+`openssl req -x509 -new -nodes -key bootstrapper.key -sha256 -days 3650 -out bootstrapper.pem -subj "/C=US/CN=bootstrapper.myorg.com"`
 
 `openssl pkcs12 -inkey bootstrapper.key -in bootstrapper.pem -export -out bootstrapper.pfx`
 
@@ -52,13 +52,13 @@ After creating the application certificates using the *`create_application_certs
 
 Now that the certificate files are packaged, we can import them into the Key Vault by running these commands:
 
-`az keyvault certificate import --file .\sonar.pfx --name sonarlte-com --vault-name sonar-prod-magma-01`
+`az keyvault certificate import --file .\myorg.pfx --name myorg-com --vault-name myorg-prod-magma-01`
 
-`az keyvault certificate import --file .\certifier.pfx --name Certifier --vault-name sonar-prod-magma-01`
+`az keyvault certificate import --file .\certifier.pfx --name Certifier --vault-name myorg-prod-magma-01`
 
-`az keyvault certificate import --file .\fluentd.pfx --name Fluentd --vault-name sonar-prod-magma-01`
+`az keyvault certificate import --file .\fluentd.pfx --name Fluentd --vault-name myorg-prod-magma-01`
 
-`az keyvault certificate import --file .\bootstrapper.pfx --name BootstrapperKey --vault-name sonar-prod-magma-01`
+`az keyvault certificate import --file .\bootstrapper.pfx --name BootstrapperKey --vault-name myorg-prod-magma-01`
 
 ## 3.  Deploying the Infrastructure
 
@@ -68,11 +68,11 @@ Alternatively, the ARM templates can be deployed with the Azure CLI.
 
 To deploy the net template, you can use the command below to validate and then change `validate` to `deploy` when ready to deploy:
 
-`az deployment group validate --template-file .\magma\orc8r\cloud\deploy\azure\arm_templates\net_template.json --parameters .\magma\orc8r\cloud\deploy\azure\arm_templates\net_template.parameters.json -g sonar-prod-magma`
+`az deployment group validate --template-file .\magma\orc8r\cloud\deploy\azure\arm_templates\net_template.json --parameters .\magma\orc8r\cloud\deploy\azure\arm_templates\net_template.parameters.json -g myorg-prod-magma`
 
 To deploy the generic template, use the command below to validate and then change `validate` to `deploy` when ready to deploy:
 
-`az deployment group validate --template-file .\magma\orc8r\cloud\deploy\azure\arm_templates\gen_template.json --parameters .\magma\orc8r\cloud\deploy\azure\arm_templates\gen_template.parameters.json -g sonar-prod-magma`
+`az deployment group validate --template-file .\magma\orc8r\cloud\deploy\azure\arm_templates\gen_template.json --parameters .\magma\orc8r\cloud\deploy\azure\arm_templates\gen_template.parameters.json -g myorg-prod-magma`
 
 Each of these should execute and build all appropriate items needed for each resource group.
 
@@ -86,17 +86,17 @@ Each of these should execute and build all appropriate items needed for each res
 
 Run the command below to create the Azure Container Registry:
 
-`az acr create --resource-group sonar-prod-magma --name SonarRegistry --sku Basic`
+`az acr create --resource-group myorg-prod-magma --name MyOrgRegistry --sku Basic`
 
 Then run the following command to connect the ACR to AKS:
 
-`az aks update -n magma-aks -g sonar-prod-magma --attach-acr SonarRegistry`
+`az aks update -n magma-aks -g myorg-prod-magma --attach-acr MyOrgRegistry`
 
 ## 5.  Kubernetes CLI Authentication
 
 Run the command below to generate AKS administrator credentials and connect the kubectl CLI to the cluster:
 
-`az aks get-credentials --name magma-aks --resource-group sonar-prod-magma --admin`
+`az aks get-credentials --name magma-aks --resource-group myorg-prod-magma --admin`
 
 ---
 
