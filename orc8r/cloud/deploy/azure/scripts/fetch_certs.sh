@@ -105,11 +105,6 @@ echo "*************************************"
 # echo "**************************************"
 
 echo "Removing temporary files..."
-# rm bootstrapper.pem
-# rm bootstrapper.pfx
-# rm bootstrapper-encrypted.key
-# rm bootstrapper-nopass.pem
-# rm bootstrapper-nopass.pfx
 rm certifier.pfx
 rm certifier-encrypted.key
 rm certifier-nopass.pem
