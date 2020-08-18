@@ -77,24 +77,7 @@ echo "**************************************"
 
 echo "******Acquiring Bootstrapper Key******"
 
-echo "Downloading pfx (no password) from Key vault..."
-secretId=$(az keyvault certificate show --vault-name $2 --name BootstrapperKey | jq -r ".sid")
-az keyvault secret download -f bootstrapper-nopass.pfx --vault-name $2 --id $secretId --encoding base64
-
-echo "Converting pfx (no password) to pem format..."
-openssl pkcs12 -in bootstrapper-nopass.pfx -out bootstrapper-nopass.pem -nodes -password pass:""
-
-echo "Converting pem to pfx with the password..."
-openssl pkcs12 -export -out bootstrapper.pfx -in bootstrapper-nopass.pem -password pass:"$1"
-
-echo "Converting pfx (with password) to pem..."
-openssl pkcs12 -in bootstrapper.pfx -nokeys -out bootstrapper.pem -nodes -password pass:"$1"
-
-echo "Extracting private key from pfx..."
-openssl pkcs12 -in bootstrapper.pfx -nocerts -out bootstrapper-encrypted.key -passin pass:"$1" -passout pass:"$1"
-
-echo "Decrypting private key..."
-openssl rsa -in bootstrapper-encrypted.key -out bootstrapper.key -passin pass:"$1"
+az keyvault secret download --name BootstrapperKey --vault-name $2 --file bootstrapper.key
 
 echo "*************************************"
 
@@ -122,11 +105,11 @@ echo "*************************************"
 # echo "**************************************"
 
 echo "Removing temporary files..."
-rm bootstrapper.pem
-rm bootstrapper.pfx
-rm bootstrapper-encrypted.key
-rm bootstrapper-nopass.pem
-rm bootstrapper-nopass.pfx
+# rm bootstrapper.pem
+# rm bootstrapper.pfx
+# rm bootstrapper-encrypted.key
+# rm bootstrapper-nopass.pem
+# rm bootstrapper-nopass.pfx
 rm certifier.pfx
 rm certifier-encrypted.key
 rm certifier-nopass.pem
