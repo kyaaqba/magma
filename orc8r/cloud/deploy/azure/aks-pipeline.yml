@@ -84,6 +84,13 @@ steps:
     KeyVaultName: 'sonar-prod-magma-01'
     SecretsFilter: '*'
     RunAsPreJob: true
+- task: UsePythonVersion@0
+  displayName: Use Python v3.x
+  inputs:
+    versionSpec: '3.x'
+    addToPath: true
+    architecture: 'x64'
+  name: pyTools
 - task: PythonScript@0
   displayName: Configure Helm values file with controller db user
   inputs:
