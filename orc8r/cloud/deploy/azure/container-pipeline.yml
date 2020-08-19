@@ -27,7 +27,7 @@ parameters:
   - name: helmValsFilepath
     displayName: Helm Values Filepath
     type: string
-    default: orc8r/cloud/helm/orc8r/vals-stage.yml
+    default: orc8r/cloud/helm/orc8r/vals.yml
   - name: acrServiceConnection
     displayName: Azure Container Registry Service Connection
     type: string
