@@ -198,7 +198,7 @@ stages:
         runOnce:
           deploy:
             steps:
-            - checkout: self
+            # - checkout: self
             # - script: echo "Insert AKS Stage deploy..."
             - template: aks-pipeline.yml
               parameters:
