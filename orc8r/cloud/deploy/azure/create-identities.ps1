@@ -19,7 +19,7 @@ $keyVault = (az keyvault list --query "[?name == '$keyVaultName']") | ConvertFro
 if (-not $keyVault -or  $keyVault.legnth -eq 0)
 {
     Write-Host "Creating key vault..."    
-    az keyvault create --location $location --name $keyVaultName --resource-group $rgName --enabled-for-deployment "true"
+    az keyvault create --location $location --name $keyVaultName --resource-group $rgName --enabled-for-deployment "true" --enabled-for-template-deployment "true"
 }
 else {    
     Write-Host "Key Vault already exists."
