@@ -203,6 +203,7 @@ stages:
                   aksServiceConnection: ${{ parameters.aksServiceConnection }}
                   aksNamespace: ${{ parameters.aksNamespace }}
                   helmValsFilepath: ${{ parameters.helmValsFilepath }}
+                  deploymentStage: stage
             
 
 - stage: Prod_Deploy
