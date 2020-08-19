@@ -42,7 +42,7 @@ resources:
   - repository: magma_config
     type: github
     endpoint: SonarSoftwareInc
-    name: magma_config
+    name: SonarSoftwareInc/magma_config
 
 trigger:
 - master
