@@ -198,8 +198,11 @@ stages:
         runOnce:
           deploy:
             steps:
-            # - checkout: self
-            # - script: echo "Insert AKS Stage deploy..."
+              - template: aks-pipeline.yml
+                parameters:
+                  aksServiceConnection: ${{ parameters.aksServiceConnection }}
+                  aksNamespace: ${{ parameters.aksNamespace }}
+                  helmValsFilepath: ${{ parameters.helmValsFilepath }}
             
 
 - stage: Prod_Deploy
