@@ -42,7 +42,7 @@ parameters:
     displayName: "AKS Namespace"
   - name: helmValsFilepath
     displayName: "Helm Values Filepath"
-  - name: deployStage
+  - name: deploymentStage
     displayName: "Deployment Stage"
 
 steps:
@@ -95,7 +95,7 @@ steps:
   inputs:
     scriptSource: 'filePath'
     scriptPath: 'orc8r/cloud/deploy/azure/scripts/update-helm-deploy-value.py'
-    arguments: '-i $(Agent.BuildDirectory)/overrides/vals-${{ parameters.deployStage }}.yml -o $(Agent.BuildDirectory)/s/orc8r/cloud/helm/orc8r/vals.yml -p "controller.spec.database.user" -v $(ControllerDBUser)'
+    arguments: '-i $(Agent.BuildDirectory)/overrides/vals-${{ parameters.deploymentStage }}.yml -o $(Agent.BuildDirectory)/s/orc8r/cloud/helm/orc8r/vals.yml -p "controller.spec.database.user" -v $(ControllerDBUser)'
     workingDirectory: 'orc8r/cloud/deploy/azure/scripts'
 - task: PythonScript@0
   displayName: Configure Helm values file with controller db password
