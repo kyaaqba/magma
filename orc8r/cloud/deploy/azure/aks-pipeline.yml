@@ -45,9 +45,9 @@ parameters:
 
 steps:
 - checkout: self
-  path: s
-- checkout: Overrides
-  path: overrides
+# path: s
+# - checkout: Overrides
+#   path: overrides
 # - task: Bash@3
 #   displayName: Setup secrets for Helm deployment
 #   inputs:
