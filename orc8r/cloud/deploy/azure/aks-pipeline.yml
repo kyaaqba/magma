@@ -43,8 +43,7 @@ parameters:
 steps:
 - checkout: self
   path: s
-- checkout: magma_config
-  path: overrides
+
 # - task: Bash@3
 #   displayName: Setup secrets for Helm deployment
 #   inputs:

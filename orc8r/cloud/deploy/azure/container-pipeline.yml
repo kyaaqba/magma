@@ -43,7 +43,7 @@ resources:
     type: github
     endpoint: SonarSoftwareInc
     name: magma_config
-    
+
 trigger:
 - master
 
@@ -205,6 +205,8 @@ stages:
         runOnce:
           deploy:
             steps:
+              - checkout: magma_config
+                path: overrides
               - template: aks-pipeline.yml
                 parameters:
                   aksServiceConnection: ${{ parameters.aksServiceConnection }}
