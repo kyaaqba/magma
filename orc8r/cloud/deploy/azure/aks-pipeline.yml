@@ -91,6 +91,13 @@ steps:
     addToPath: true
     architecture: 'x64'
   name: pyTools
+- task: CmdLine@2
+  displayName: Install pyyaml
+  inputs:
+    script: |
+      sudo easy_install pip
+      sudo python -m pip install pyyaml
+    failOnStderr: true
 - task: PythonScript@0
   displayName: Configure Helm values file with controller db user
   inputs:
