@@ -18,8 +18,8 @@ $subscription = $account.Id
 $keyVault = (az keyvault list --query "[?name == '$keyVaultName']") | ConvertFrom-Json
 if (-not $keyVault -or  $keyVault.legnth -eq 0)
 {
-	Write-Host "Creating key vault..."
-    az keyvault create --location $location --name $keyVaultName --resource-group $rgName -EnabledForDeployment
+    Write-Host "Creating key vault..."    
+    az keyvault create --location $location --name $keyVaultName --resource-group $rgName --enabled-for-deployment "true"
 }
 else {    
     Write-Host "Key Vault already exists."
