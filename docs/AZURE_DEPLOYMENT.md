@@ -44,10 +44,6 @@ After creating the application certificates using the *`create_application_certs
 
 `openssl pkcs12 -inkey fluentd.key -in fluentd.pem -export -out fluentd.pfx`
 
-`openssl req -x509 -new -nodes -key bootstrapper.key -sha256 -days 3650 -out bootstrapper.pem -subj "/C=US/CN=bootstrapper.myorg.com"`
-
-`openssl pkcs12 -inkey bootstrapper.key -in bootstrapper.pem -export -out bootstrapper.pfx`
-
 ### Importing the Certificates
 
 Now that the certificate files are packaged, we can import them into the Key Vault by running these commands:
@@ -58,7 +54,7 @@ Now that the certificate files are packaged, we can import them into the Key Vau
 
 `az keyvault certificate import --file .\fluentd.pfx --name Fluentd --vault-name myorg-prod-magma-01`
 
-`az keyvault certificate import --file .\bootstrapper.pfx --name BootstrapperKey --vault-name myorg-prod-magma-01`
+`az keyvault secret set --name BootstrapperKey --vault-name myorg-prod-magma-01 --file bootstrapper.key`
 
 ## 3.  Deploying the Infrastructure
 
