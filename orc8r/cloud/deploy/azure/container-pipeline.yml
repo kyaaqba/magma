@@ -37,6 +37,13 @@ parameters:
     type: string
     default: sonar-prod-magma-aks
 
+resources:
+  repositories:
+  - repository: SonarSoftwareInc/magma_config
+    type: github
+    endpoint: SonarSoftwareInc
+    name: magma_config
+    
 trigger:
 - master
 

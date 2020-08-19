@@ -40,13 +40,6 @@ parameters:
   - name: deploymentStage
     displayName: "Deployment Stage"
 
-resources:
-  repositories:
-  - repository: SonarSoftwareInc/magma_config
-    type: github
-    endpoint: SonarSoftwareInc
-    name: magma_config
-    
 steps:
 - checkout: self
   path: s
