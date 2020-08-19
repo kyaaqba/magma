@@ -39,7 +39,7 @@ parameters:
 
 resources:
   repositories:
-  - repository: SonarSoftwareInc/magma_config
+  - repository: magma_config
     type: github
     endpoint: SonarSoftwareInc
     name: magma_config
