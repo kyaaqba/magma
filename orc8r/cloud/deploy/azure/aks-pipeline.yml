@@ -9,12 +9,7 @@
 #
 # To support a model which incorporates the open source repo and a second repo for 
 # company-specific customizations, the calling pipeline requires the following:
-resources:
-  repositories:
-  - repository: magma_config
-    type: github
-    endpoint: SonarSoftwareInc
-    name: magma_config
+
 #
 # The structure of the company-specific repo should be the following:
 # /certs
@@ -45,6 +40,13 @@ parameters:
   - name: deploymentStage
     displayName: "Deployment Stage"
 
+resources:
+  repositories:
+  - repository: SonarSoftwareInc/magma_config
+    type: github
+    endpoint: SonarSoftwareInc
+    name: magma_config
+    
 steps:
 - checkout: self
   path: s
