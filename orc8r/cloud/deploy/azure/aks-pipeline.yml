@@ -95,7 +95,7 @@ steps:
   displayName: Install pyyaml
   inputs:
     script: |
-      sudo python3 -m pip install pyyaml
+      sudo python3 -m pip3 install pyyaml
     failOnStderr: true
 - task: PythonScript@0
   displayName: Configure Helm values file with controller db user
