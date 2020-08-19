@@ -97,6 +97,11 @@ steps:
 #     script: |
 #       sudo python3 -m pip install pyyaml
 #     failOnStderr: true
+- task: Bash@3
+  displayName: Install Python Dependencies
+  inputs:
+    targetType: 'inline'
+    script: $(pyTools.pythonLocation)/bin/pip install pyyaml
 - task: PythonScript@0
   displayName: Configure Helm values file with controller db user
   inputs:
