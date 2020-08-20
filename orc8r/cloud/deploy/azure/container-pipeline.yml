@@ -213,12 +213,12 @@ stages:
                 path: overrides
               - template: aks-pipeline.yml
                 parameters:
-                  # aksServiceConnection: ${{ parameters.aksServiceConnection }}
-                  # aksNamespace: ${{ parameters.aksNamespace }}
-                  # helmValsFilepath: ${{ parameters.helmValsFilepath }}
+                  aksServiceConnection: ${{ parameters.aksServiceConnection }}
+                  aksNamespace: ${{ parameters.aksNamespace }}
+                  helmValsFilepath: ${{ parameters.helmValsFilepath }}
                   deploymentStage: stage
-                  # azureServiceConnection: ${{ parameters.acrServiceConnection }}
-                  # keyVaultName: ${{ parameters.keyVaultName }}
+                  azureServiceConnection: ${{ parameters.acrServiceConnection }}
+                  keyVaultName: ${{ parameters.keyVaultName }}
             
 
 - stage: Prod_Deploy
