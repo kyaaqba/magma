@@ -32,6 +32,8 @@ Here is an example usage of the script with the required parameters:
 
 ## 2. Storing Secrets and Certificates In Key Vault
 
+### Creating the Secrets
+
 From a bash shell, set the current directory to a local location of the certificates by replacing the SECRET_VALUE below with the password for the certificate and running the command.
 
 `az keyvault secret set --name SSLKeyPassword --value SECRET_VALUE --vault-name myorg-prod-magma-01`
@@ -64,7 +66,7 @@ After creating the application certificates using the *`create_application_certs
 
 Now that the certificate files are packaged, we can import them into the Key Vault by running these commands:
 
-`az keyvault certificate import --file .\myorg.pfx --name myorg-com --vault-name myorg-prod-magma-01`
+`az keyvault certificate import --file .\domain.pfx --name domain --vault-name myorg-prod-magma-01`
 
 `az keyvault certificate import --file .\certifier.pfx --name Certifier --vault-name myorg-prod-magma-01`
 
