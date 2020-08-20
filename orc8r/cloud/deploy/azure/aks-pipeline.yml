@@ -221,7 +221,6 @@ steps:
     chartPath: 'orc8r/cloud/helm/orc8r'
     releaseName: 'orc8r'
     valueFile: '${{ parameters.helmValsFilepath }}'
-    arguments: '--timeout 600'
 
 # // TODO: Insert steps to retrieve admin_operator certificates from deployed controller containers
 # // TODO: Insert steps to update vals.yml to enable NMS deployment
