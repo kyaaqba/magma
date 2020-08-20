@@ -91,12 +91,6 @@ steps:
     addToPath: true
     architecture: 'x64'
   name: pyTools
-# - task: CmdLine@2
-#   displayName: Install pyyaml
-#   inputs:
-#     script: |
-#       sudo python3 -m pip install pyyaml
-#     failOnStderr: true
 - task: Bash@3
   displayName: Install Python Dependencies
   inputs:
@@ -227,6 +221,7 @@ steps:
     chartPath: 'orc8r/cloud/helm/orc8r'
     releaseName: 'orc8r'
     valueFile: '${{ parameters.helmValsFilepath }}'
+    arguments: '--timeout 600'
 
 # // TODO: Insert steps to retrieve admin_operator certificates from deployed controller containers
 # // TODO: Insert steps to update vals.yml to enable NMS deployment
