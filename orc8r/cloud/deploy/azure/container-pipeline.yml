@@ -40,21 +40,13 @@ parameters:
     displayName: Key Vault Name
     type: string
     default: sonar-prod-magma-01
-  - name: magmaConfigRepo
-    displayName: Magma Config Repository
-    type: string
-    default: SonarSoftwareInc/magma_config
-  - name: magmaConfigServiceConnection
-    displayName: Magma Config Service Connection
-    type: string
-    default: SonarSoftwareInc
 
 resources:
   repositories:
   - repository: magma_config
     type: github
-    endpoint: ${{ parameters.magmaConfigServiceConnection }}
-    name: ${{ parameters.magmaConfigRepo }}
+    endpoint: SonarSoftwareInc
+    name: SonarSoftwareInc/magma_config
 
 trigger:
 - master
