@@ -47,7 +47,7 @@ controller:
       pass: deploy_magma_SFT_654321!!
 
 metrics:
-  imagePullSecrets: Nd3LYEjNiKfMlVWbYrDEQ/dY8901hzuO
+  imagePullSecrets: []
   metrics:
     volumes:
       prometheusData:
@@ -113,7 +113,7 @@ metrics:
 nms:
   enabled: true
 
-  imagePullSecrets: Nd3LYEjNiKfMlVWbYrDEQ/dY8901hzuO
+  imagePullSecrets: []
 
   secret:
     certs: orc8r-secrets-certs
