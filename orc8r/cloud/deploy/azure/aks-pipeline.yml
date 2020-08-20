@@ -25,18 +25,18 @@
 #   vals.yml
 
 parameters:
-  - name: aksServiceConnection
-    type: string
-  - name: aksNamespace
-    type: string
-  - name: helmValsFilepath
-    type: string
+  # - name: aksServiceConnection
+  #   type: string
+  # - name: aksNamespace
+  #   type: string
+  # - name: helmValsFilepath
+  #   type: string
   - name: deploymentStage
     type: string
-  - name: azureServiceConnection
-    type: string
-  - name: keyVaultName
-    type: string
+  # - name: azureServiceConnection
+  #   type: string
+  # - name: keyVaultName
+  #   type: string
 
 steps:
 - checkout: self
@@ -78,7 +78,7 @@ steps:
 - task: AzureKeyVault@1
   displayName: Connect to Key Vault
   inputs:
-    azureSubscription: ${{ parameters.azureServiceConnection }}
+    azureSubscription: ${{ parameters.acrServiceConnection }}
     KeyVaultName: ${{ parameters.keyVaultName }}
     SecretsFilter: '*'
     RunAsPreJob: true
@@ -202,7 +202,7 @@ steps:
 - task: AzureCLI@2
   displayName: Retrieve Certificates
   inputs:
-    azureSubscription: ${{ parameters.azureServiceConnection }}
+    azureSubscription: ${{ parameters.acrServiceConnection }}
     scriptType: 'bash'
     scriptLocation: 'scriptPath'
     scriptPath: 'orc8r/cloud/deploy/azure/scripts/fetch_certs.sh'
