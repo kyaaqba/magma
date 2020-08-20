@@ -36,6 +36,9 @@ parameters:
     displayName: Azure Kubernetes Service Connection
     type: string
     default: sonar-prod-magma-aks
+  - name: keyVaultName
+    type: string
+    default: sonar-prod-magma-01
 
 resources:
   repositories:
@@ -213,6 +216,8 @@ stages:
                   aksNamespace: ${{ parameters.aksNamespace }}
                   helmValsFilepath: ${{ parameters.helmValsFilepath }}
                   deploymentStage: stage
+                  azureServiceConnection: ${{ parameters.acrServiceConnection }}
+                  keyVaultName: ${{ parameters.keyVaultName }}
             
 
 - stage: Prod_Deploy

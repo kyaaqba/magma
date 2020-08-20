@@ -25,20 +25,18 @@
 #   vals.yml
 
 parameters:
-  # - name: orc8rDbPassword
-  #   type: string
-  #   displayName: Orchestrator DB Password
-  # - name: orc8rDbHost
-  #   type: string
-  #   displayName: Orchestrator DB Host
   - name: aksServiceConnection
-    displayName: "AKS Service Connection"
+    type: string
   - name: aksNamespace
-    displayName: "AKS Namespace"
+    type: string
   - name: helmValsFilepath
-    displayName: "Helm Values Filepath"
+    type: string
   - name: deploymentStage
-    displayName: "Deployment Stage"
+    type: string
+  - name: azureServiceConnection
+    type: string
+  - name: keyVaultName
+    type: string
 
 steps:
 - checkout: self
@@ -80,8 +78,8 @@ steps:
 - task: AzureKeyVault@1
   displayName: Connect to Key Vault
   inputs:
-    azureSubscription: 'sonar-prod-magma'
-    KeyVaultName: 'sonar-prod-magma-01'
+    azureSubscription: ${{ parameters.azureServiceConnection }}
+    KeyVaultName: ${{ parameters.keyVaultName }}
     SecretsFilter: '*'
     RunAsPreJob: true
 - task: UsePythonVersion@0
@@ -204,11 +202,11 @@ steps:
 - task: AzureCLI@2
   displayName: Retrieve Certificates
   inputs:
-    azureSubscription: 'sonar-prod-magma'
+    azureSubscription: ${{ parameters.azureServiceConnection }}
     scriptType: 'bash'
     scriptLocation: 'scriptPath'
     scriptPath: 'orc8r/cloud/deploy/azure/scripts/fetch_certs.sh'
-    arguments: '$(SSLKeyPassword) sonar-prod-magma-01'
+    arguments: '$(SSLKeyPassword) ${{ parameters.keyVaultName }}'
     failOnStandardError: false
 - task: HelmDeploy@0
   displayName: Deploy Helm Charts
