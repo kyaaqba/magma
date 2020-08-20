@@ -1,4 +1,4 @@
-imagePullSecrets: Nd3LYEjNiKfMlVWbYrDEQ/dY8901hzuO
+imagePullSecrets: []
 
 secrets:
   create: true
