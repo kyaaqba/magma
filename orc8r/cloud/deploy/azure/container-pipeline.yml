@@ -268,13 +268,13 @@ stages:
                 manifests: 'orc8r/cloud/deploy/azure/openvpn-pvc.yaml'
             - task: AzureKeyVault@1
               inputs:
-                azureSubscription: 'Airband Partner Labs'
+                azureSubscription: 'AzureResourceConnection'
                 KeyVaultName: 'deploy-magma-kv-1'
                 SecretsFilter: '*'
                 RunAsPreJob: true
             - task: AzureCLI@2
               inputs:
-                azureSubscription: 'Airband Partner Labs'
+                azureSubscription: 'AzureResourceConnection'
                 scriptType: 'bash'
                 scriptLocation: 'scriptPath'
                 scriptPath: 'orc8r/cloud/deploy/azure/scripts/fetch_certs.sh'
