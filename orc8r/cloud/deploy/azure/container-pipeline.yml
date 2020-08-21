@@ -7,15 +7,15 @@ parameters:
   - name: acrSubscriptionId
     displayName: Azure Container Registry Subscription Id
     type: string
-    default: 53d25eb2-0006-42be-bc4b-27a5906cf9ce
+    default: da8efe84-759e-40d3-b8b6-5eb38932cb4b
   - name: acrResourceGroup
     displayName: Azure Container Registry Resource Group
     type: string
-    default: sonar-prod-magma
+    default: magma-deploy-rg
   - name: acrName
     displayName: Azure Container Registry Name
     type: string
-    default: SonarRegistry
+    default: karamcom
   - name: aksName
     displayName: Azure Kubernetes Service Name
     type: string
@@ -27,15 +27,15 @@ parameters:
   - name: helmValsFilepath
     displayName: Helm Values Filepath
     type: string
-    default: orc8r/cloud/helm/orc8r/vals-stage.yml
+    default: orc8r/cloud/helm/orc8r/karam.yml
   - name: acrServiceConnection
     displayName: Azure Container Registry Service Connection
     type: string
-    default: sonar-prod-magma
+    default: AzureResourceConnection
   - name: aksServiceConnection
     displayName: Azure Kubernetes Service Connection
     type: string
-    default: sonar-prod-magma-aks
+    default: msairbandconnection
 
 trigger:
 - master
@@ -268,17 +268,17 @@ stages:
                 manifests: 'orc8r/cloud/deploy/azure/openvpn-pvc.yaml'
             - task: AzureKeyVault@1
               inputs:
-                azureSubscription: 'sonar-prod-magma'
-                KeyVaultName: 'sonar-prod-magma-01'
+                azureSubscription: 'Airband Partner Labs'
+                KeyVaultName: 'deploy-magma-kv-1'
                 SecretsFilter: '*'
                 RunAsPreJob: true
             - task: AzureCLI@2
               inputs:
-                azureSubscription: 'sonar-prod-magma'
+                azureSubscription: 'Airband Partner Labs'
                 scriptType: 'bash'
                 scriptLocation: 'scriptPath'
                 scriptPath: 'orc8r/cloud/deploy/azure/scripts/fetch_certs.sh'
-                arguments: '$(SSLKeyPassword) sonar-prod-magma-01'
+                arguments: '$(SSLKeyPassword) deploy-magma-kv-1'
                 failOnStandardError: false
             - task: CmdLine@2
               inputs:
