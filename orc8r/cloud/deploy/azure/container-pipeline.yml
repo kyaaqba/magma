@@ -271,7 +271,6 @@ stages:
                 azureSubscription: 'AzureResourceConnection'
                 KeyVaultName: 'deploy-magma-kv-1'
                 SecretsFilter: '*'
-                RunAsPreJob: true
             - task: AzureCLI@2
               inputs:
                 azureSubscription: 'AzureResourceConnection'
