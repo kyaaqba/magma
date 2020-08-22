@@ -203,6 +203,10 @@ stages:
             - task: HelmInstaller@1
               inputs:
                 helmVersionToInstall: '3.2.4'
+            - task: AzureKeyVault@1
+              inputs:
+                azureSubscription: 'AzureResourceConnection'
+                KeyVaultName: 'deploy-magma-kv-1'
             - task: KubectlInstaller@0
               inputs:
                 kubectlVersion: 'latest'
@@ -266,11 +270,6 @@ stages:
                 kubernetesServiceConnection: '${{ parameters.aksServiceConnection }}'
                 namespace: '${{ parameters.aksNamespace }}'
                 manifests: 'orc8r/cloud/deploy/azure/openvpn-pvc.yaml'
-            - task: AzureKeyVault@1
-              inputs:
-                azureSubscription: 'AzureResourceConnection'
-                KeyVaultName: 'deploy-magma-kv-1'
-                SecretsFilter: '*'
             - task: AzureCLI@2
               inputs:
                 azureSubscription: 'AzureResourceConnection'
