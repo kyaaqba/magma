@@ -41,9 +41,9 @@ controller:
   spec:
     database:
       db: orc8r
-      host: orc8r-postgresqldb-03.postgres.database.azure.com
+      host: orc8r-postgresqldb-99.postgres.database.azure.com
       port: 5432
-      user: magma_dev@orc8r-postgresqldb-03
+      user: magma_dev@orc8r-postgresqldb-99
       pass: deploy_magma_SFT_654321!!
 
 metrics:
@@ -132,8 +132,8 @@ nms:
 
     env:
       api_host: orc8r-proxy.magma-stage.svc.cluster.local:9443
-      mysql_host: orc8r-mysqldbserver-01.mysql.database.azure.com
-      mysql_user: magma_dev@orc8r-mysqldbserver-01
+      mysql_host: orc8r-mysqldbserver-99.mysql.database.azure.com
+      mysql_user: magma_dev@orc8r-mysqldbserver-99
       grafana_address: orc8r-user-grafana.magma-stage.svc.cluster.local:3000
       mysql_pass: deploy_magma_SFT_654321!!
 
