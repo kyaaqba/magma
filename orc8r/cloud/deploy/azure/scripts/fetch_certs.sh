@@ -6,7 +6,7 @@ sudo apt install jq
 echo "******Acquiring Sonarlte Certificate******"
 
 echo "Downloading pfx (no password) from Key vault..."
-secretId=$(az keyvault certificate show --vault-name $2 --name sonarlte-com | jq -r ".sid")
+secretId=$(az keyvault certificate show --vault-name $2 --name karam-com | jq -r ".sid")
 az keyvault secret download -f karamcom-nopass.pfx --vault-name $2 --id $secretId --encoding base64
 
 echo "Converting pfx (no password) to pem format..."
