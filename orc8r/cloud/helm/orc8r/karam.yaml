@@ -44,7 +44,7 @@ controller:
       host: orc8r-postgresqldb-99.postgres.database.azure.com
       port: 5432
       user: magma_dev@orc8r-postgresqldb-99
-      pass: deploy_magma_SFT_654321!!
+      pass: megm3@SFT@321!!
 
 metrics:
   imagePullSecrets: []
@@ -135,7 +135,7 @@ nms:
       mysql_host: orc8r-mysqldbserver-99.mysql.database.azure.com
       mysql_user: magma_dev@orc8r-mysqldbserver-99
       grafana_address: orc8r-user-grafana.magma-stage.svc.cluster.local:3000
-      mysql_pass: deploy_magma_SFT_654321!!
+      mysql_pass: megm3@SFT@321!!
 
   nginx:
     manifests:
