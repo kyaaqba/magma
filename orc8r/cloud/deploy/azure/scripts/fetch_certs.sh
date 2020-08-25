@@ -81,28 +81,28 @@ az keyvault secret download --name BootstrapperKey --vault-name $2 --file bootst
 
 echo "*************************************"
 
-# echo "******Acquiring Admin_operator Certificate******"
+echo "******Acquiring Admin_operator Certificate******"
 
-# echo "Downloading pfx (no password) from Key vault..."
-# secretId=$(az keyvault certificate show --vault-name $2 --name admin-operator | jq -r ".sid")
-# az keyvault secret download -f admin_operator-nopass.pfx --vault-name $2 --id $secretId --encoding base64
+echo "Downloading pfx (no password) from Key vault..."
+secretId=$(az keyvault certificate show --vault-name $2 --name admin-operator | jq -r ".sid")
+az keyvault secret download -f admin_operator-nopass.pfx --vault-name $2 --id $secretId --encoding base64
 
-# echo "Converting pfx (no password) to pem format..."
-# openssl pkcs12 -in admin_operator-nopass.pfx -out admin_operator-nopass.pem -nodes -password pass:""
+echo "Converting pfx (no password) to pem format..."
+openssl pkcs12 -in admin_operator-nopass.pfx -out admin_operator-nopass.pem -nodes -password pass:""
 
-# echo "Converting pem to pfx with the password..."
-# openssl pkcs12 -export -out admin_operator.pfx -in admin_operator-nopass.pem -password pass:"$1"
+echo "Converting pem to pfx with the password..."
+openssl pkcs12 -export -out admin_operator.pfx -in admin_operator-nopass.pem -password pass:"$1"
 
-# echo "Converting pfx (with password) to pem..."
-# openssl pkcs12 -in admin_operator.pfx -nokeys -out admin_operator.pem -nodes -password pass:"$1"
+echo "Converting pfx (with password) to pem..."
+openssl pkcs12 -in admin_operator.pfx -nokeys -out admin_operator.pem -nodes -password pass:"$1"
 
-# echo "Extracting private key from pfx..."
-# openssl pkcs12 -in admin_operator.pfx -nocerts -out admin_operator-encrypted.key -passin pass:"$1" -passout pass:"$1"
+echo "Extracting private key from pfx..."
+openssl pkcs12 -in admin_operator.pfx -nocerts -out admin_operator-encrypted.key -passin pass:"$1" -passout pass:"$1"
 
-# echo "Decrypting private key..."
-# openssl rsa -in admin_operator-encrypted.key -out admin_operator.key.pem -passin pass:"$1"
+echo "Decrypting private key..."
+openssl rsa -in admin_operator-encrypted.key -out admin_operator.key.pem -passin pass:"$1"
 
-# echo "**************************************"
+echo "**************************************"
 
 echo "Removing temporary files..."
 # rm bootstrapper.pem
@@ -122,6 +122,6 @@ rm fluentd-nopass.pfx
 rm karamcom.pfx
 rm karamcom-nopass.pem
 rm karamcom-nopass.pfx
-# rm admin_operator-nopass.pfx
-# rm admin_operator-nopass.pem
-# rm admin_operator-encrypted.key
+rm admin_operator-nopass.pfx
+rm admin_operator-nopass.pem
+rm admin_operator-encrypted.key
