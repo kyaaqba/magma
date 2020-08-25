@@ -111,7 +111,7 @@ metrics:
           claimName: grafana-data-azuredisk
 
 nms:
-  enabled: true
+  enabled: false
 
   imagePullSecrets: []
 
